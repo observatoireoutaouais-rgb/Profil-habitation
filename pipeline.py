@@ -13,7 +13,7 @@ from pathlib import Path
 
 # ── Paramètres ────────────────────────────────────────────────────────────────
 
-ANNEES = [2020, 2021, 2022, 2023, 2024]
+ANNEES = [2020, 2021, 2022, 2023, 2024, 2025, 2026]
 
 INDEX_URLS = {
     2026: "https://donneesouvertes.affmunqc.net/role/indexRole2026.csv",
