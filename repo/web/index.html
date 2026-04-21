@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil de l'habitation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,600;0,8..60,700;1,8..60,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --teal-dark:  #1a4e4b;
+  --teal:       #2d6e6a;
+  --teal-mid:   #3d8f8a;
+  --teal-light: #6dbfb8;
+  --teal-pale:  #b2deda;
+  --accent:     #e8a048;
+  --bg:         #f7f5f1;
+  --bg2:        #eeeae3;
+  --text:       #1a1a1a;
+  --text-light: #5a5a5a;
+  --border:     #d4cfc6;
+  --white:      #ffffff;
+  --chart-colors: #1a4e4b, #6dbfb8, #b8d4a0, #5a8f6a, #3d8f8a, #2d6e6a, #e8c48a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* HEADER */
+header {
+  background: var(--teal-dark);
+  color: white;
+  padding: 24px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+}
+header h1 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+header .subtitle { font-size: 0.8rem; opacity: 0.7; margin-top: 2px; }
+.source-badge {
+  font-size: 0.7rem; opacity: 0.6;
+  text-align: right; line-height: 1.4;
+}
+
+/* CONTROLS */
+.controls {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+}
+.control-group { display: flex; align-items: center; gap: 10px; }
+.control-group label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+select {
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 32px 8px 12px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  background: var(--bg);
+  color: var(--text);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a5a5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+select:focus { outline: none; border-color: var(--teal); }
+
+/* TABS */
+.tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg2);
+  border-radius: 8px;
+  padding: 3px;
+  margin-left: auto;
+}
+.tab-btn {
+  padding: 7px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab-btn.active {
+  background: var(--white);
+  color: var(--teal-dark);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+/* LAYOUT */
+.main { display: flex; min-height: calc(100vh - 130px); }
+
+/* MAP SIDEBAR */
+.map-panel {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+.map-panel h3 {
+  padding: 16px 20px 8px;
+  font-family: 'Source Serif 4', serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--teal-dark);
+  border-bottom: 1px solid var(--border);
+}
+#map-container { flex: 1; padding: 12px; }
+#map-svg { width: 100%; }
+.mrc-path { cursor: pointer; transition: opacity 0.2s; }
+.mrc-path:hover { opacity: 0.75; }
+.mrc-path.selected { stroke: var(--accent); stroke-width: 2.5; }
+.mrc-label { font-size: 8px; fill: white; pointer-events: none; font-weight: 500; }
+
+.map-legend {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+.map-legend h4 { font-size: 0.72rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.legend-scale { display: flex; align-items: center; gap: 4px; }
+.legend-bar { height: 8px; border-radius: 2px; flex: 1; }
+.legend-labels { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-light); margin-top: 3px; }
+
+/* CONTENT */
+.content { flex: 1; padding: 32px 40px; overflow-y: auto; }
+
+/* SECTION HEADER */
+.section-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--teal-pale);
+}
+.section-header h2 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--teal-dark);
+  line-height: 1.2;
+}
+.section-header .meta {
+  font-size: 0.78rem;
+  color: var(--text-light);
+  margin-top: 4px;
+}
+.mrc-tag {
+  display: inline-block;
+  background: var(--teal-pale);
+  color: var(--teal-dark);
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+/* GRID */
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.charts-grid.wide { grid-template-columns: 1fr; }
+.chart-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.chart-card h3 {
+  font-family: 'Source Serif 4', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--teal-dark);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.chart-card .chart-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-bottom: 16px;
+}
+.chart-area { width: 100%; }
+
+/* CHART ELEMENTS */
+.bar { transition: opacity 0.2s; }
+.bar:hover { opacity: 0.8; }
+.axis text { font-family: 'DM Sans', sans-serif; font-size: 11px; fill: var(--text-light); }
+.axis line, .axis path { stroke: var(--border); }
+.grid line { stroke: var(--border); stroke-dasharray: 3,3; }
+.grid path { display: none; }
+.bar-label { font-size: 11px; font-weight: 500; font-family: 'DM Sans', sans-serif; }
+.total-label { font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; fill: var(--text); }
+
+/* LEGEND */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-light); }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+/* TABLE */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.data-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--bg2);
+  font-weight: 500;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-light);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--bg2);
+  color: var(--text);
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr.total-row td { font-weight: 600; background: var(--teal-pale); color: var(--teal-dark); }
+.data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.data-table td.pct { text-align: right; color: var(--text-light); font-size: 0.75rem; }
+
+/* HIGHLIGHTED BAR */
+.highlight { fill: var(--teal-light) !important; }
+
+/* TOOLTIP */
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--teal-dark);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  max-width: 220px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* FOOTNOTE */
+.footnote {
+  margin-top: 20px;
+  font-size: 0.72rem;
+  color: var(--text-light);
+  line-height: 1.5;
+  font-style: italic;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+/* LOADING */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-light);
+  font-size: 0.9rem;
+  gap: 12px;
+}
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 900px) {
+  .main { flex-direction: column; }
+  .map-panel { width: 100%; height: 280px; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .controls { padding: 12px 16px; }
+  .content { padding: 20px 16px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Profil de l'habitation</h1>
+    <div class="subtitle">Rôle d'évaluation foncière · Outaouais · Laurentides · Montérégie</div>
+  </div>
+  <div class="source-badge">
+    Source : MAMH, Rôle d'évaluation<br>foncière des municipalités
+  </div>
+</header>
+
+<div class="controls">
+  <div class="control-group">
+    <label>Région</label>
+    <select id="sel-region">
+      <option value="">Toutes</option>
+      <option value="7">Outaouais</option>
+      <option value="15">Laurentides</option>
+      <option value="16">Montérégie</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>MRC</label>
+    <select id="sel-mrc"><option value="">Chargement…</option></select>
+  </div>
+  <div class="control-group">
+    <label>Année</label>
+    <select id="sel-annee">
+      <option value="2024">2024</option>
+      <option value="2023">2023</option>
+      <option value="2022">2022</option>
+      <option value="2021">2021</option>
+      <option value="2020">2020</option>
+    </select>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="logements">Logements</button>
+    <button class="tab-btn" data-tab="valeur">Valeur foncière</button>
+    <button class="tab-btn" data-tab="age">Âge des bâtiments</button>
+  </div>
+</div>
+
+<div class="main">
+  <aside class="map-panel">
+    <h3>Carte des MRC</h3>
+    <div id="map-container"><svg id="map-svg"></svg></div>
+    <div class="map-legend">
+      <h4 id="legend-title">Nombre de logements (2024)</h4>
+      <div class="legend-scale" id="legend-scale"></div>
+      <div class="legend-labels" id="legend-labels"></div>
+    </div>
+  </aside>
+
+  <main class="content" id="content">
+    <div class="loading"><div class="spinner"></div> Chargement des données…</div>
+  </main>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ─── DATA STORE ───────────────────────────────────────────────────────────────
+const BASE = location.hostname === 'localhost' ? '' : '';
+const DATA = {};
+const TOPOS = {};
+
+const TYPE_COLORS = {
+  "Autres immeubles résidentiels":              "#8fbc8f",
+  "Chalet et maison de villégiature":           "#b2deda",
+  "Habitation en commun":                       "#6dbfb8",
+  "Immeuble comportant deux logements ou plus": "#5a6fa0",
+  "Maison mobile et roulotte":                  "#4a90a4",
+  "Maisons individuelles détachées":            "#1a4e4b",
+  "Maisons jumelées ou en rangée":              "#c8b89a",
+  "Total des unités d'évaluation résidentielles": "#3d8f8a",
+};
+
+const FOOTNOTE = `Les types de logements sont classés selon leur utilisation prédominante, identifiée par le code d'utilisation des biens-fonds (CUBF), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec.`;
+
+let currentMRC  = null;
+let currentTab  = 'logements';
+let currentYear = 2024;
+
+// ─── LOAD DATA ────────────────────────────────────────────────────────────────
+async function loadAll() {
+  const files = [
+    'logements_types_mrc','logements_types_mun',
+    'valeur_mrc','valeur_mun',
+    'age_mrc','age_mun',
+    'periode_mrc','mrc_list'
+  ];
+  await Promise.all(files.map(async f => {
+    const r = await fetch(`./data/${f}.json`);
+    DATA[f] = await r.json();
+  }));
+
+  // Load maps
+  const regions = ['Outaouais','Laurentides','Monteregie'];
+  await Promise.all(regions.map(async r => {
+    const res = await fetch(`./maps/${r}_web_topojson.json`);
+    TOPOS[r] = await res.json();
+  }));
+}
+
+// ─── MRC SELECTOR ─────────────────────────────────────────────────────────────
+function populateMRCSelect(regionFilter) {
+  const sel = document.getElementById('sel-mrc');
+  const mrcList = DATA.mrc_list || [];
+  const filtered = regionFilter
+    ? mrcList.filter(d => String(d.Region) === regionFilter)
+    : mrcList;
+  sel.innerHTML = '<option value="">Toutes les MRC</option>' +
+    filtered.map(d => `<option value="${d.CDNAME}">${d.CDNAME}</option>`).join('');
+  if (currentMRC && filtered.find(d => d.CDNAME === currentMRC)) {
+    sel.value = currentMRC;
+  } else {
+    currentMRC = null;
+  }
+}
+
+// ─── MAP ──────────────────────────────────────────────────────────────────────
+function drawMap() {
+  const container = document.getElementById('map-container');
+  const w = container.clientWidth;
+  const h = Math.max(container.clientHeight - 10, 260);
+  const svg = d3.select('#map-svg').attr('viewBox', `0 0 ${w} ${h}`);
+  svg.selectAll('*').remove();
+
+  // Merge all topojson features
+  const allFeatures = [];
+  for (const [name, topo] of Object.entries(TOPOS)) {
+    const key = Object.keys(topo.objects)[0];
+    const fc = topojson.feature(topo, topo.objects[key]);
+    fc.features.forEach(f => { f.properties._region = name; allFeatures.push(f); });
+  }
+
+  const projection = d3.geoMercator().fitSize([w, h], {type:'FeatureCollection', features: allFeatures});
+  const path = d3.geoPath().projection(projection);
+
+  // Color scale based on current data
+  const anneeData = (DATA.logements_types_mrc || []).filter(d => d.Annee == currentYear);
+  const totals = {};
+  anneeData.forEach(d => { totals[d.CDNAME] = d.Total || 0; });
+  const vals = Object.values(totals).filter(v => v > 0);
+  const colorScale = d3.scaleSequential()
+    .domain([0, d3.max(vals) || 1])
+    .interpolator(d3.interpolate('#e8f4f2', '#1a4e4b'));
+
+  // Group by MRC
+  const mrcFeatures = {};
+  allFeatures.forEach(f => {
+    const mrc = f.properties.nom_MRC;
+    if (!mrcFeatures[mrc]) mrcFeatures[mrc] = [];
+    mrcFeatures[mrc].push(f);
+  });
+
+  const g = svg.append('g');
+
+  // Draw by municipality, colored by MRC total
+  allFeatures.forEach(f => {
+    const mrc = f.properties.nom_MRC;
+    const total = totals[mrc] || 0;
+    g.append('path')
+      .datum(f)
+      .attr('class', `mrc-path ${currentMRC === mrc ? 'selected' : ''}`)
+      .attr('d', path)
+      .attr('fill', colorScale(total))
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 0.5)
+      .on('click', () => selectMRC(mrc))
+      .on('mouseover', (event) => showTooltip(event,
+        `<strong>${f.properties.nom_MUN}</strong><br>${mrc}<br>${total.toLocaleString('fr-CA')} logements`))
+      .on('mousemove', moveTooltip)
+      .on('mouseout', hideTooltip);
+  });
+
+  // MRC borders
+  Object.entries(mrcFeatures).forEach(([mrc, features]) => {
+    const merged = topojson.merge(
+      {type:'Topology', arcs:[], objects:{m:{type:'GeometryCollection', geometries:[]}}},
+      []
+    );
+    // Simple: draw outline per mun with thicker stroke for MRC identity
+    g.append('path')
+      .datum({type:'FeatureCollection', features})
+      .attr('d', path)
+      .attr('fill','none')
+      .attr('stroke', currentMRC === mrc ? '#e8a048' : '#ffffff')
+      .attr('stroke-width', currentMRC === mrc ? 2 : 0.3);
+  });
+
+  // Legend
+  drawLegend(colorScale, d3.max(vals) || 0);
+}
+
+function drawLegend(scale, maxVal) {
+  const steps = 5;
+  const scaleEl = document.getElementById('legend-scale');
+  const labelsEl = document.getElementById('legend-labels');
+  scaleEl.innerHTML = '';
+  labelsEl.innerHTML = '';
+
+  for (let i = 0; i < steps; i++) {
+    const v = (maxVal / (steps-1)) * i;
+    const div = document.createElement('div');
+    div.className = 'legend-bar';
+    div.style.background = scale(v);
+    scaleEl.appendChild(div);
+  }
+  ['0', Math.round(maxVal/2).toLocaleString('fr-CA'), maxVal.toLocaleString('fr-CA')].forEach(l => {
+    const s = document.createElement('span');
+    s.textContent = l;
+    labelsEl.appendChild(s);
+  });
+}
+
+function selectMRC(mrc) {
+  currentMRC = currentMRC === mrc ? null : mrc;
+  document.getElementById('sel-mrc').value = currentMRC || '';
+  drawMap();
+  render();
+}
+
+// ─── TOOLTIP ──────────────────────────────────────────────────────────────────
+function showTooltip(event, html) {
+  const t = document.getElementById('tooltip');
+  t.innerHTML = html;
+  t.style.opacity = '1';
+  moveTooltip(event);
+}
+function moveTooltip(event) {
+  const t = document.getElementById('tooltip');
+  t.style.left = (event.clientX + 12) + 'px';
+  t.style.top  = (event.clientY - 10) + 'px';
+}
+function hideTooltip() {
+  document.getElementById('tooltip').style.opacity = '0';
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  const content = document.getElementById('content');
+  const mrcLabel = currentMRC || 'Toutes les MRC';
+  const annee = currentYear;
+
+  // Filter helpers
+  const filterMRC = arr => currentMRC ? arr.filter(d => d.CDNAME === currentMRC) : arr;
+  const filterYear = arr => arr.filter(d => d.Annee == annee);
+  const filterYearMRC = arr => filterMRC(filterYear(arr));
+
+  if (currentTab === 'logements') renderLogements(content, mrcLabel, annee, filterMRC, filterYear, filterYearMRC);
+  else if (currentTab === 'valeur') renderValeur(content, mrcLabel, annee, filterYearMRC);
+  else if (currentTab === 'age') renderAge(content, mrcLabel, annee, filterYearMRC);
+}
+
+// ── TAB: LOGEMENTS ────────────────────────────────────────────────────────────
+function renderLogements(content, mrcLabel, annee, filterMRC, filterYear, filterYearMRC) {
+  const mrcData = filterYearMRC(DATA.logements_types_mrc || []);
+  const munData = filterYearMRC(DATA.logements_types_mun || []);
+
+  // Aggregate if multiple MRCs
+  const TYPE_COLS = [
+    "Autres immeubles résidentiels","Chalet et maison de villégiature",
+    "Habitation en commun","Immeuble comportant deux logements ou plus",
+    "Maison mobile et roulotte","Maisons individuelles détachées","Maisons jumelées ou en rangée"
+  ];
+
+  const agg = {};
+  mrcData.forEach(row => {
+    TYPE_COLS.forEach(t => { agg[t] = (agg[t]||0) + (row[t]||0); });
+  });
+  const total = TYPE_COLS.reduce((s,t) => s+(agg[t]||0), 0);
+
+  // Multi-year for stacked bar
+  const allYears = filterMRC(DATA.logements_types_mrc || []);
+  const byYear = {};
+  allYears.forEach(row => {
+    if (!byYear[row.Annee]) byYear[row.Annee] = {};
+    TYPE_COLS.forEach(t => { byYear[row.Annee][t] = (byYear[row.Annee][t]||0) + (row[t]||0); });
+  });
+  const years = Object.keys(byYear).sort();
+
+  content.innerHTML = `
+  <div class="section-header">
+    <h2>Nombre de logements par type de construction résidentielle, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Rôle d'évaluation foncière ${annee}</div>
+  </div>
+
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card">
+      <h3>Évolution 2020–${annee}</h3>
+      <div class="chart-subtitle">Nombre de logements par type de construction</div>
+      <div class="chart-legend" id="legend-log"></div>
+      <div class="chart-area" id="chart-stacked"></div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Répartition par type, ${annee}</h3>
+      <div class="chart-subtitle">MRC : ${mrcLabel} · Total : ${total.toLocaleString('fr-CA')}</div>
+      <div class="chart-area" id="chart-bar-types"></div>
+    </div>
+    <div class="chart-card" style="overflow-x:auto">
+      <h3>Données détaillées ${annee}</h3>
+      <div class="chart-subtitle">Par type de construction résidentielle</div>
+      <div id="table-types"></div>
+    </div>
+  </div>
+
+  ${munData.length > 0 ? `
+  <div class="charts-grid wide" style="margin-top:24px">
+    <div class="chart-card" style="overflow-x:auto">
+      <h3>Par municipalité, ${annee}</h3>
+      <div class="chart-subtitle">Nombre de logements par type de construction résidentielle</div>
+      <div id="table-mun"></div>
+    </div>
+  </div>` : ''}
+
+  <div class="footnote">${FOOTNOTE}<br>Source : Ministère des Affaires municipales et de l'Habitation (MAMH), rôle d'évaluation foncière des municipalités.</div>
+  `;
+
+  // Legend
+  const legendEl = document.getElementById('legend-log');
+  TYPE_COLS.forEach(t => {
+    legendEl.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${TYPE_COLORS[t]}"></div>${t}</div>`;
+  });
+
+  // Stacked bar chart (multi-year)
+  drawStackedBar('chart-stacked', years, byYear, TYPE_COLS);
+
+  // Simple bar chart (single year)
+  drawHorizBar('chart-bar-types', TYPE_COLS, agg, total);
+
+  // Table MRC
+  const tableEl = document.getElementById('table-types');
+  let html = `<table class="data-table"><thead><tr><th>Type</th><th class="num">2020</th><th class="num">2021</th><th class="num">2022</th><th class="num">2023</th><th class="num">${annee}</th><th class="num">%</th></tr></thead><tbody>`;
+  TYPE_COLS.forEach(t => {
+    const vals = years.map(y => (byYear[y]?.[t]||0));
+    const pct = total > 0 ? ((agg[t]||0)/total*100).toFixed(1) : '0.0';
+    html += `<tr><td>${t}</td>${vals.map(v=>`<td class="num">${v.toLocaleString('fr-CA')}</td>`).join('')}<td class="pct">${pct}%</td></tr>`;
+  });
+  // Total row
+  const totals = years.map(y => TYPE_COLS.reduce((s,t)=>s+(byYear[y]?.[t]||0),0));
+  html += `<tr class="total-row"><td>Total</td>${totals.map(v=>`<td class="num">${v.toLocaleString('fr-CA')}</td>`).join('')}<td class="pct">100%</td></tr>`;
+  html += '</tbody></table>';
+  tableEl.innerHTML = html;
+
+  // Table MUN
+  if (munData.length > 0) {
+    const munEl = document.getElementById('table-mun');
+    let mhtml = `<table class="data-table"><thead><tr><th>Année</th><th>Municipalité</th><th>Type de construction résidentielle</th><th class="num">Nombre de logements</th></tr></thead><tbody>`;
+    munData.slice(0, 200).forEach(d => {
+      mhtml += `<tr><td>${d.Annee}</td><td>${d.CSDNAME}</td><td>${d['Types de construction résidentielle']}</td><td class="num">${(d['Nombre de logements']||0).toLocaleString('fr-CA')}</td></tr>`;
+    });
+    mhtml += '</tbody></table>';
+    munEl.innerHTML = mhtml;
+  }
+}
+
+// ── TAB: VALEUR ───────────────────────────────────────────────────────────────
+function renderValeur(content, mrcLabel, annee, filterYearMRC) {
+  const mrcData = filterYearMRC(DATA.valeur_mrc || []);
+  const munData = filterYearMRC(DATA.valeur_mun || []);
+
+  // Aggregate
+  const byType = {};
+  mrcData.forEach(d => {
+    if (!byType[d.Types]) byType[d.Types] = {terrain:0,batiment:0,immeuble:0,n:0};
+    byType[d.Types].terrain  += d.terrain  || 0;
+    byType[d.Types].batiment += d.batiment || 0;
+    byType[d.Types].immeuble += d.immeuble || 0;
+    byType[d.Types].n++;
+  });
+  // Average
+  Object.keys(byType).forEach(t => {
+    const n = byType[t].n;
+    byType[t].terrain  /= n;
+    byType[t].batiment /= n;
+    byType[t].immeuble /= n;
+  });
+
+  // Multi-year
+  const allVals = (DATA.valeur_mrc||[]).filter(d => d.CDNAME === (currentMRC||d.CDNAME) && d.Types === "Total des unités d'évaluation résidentielles");
+  const byYear = {};
+  allVals.forEach(d => { if(!byYear[d.Annee]) byYear[d.Annee]={terrain:0,batiment:0,n:0}; byYear[d.Annee].terrain+=d.terrain||0; byYear[d.Annee].batiment+=d.batiment||0; byYear[d.Annee].n++; });
+  Object.keys(byYear).forEach(y => { byYear[y].terrain/=byYear[y].n; byYear[y].batiment/=byYear[y].n; });
+
+  const types = Object.keys(byType).filter(t => t !== "Total des unités d'évaluation résidentielles");
+  const total = byType["Total des unités d'évaluation résidentielles"];
+
+  content.innerHTML = `
+  <div class="section-header">
+    <h2>Valeur foncière moyenne des propriétés, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Valeurs moyennes en dollars</div>
+  </div>
+
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card">
+      <h3>Valeur foncière moyenne par type, ${annee}</h3>
+      <div class="chart-subtitle">Valeur du terrain et du bâtiment · MRC : ${mrcLabel}</div>
+      <div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:#1a4e4b"></div>Valeur du terrain</div><div class="legend-item"><div class="legend-dot" style="background:#6dbfb8"></div>Valeur du bâtiment</div></div>
+      <div class="chart-area" id="chart-val-types"></div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card" style="overflow-x:auto">
+      <h3>Tableau détaillé ${annee}</h3>
+      <div id="table-val"></div>
+    </div>
+    <div class="chart-card" style="overflow-x:auto">
+      <h3>Par municipalité ${annee}</h3>
+      <div id="table-val-mun"></div>
+    </div>
+  </div>
+
+  <div class="footnote">${FOOTNOTE}<br>Source : Ministère des affaires municipales et habitation.</div>
+  `;
+
+  // Bullet/grouped bar
+  drawValeurChart('chart-val-types', types, byType);
+
+  // Table
+  const tableEl = document.getElementById('table-val');
+  // Multi-year for total row
+  const allData = (DATA.valeur_mrc||[]).filter(d => (!currentMRC || d.CDNAME===currentMRC));
+  const byYearType = {};
+  allData.forEach(d => { if(!byYearType[d.Types]) byYearType[d.Types]={}; if(!byYearType[d.Types][d.Annee]) byYearType[d.Types][d.Annee]={t:0,b:0,i:0,n:0}; byYearType[d.Types][d.Annee].t+=d.terrain||0; byYearType[d.Types][d.Annee].b+=d.batiment||0; byYearType[d.Types][d.Annee].i+=d.immeuble||0; byYearType[d.Types][d.Annee].n++; });
+  const years = ['2020','2021','2022','2023','2024'];
+  let html = `<table class="data-table"><thead><tr><th>Année</th><th>Type</th><th class="num">Terrain</th><th class="num">Bâtiment</th><th class="num">Immeuble</th></tr></thead><tbody>`;
+  years.forEach(y => {
+    [...types, "Total des unités d'évaluation résidentielles"].forEach(t => {
+      const d = byYearType[t]?.[y];
+      if (!d) return;
+      const n = d.n||1;
+      const isTotal = t.startsWith('Total');
+      html += `<tr${isTotal?' class="total-row"':''}><td>${y}</td><td>${t}</td><td class="num">${Math.round(d.t/n).toLocaleString('fr-CA')} $</td><td class="num">${Math.round(d.b/n).toLocaleString('fr-CA')} $</td><td class="num">${Math.round(d.i/n).toLocaleString('fr-CA')} $</td></tr>`;
+    });
+  });
+  html += '</tbody></table>';
+  tableEl.innerHTML = html;
+
+  // Mun table
+  const munEl = document.getElementById('table-val-mun');
+  let mhtml = `<table class="data-table"><thead><tr><th>Municipalité</th><th>Type</th><th class="num">Terrain</th><th class="num">Bâtiment</th><th class="num">Immeuble</th></tr></thead><tbody>`;
+  (munData||[]).slice(0,100).forEach(d => {
+    mhtml += `<tr><td>${d.CSDNAME}</td><td>${d.Types}</td><td class="num">${Math.round(d.terrain||0).toLocaleString('fr-CA')} $</td><td class="num">${Math.round(d.batiment||0).toLocaleString('fr-CA')} $</td><td class="num">${Math.round(d.immeuble||0).toLocaleString('fr-CA')} $</td></tr>`;
+  });
+  mhtml += '</tbody></table>';
+  munEl.innerHTML = mhtml;
+}
+
+// ── TAB: AGE ──────────────────────────────────────────────────────────────────
+function renderAge(content, mrcLabel, annee, filterYearMRC) {
+  const mrcData = filterYearMRC(DATA.age_mrc || []);
+  const munData = filterYearMRC(DATA.age_mun || []);
+
+  const byType = {};
+  mrcData.forEach(d => { if(!byType[d.Types]) byType[d.Types]={age:0,n:0}; byType[d.Types].age+=d.age_moyen||0; byType[d.Types].n++; });
+  Object.keys(byType).forEach(t => { byType[t].age /= byType[t].n; });
+
+  const sortedTypes = Object.entries(byType)
+    .filter(([t]) => t !== "Total des unités d'évaluation résidentielles")
+    .sort(([,a],[,b]) => a.age - b.age);
+  const total = byType["Total des unités d'évaluation résidentielles"];
+
+  content.innerHTML = `
+  <div class="section-header">
+    <h2>L'âge moyen des bâtiments selon les types de construction, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> En années · Rôle d'évaluation foncière ${annee}</div>
+  </div>
+
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card">
+      <h3>Âge moyen par type de construction, ${annee}</h3>
+      <div class="chart-subtitle">MRC : ${mrcLabel} · Total des unités : ${total ? Math.round(total.age)+' ans' : 'N/D'}</div>
+      <div class="chart-area" id="chart-age"></div>
+    </div>
+  </div>
+
+  <div class="charts-grid wide">
+    <div class="chart-card" style="overflow-x:auto">
+      <h3>Par municipalité, ${annee}</h3>
+      <div id="table-age-mun"></div>
+    </div>
+  </div>
+
+  <div class="footnote">${FOOTNOTE}<br>Source : Ministère des Affaires municipales et de l'Habitation (MAMH), rôle d'évaluation foncière des municipalités.</div>
+  `;
+
+  drawAgeChart('chart-age', sortedTypes, total);
+
+  // Mun table
+  const munEl = document.getElementById('table-age-mun');
+  let mhtml = `<table class="data-table"><thead><tr><th>Municipalité</th><th>Types de construction résidentielle</th><th class="num">Âge moyen des logements</th></tr></thead><tbody>`;
+  (munData||[]).slice(0,200).forEach(d => {
+    const isTotal = (d.Types||'').startsWith('Total');
+    mhtml += `<tr${isTotal?' class="total-row"':''}><td>${d.CSDNAME}</td><td>${d.Types}</td><td class="num">${Math.round(d.age_moyen||0)}</td></tr>`;
+  });
+  mhtml += '</tbody></table>';
+  munEl.innerHTML = mhtml;
+}
+
+// ─── CHART FUNCTIONS ──────────────────────────────────────────────────────────
+function drawStackedBar(id, years, byYear, typeCols) {
+  const el = document.getElementById(id);
+  if (!el || !years.length) return;
+  const W = el.clientWidth || 700, H = 240;
+  const margin = {top:10, right:80, bottom:30, left:60};
+  const w = W - margin.left - margin.right;
+  const h = H - margin.top - margin.bottom;
+
+  const svg = d3.select(`#${id}`).append('svg')
+    .attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g = svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+
+  const stack = d3.stack().keys(typeCols)(years.map(y => ({year:y, ...byYear[y]})));
+  const maxY = d3.max(stack[stack.length-1], d => d[1]);
+
+  const x = d3.scaleBand().domain(years).range([0,w]).padding(0.25);
+  const y = d3.scaleLinear().domain([0, maxY*1.05]).range([h,0]);
+
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat(''));
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+
+  typeCols.forEach((type, i) => {
+    const layer = stack[i];
+    g.selectAll(`.bar-${i}`).data(layer).join('rect')
+      .attr('class',`bar bar-${i}`)
+      .attr('x', d => x(d.data.year))
+      .attr('y', d => y(d[1]))
+      .attr('height', d => Math.max(0, y(d[0]) - y(d[1])))
+      .attr('width', x.bandwidth())
+      .attr('fill', TYPE_COLORS[type])
+      .on('mouseover', (event, d) => showTooltip(event,
+        `<strong>${d.data.year}</strong><br>${type}<br>${(d[1]-d[0]).toLocaleString('fr-CA')} logements`))
+      .on('mousemove', moveTooltip)
+      .on('mouseout', hideTooltip);
+  });
+
+  // Totals on top
+  years.forEach(y_val => {
+    const tot = typeCols.reduce((s,t) => s+(byYear[y_val]?.[t]||0), 0);
+    g.append('text').attr('class','total-label')
+      .attr('x', x(y_val)+x.bandwidth()/2).attr('y', y(tot)-5)
+      .attr('text-anchor','middle').attr('font-size','11px').attr('fill','#1a1a1a')
+      .text(tot.toLocaleString('fr-CA'));
+  });
+}
+
+function drawHorizBar(id, types, agg, total) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const W = el.clientWidth || 400, H = Math.max(types.length*36+40, 200);
+  const margin = {top:10, right:80, bottom:20, left:240};
+  const w = W - margin.left - margin.right;
+  const h = H - margin.top - margin.bottom;
+
+  const svg = d3.select(`#${id}`).append('svg')
+    .attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g = svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+
+  const sorted = [...types].sort((a,b) => (agg[a]||0)-(agg[b]||0));
+  const x = d3.scaleLinear().domain([0, d3.max(types, t=>agg[t]||0)*1.15]).range([0,w]);
+  const y = d3.scaleBand().domain(sorted).range([h,0]).padding(0.3);
+
+  sorted.forEach(t => {
+    const isTotal = t.startsWith('Total');
+    g.append('rect').attr('class','bar')
+      .attr('y', y(t)).attr('height', y.bandwidth())
+      .attr('x', 0).attr('width', x(agg[t]||0))
+      .attr('fill', isTotal ? '#3d8f8a' : TYPE_COLORS[t])
+      .on('mouseover', (event) => showTooltip(event,
+        `${t}<br><strong>${(agg[t]||0).toLocaleString('fr-CA')}</strong> logements<br>${total>0?((agg[t]||0)/total*100).toFixed(1):'0'}%`))
+      .on('mousemove', moveTooltip).on('mouseout', hideTooltip);
+
+    g.append('text').attr('class','bar-label')
+      .attr('x', x(agg[t]||0)+6).attr('y', y(t)+y.bandwidth()/2+4)
+      .attr('font-size','11px').attr('fill','#1a1a1a')
+      .text((agg[t]||0).toLocaleString('fr-CA'));
+
+    g.append('text').attr('class','bar-label')
+      .attr('x', -8).attr('y', y(t)+y.bandwidth()/2+4)
+      .attr('text-anchor','end').attr('font-size','11px').attr('fill','#5a5a5a')
+      .text(t.length > 35 ? t.substring(0,33)+'…' : t);
+  });
+}
+
+function drawValeurChart(id, types, byType) {
+  const el = document.getElementById(id);
+  if (!el || !types.length) return;
+  const W = el.clientWidth || 700, H = types.length*52+60;
+  const margin = {top:10, right:120, bottom:20, left:250};
+  const w = W - margin.left - margin.right;
+  const h = H - margin.top - margin.bottom;
+
+  const svg = d3.select(`#${id}`).append('svg')
+    .attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g = svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+
+  const sorted = [...types].sort((a,b) => (byType[a]?.immeuble||0)-(byType[b]?.immeuble||0));
+  const maxVal = d3.max(types, t => byType[t]?.immeuble||0);
+  const x = d3.scaleLinear().domain([0, maxVal*1.1]).range([0,w]);
+  const y = d3.scaleBand().domain(sorted).range([h,0]).padding(0.35);
+  const barH = y.bandwidth();
+
+  sorted.forEach(t => {
+    const d = byType[t] || {};
+    // Terrain bar
+    g.append('rect').attr('y',y(t)).attr('height',barH/2-1)
+      .attr('x',0).attr('width',x(d.terrain||0)).attr('fill','#1a4e4b').attr('rx',2);
+    // Bâtiment bar
+    g.append('rect').attr('y',y(t)+barH/2+1).attr('height',barH/2-1)
+      .attr('x',0).attr('width',x(d.batiment||0)).attr('fill','#6dbfb8').attr('rx',2);
+    // Value label
+    g.append('text').attr('x',x(d.immeuble||0)+6).attr('y',y(t)+barH/2+4)
+      .attr('font-size','11px').attr('fill','#1a1a1a').attr('font-weight','600')
+      .text(Math.round(d.immeuble||0).toLocaleString('fr-CA')+' $');
+    // Type label
+    g.append('text').attr('x',-8).attr('y',y(t)+barH/2+4)
+      .attr('text-anchor','end').attr('font-size','11px').attr('fill','#5a5a5a')
+      .text(t.length>32 ? t.substring(0,30)+'…' : t);
+  });
+}
+
+function drawAgeChart(id, sortedTypes, total) {
+  const el = document.getElementById(id);
+  if (!el || !sortedTypes.length) return;
+  const W = el.clientWidth || 700, H = (sortedTypes.length+1)*48+60;
+  const margin = {top:10, right:60, bottom:20, left:240};
+  const w = W - margin.left - margin.right;
+  const h = H - margin.top - margin.bottom;
+
+  const allTypes = [...sortedTypes, ['Total des unités d\'évaluation résidentielles', total||{age:0}]];
+  const maxAge = d3.max(allTypes, ([,d]) => d.age||0);
+
+  const svg = d3.select(`#${id}`).append('svg')
+    .attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g = svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+
+  const x = d3.scaleLinear().domain([0, maxAge*1.1]).range([0,w]);
+  const y = d3.scaleBand().domain(allTypes.map(([t]) => t)).range([h,0]).padding(0.3);
+
+  g.append('g').attr('class','grid').call(d3.axisBottom(x).tickSize(h).tickFormat('').ticks(5))
+    .attr('transform','translate(0,0)').select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(5)).select('.domain').remove();
+
+  allTypes.forEach(([type, data]) => {
+    const age = Math.round(data.age||0);
+    const isTotal = type.startsWith('Total');
+    g.append('rect').attr('class','bar')
+      .attr('y',y(type)).attr('height',y.bandwidth())
+      .attr('x',0).attr('width',x(age))
+      .attr('fill', isTotal ? '#3d8f8a' : '#1a4e4b').attr('rx',3)
+      .on('mouseover', (event) => showTooltip(event,`${type}<br><strong>${age} ans</strong>`))
+      .on('mousemove', moveTooltip).on('mouseout', hideTooltip);
+
+    g.append('text').attr('class','bar-label')
+      .attr('x',x(age)+6).attr('y',y(type)+y.bandwidth()/2+4)
+      .attr('font-size','12px').attr('font-weight',isTotal?'600':'400')
+      .attr('fill','#1a1a1a').text(age);
+
+    g.append('text').attr('x',-8).attr('y',y(type)+y.bandwidth()/2+4)
+      .attr('text-anchor','end').attr('font-size','11px').attr('fill', isTotal?'#1a4e4b':'#5a5a5a')
+      .attr('font-weight', isTotal?'600':'400')
+      .text(type.length>33 ? type.substring(0,31)+'…' : type);
+  });
+}
+
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
+document.getElementById('sel-region').addEventListener('change', function() {
+  populateMRCSelect(this.value);
+  currentMRC = null;
+  drawMap();
+  render();
+});
+
+document.getElementById('sel-mrc').addEventListener('change', function() {
+  currentMRC = this.value || null;
+  drawMap();
+  render();
+});
+
+document.getElementById('sel-annee').addEventListener('change', function() {
+  currentYear = parseInt(this.value);
+  drawMap();
+  render();
+});
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    currentTab = this.dataset.tab;
+    render();
+  });
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    await loadAll();
+    populateMRCSelect('');
+    drawMap();
+    render();
+  } catch (e) {
+    document.getElementById('content').innerHTML =
+      `<div class="loading">⚠ Erreur de chargement des données. Assurez-vous que le pipeline a été exécuté.<br><small>${e.message}</small></div>`;
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
