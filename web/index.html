@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil de l'habitation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,600;0,8..60,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--teal-dark:#1a4e4b;--teal:#2d6e6a;--teal-mid:#3d8f8a;--teal-light:#6dbfb8;--teal-pale:#b2deda;--accent:#e8a048;--bg:#f7f5f1;--bg2:#eeeae3;--text:#1a1a1a;--text-light:#5a5a5a;--border:#d4cfc6;--white:#ffffff;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+header{background:var(--teal-dark);color:white;padding:24px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.18);}
+header h1{font-family:'Source Serif 4',serif;font-size:1.5rem;font-weight:600;letter-spacing:-.02em;}
+header .subtitle{font-size:.8rem;opacity:.7;margin-top:2px;}
+.source-badge{font-size:.7rem;opacity:.6;text-align:right;line-height:1.4;}
+.controls{background:var(--white);border-bottom:1px solid var(--border);padding:16px 40px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.06);}
+.control-group{display:flex;align-items:center;gap:10px;}
+.control-group label{font-size:.78rem;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;}
+select{border:1.5px solid var(--border);border-radius:6px;padding:8px 32px 8px 12px;font-family:inherit;font-size:.875rem;background:var(--bg);color:var(--text);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a5a5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer;transition:border-color .2s;}
+select:focus{outline:none;border-color:var(--teal);}
+.year-range{display:flex;align-items:center;gap:8px;}
+.year-range-sep{font-size:.8rem;color:var(--text-light);}
+.tabs{display:flex;gap:0;background:var(--bg2);border-radius:8px;padding:3px;margin-left:auto;flex-wrap:wrap;}
+.tab-btn{padding:7px 14px;border:none;background:transparent;border-radius:6px;font-family:inherit;font-size:.8rem;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.tab-btn.active{background:var(--white);color:var(--teal-dark);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.main{display:block;min-height:calc(100vh - 130px);}
+.map-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-top:24px;}
+.map-card h3{font-family:'Source Serif 4',serif;font-size:1rem;font-weight:600;color:var(--teal-dark);margin-bottom:12px;}
+.map-card-inner{display:grid;grid-template-columns:1fr 180px;gap:16px;align-items:start;}
+#map-container{height:320px;}
+#map-svg{width:100%;height:100%;}
+.mrc-path{cursor:pointer;transition:opacity .2s;}
+.mrc-path:hover{opacity:.75;}
+.mrc-path.selected{stroke:var(--accent)!important;stroke-width:2.5!important;}
+.map-legend{padding:0;}
+.map-legend h4{font-size:.72rem;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.legend-scale{display:flex;flex-direction:column;gap:3px;}
+.legend-bar{height:8px;border-radius:2px;flex:1;}
+.legend-labels{display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-light);margin-top:3px;}
+.content{flex:1;padding:32px 40px;overflow-y:auto;}
+.section-header{margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--teal-pale);}
+.section-header h2{font-family:'Source Serif 4',serif;font-size:1.6rem;font-weight:700;color:var(--teal-dark);line-height:1.2;}
+.section-header .meta{font-size:.78rem;color:var(--text-light);margin-top:4px;}
+.mrc-tag{display:inline-block;background:var(--teal-pale);color:var(--teal-dark);padding:2px 10px;border-radius:20px;font-size:.75rem;font-weight:500;margin-right:8px;}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.charts-grid.wide{grid-template-columns:1fr;}
+.chart-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.chart-card h3{font-family:'Source Serif 4',serif;font-size:1rem;font-weight:600;color:var(--teal-dark);margin-bottom:4px;line-height:1.3;}
+.chart-card .chart-subtitle{font-size:.75rem;color:var(--text-light);margin-bottom:16px;}
+.chart-area{width:100%;}
+.bar{transition:opacity .2s;}.bar:hover{opacity:.8;}
+.axis text{font-family:'DM Sans',sans-serif;font-size:11px;fill:var(--text-light);}
+.axis line,.axis path{stroke:var(--border);}
+.grid line{stroke:var(--border);stroke-dasharray:3,3;}.grid path{display:none;}
+.bar-label{font-size:11px;font-weight:500;font-family:'DM Sans',sans-serif;}
+.total-label{font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;fill:var(--text);}
+.chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--text-light);}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+
+/* SORTABLE TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.data-table th{text-align:left;padding:8px 12px;background:var(--bg2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-light);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+.data-table th:hover{background:var(--teal-pale);color:var(--teal-dark);}
+.data-table th::after{content:' ⇅';opacity:.35;font-size:.65rem;}
+.data-table th.sort-asc::after{content:' ↑';opacity:1;color:var(--teal-dark);}
+.data-table th.sort-desc::after{content:' ↓';opacity:1;color:var(--teal-dark);}
+.data-table td{padding:7px 12px;border-bottom:1px solid var(--bg2);color:var(--text);}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr.total-row td{font-weight:600;background:var(--teal-pale);color:var(--teal-dark);}
+.data-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.data-table td.pct{text-align:right;color:var(--text-light);font-size:.75rem;}
+.data-table tr:not(.total-row):hover td{background:#f0f8f7;}
+
+/* TABLE TOOLBAR */
+.table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.table-search{border:1.5px solid var(--border);border-radius:6px;padding:6px 10px 6px 30px;font-family:inherit;font-size:.8rem;background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%235a5a5a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 8px center;color:var(--text);flex:1;min-width:120px;}
+.table-search:focus{outline:none;border-color:var(--teal);}
+.table-count{font-size:.72rem;color:var(--text-light);white-space:nowrap;}
+.table-wrap{overflow-x:auto;}
+.table-pagination{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.table-page-info{font-size:.72rem;color:var(--text-light);margin-right:auto;}
+body.embed-mode header,body.embed-mode .controls{display:none;}
+body.embed-mode .content{padding:16px;}
+body.embed-mode .section-header,body.embed-mode .footnote{display:none;}
+body.embed-mode .chart-card{box-shadow:none;border:none;padding:0;background:transparent;}
+
+/* CHART META */
+.chart-meta{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+.chart-meta-note{font-size:.72rem;color:var(--text-light);line-height:1.5;font-style:italic;margin-bottom:6px;}
+.chart-meta-source{font-size:.72rem;color:var(--text-light);margin-bottom:10px;}
+.chart-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.chart-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);font-family:inherit;font-size:.68rem;color:var(--text-light);cursor:pointer;transition:all .15s;}
+.chart-btn svg{width:10px;height:10px;}
+.chart-btn:hover{border-color:var(--teal);color:var(--teal-dark);background:var(--teal-pale);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:none;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--white);border-radius:10px;padding:28px;max-width:520px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.22);}
+.modal-box h4{font-family:'Source Serif 4',serif;font-size:1rem;color:var(--teal-dark);margin-bottom:12px;}
+.modal-box textarea{width:100%;height:80px;font-family:monospace;font-size:.76rem;border:1.5px solid var(--border);border-radius:6px;padding:10px;color:var(--text);resize:none;}
+.modal-actions{display:flex;gap:10px;margin-top:12px;}
+.modal-btn{padding:7px 18px;border:none;border-radius:6px;font-family:inherit;font-size:.82rem;cursor:pointer;}
+.modal-btn.primary{background:var(--teal-dark);color:white;}
+.modal-btn.secondary{background:var(--bg2);color:var(--text);}
+
+.tooltip{position:fixed;pointer-events:none;background:var(--teal-dark);color:white;padding:10px 14px;border-radius:8px;font-size:.78rem;line-height:1.6;max-width:220px;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .15s;}
+.footnote{margin-top:20px;font-size:.72rem;color:var(--text-light);line-height:1.5;font-style:italic;border-top:1px solid var(--border);padding-top:12px;}
+.loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-light);font-size:.9rem;gap:12px;}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr;}.controls{padding:12px 16px;}.content{padding:20px 16px;}.map-card-inner{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Profil de l'habitation</h1>
+    <div class="subtitle">Rôle d'évaluation foncière · Outaouais · Laurentides · Montérégie</div>
+  </div>
+  <div class="source-badge">Source : MAMH, Rôle d'évaluation<br>foncière des municipalités</div>
+</header>
+
+<div class="controls">
+  <div class="control-group">
+    <label>Région</label>
+    <select id="sel-region">
+      <option value="">Toutes</option>
+      <option value="7">Outaouais</option>
+      <option value="15">Laurentides</option>
+      <option value="16">Montérégie</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>MRC</label>
+    <select id="sel-mrc"><option value="">Chargement…</option></select>
+  </div>
+  <div class="control-group">
+    <label>Année affichée</label>
+    <select id="sel-annee"><option value="">Chargement…</option></select>
+  </div>
+  <div class="control-group">
+    <label>Période</label>
+    <div class="year-range">
+      <select id="sel-annee-min"><option value="">Début</option></select>
+      <span class="year-range-sep">à</span>
+      <select id="sel-annee-max"><option value="">Fin</option></select>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="logements">Logements</button>
+    <button class="tab-btn" data-tab="valeur">Valeur foncière</button>
+    <button class="tab-btn" data-tab="age">Âge des bâtiments</button>
+    <button class="tab-btn" data-tab="periode">Période de construction</button>
+    <button class="tab-btn" data-tab="superficie">Superficie</button>
+  </div>
+</div>
+
+<div class="main">
+  <main class="content" id="content">
+    <div class="loading"><div class="spinner"></div> Chargement des données…</div>
+  </main>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="modal-overlay" id="iframe-modal">
+  <div class="modal-box">
+    <h4>Code d'intégration (iframe)</h4>
+    <textarea id="iframe-code" readonly></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn primary" onclick="copyIframe()">Copier</button>
+      <button class="modal-btn secondary" onclick="closeModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const DATA={}, TOPOS={};
+const TYPE_COLORS={
+  "Autres immeubles résidentiels":"#8fbc8f",
+  "Chalet et maison de villégiature":"#b2deda",
+  "Habitation en commun":"#6dbfb8",
+  "Immeuble comportant deux logements ou plus":"#5a6fa0",
+  "Maison mobile et roulotte":"#4a90a4",
+  "Maisons individuelles détachées":"#1a4e4b",
+  "Maisons jumelées ou en rangée":"#c8b89a",
+  "Total des unités d'évaluation résidentielles":"#3d8f8a",
+};
+const PERIODE_COLORS={
+  "1960 ou avant":"#1a4e4b","1961-1980":"#2d6e6a","1981-2000":"#3d8f8a",
+  "2001-2015":"#6dbfb8","2016 et plus":"#b2deda",
+};
+const PERIODES_ORDER=["1960 ou avant","1961-1980","1981-2000","2001-2015","2016 et plus"];
+const TYPE_COLS=["Autres immeubles résidentiels","Chalet et maison de villégiature","Habitation en commun","Immeuble comportant deux logements ou plus","Maison mobile et roulotte","Maisons individuelles détachées","Maisons jumelées ou en rangée"];
+const FOOTNOTE_TYPES=`Les types de construction sont classés selon leur utilisation prédominante, identifiée par le code d'utilisation des biens-fonds (CUBF), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec.`;
+const SOURCE=`Ministère des Affaires municipales et de l'Habitation (MAMH), rôle d'évaluation foncière des municipalités.`;
+
+let currentMRC=null,currentTab='logements',currentYear=null,currentYearMin=null,currentYearMax=null;
+
+// ── LOAD ──────────────────────────────────────────────────────────────────────
+async function loadAll(){
+  const files=['logements_types_mrc','logements_types_mun','valeur_mrc','valeur_mun',
+    'age_mrc','age_mun','periode_mrc','periode_mun','superficie_mrc','superficie_mun','mrc_list'];
+  await Promise.all(files.map(async f=>{
+    try{ const r=await fetch(`./data/${f}.json`); DATA[f]=await r.json(); }
+    catch(e){ DATA[f]=[]; console.warn(`Missing: ${f}.json`); }
+  }));
+}
+
+function getAvailableYears(){
+  const years=new Set();
+  [DATA.logements_types_mrc,DATA.valeur_mrc,DATA.age_mrc,DATA.periode_mrc,DATA.superficie_mrc]
+    .forEach(arr=>(arr||[]).forEach(d=>{ const y=Number(d?.Annee); if(Number.isFinite(y)) years.add(y); }));
+  return [...years].sort((a,b)=>a-b);
+}
+
+function populateYearSelect(){
+  const ys=document.getElementById('sel-annee');
+  const mn=document.getElementById('sel-annee-min');
+  const mx=document.getElementById('sel-annee-max');
+  const years=getAvailableYears();
+  if(!years.length){ [ys,mn,mx].forEach(s=>s&&(s.innerHTML='<option value="">Aucune donnée</option>')); return; }
+  const earliest=years[0], latest=years[years.length-1];
+  if(!years.includes(currentYear)) currentYear=latest;
+  if(!years.includes(currentYearMin)) currentYearMin=earliest;
+  if(!years.includes(currentYearMax)) currentYearMax=latest;
+  if(currentYearMin>currentYearMax) currentYearMin=currentYearMax;
+  const desc=years.slice().reverse().map(y=>`<option value="${y}">${y}</option>`).join('');
+  const asc=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(ys){ ys.innerHTML=desc; ys.value=String(currentYear); }
+  if(mn){ mn.innerHTML=asc; mn.value=String(currentYearMin); }
+  if(mx){ mx.innerHTML=asc; mx.value=String(currentYearMax); }
+}
+
+function getFilteredYears(){
+  return getAvailableYears().filter(y=>{
+    if(currentYearMin!==null&&y<currentYearMin) return false;
+    if(currentYearMax!==null&&y>currentYearMax) return false;
+    return true;
+  });
+}
+function syncYearRange(changed){
+  if(changed==='min'&&currentYearMin>currentYearMax) currentYearMax=currentYearMin;
+  if(changed==='max'&&currentYearMax<currentYearMin) currentYearMin=currentYearMax;
+  const f=getFilteredYears();
+  if(f.length&&!f.includes(currentYear)) currentYear=f[f.length-1];
+  populateYearSelect();
+}
+function populateMRCSelect(regionFilter){
+  const sel=document.getElementById('sel-mrc');
+  const mrcList=DATA.mrc_list||[];
+  const filtered=regionFilter?mrcList.filter(d=>String(d.Region)===regionFilter):mrcList;
+  sel.innerHTML='<option value="">Toutes les MRC</option>'+
+    filtered.map(d=>`<option value="${d.CDNAME}">${d.CDNAME}</option>`).join('');
+  if(currentMRC&&filtered.find(d=>d.CDNAME===currentMRC)) sel.value=currentMRC;
+  else currentMRC=null;
+}
+
+// ── MAP (retirée) ─────────────────────────────────────────────────────────────
+function renderMapCard(container){ return; }
+function drawMap(){ return; }
+function drawLegend(){ return; }
+function selectMRC(mrc){ currentMRC=currentMRC===mrc?null:mrc; document.getElementById('sel-mrc').value=currentMRC||''; render(); }
+
+// ── TOOLTIP ───────────────────────────────────────────────────────────────────
+function showTooltip(event,html){ const t=document.getElementById('tooltip'); t.innerHTML=html; t.style.opacity='1'; moveTooltip(event); }
+function moveTooltip(event){ const t=document.getElementById('tooltip'); t.style.left=(event.clientX+12)+'px'; t.style.top=(event.clientY-10)+'px'; }
+function hideTooltip(){ document.getElementById('tooltip').style.opacity='0'; }
+
+// ── CHART META HELPER ─────────────────────────────────────────────────────────
+function chartMeta({note='', source='', csvData=null, chartId=null, title=''}){
+  // csvData can be true (uses chartId as key) or a string cardId
+  const csvKey=typeof csvData==='string'?csvData:(csvData&&chartId?chartId:null);
+  // Use data attributes on button to avoid any quoting issues in onclick
+  const btnDownload=csvKey?`<button class="chart-btn btn-csv" data-csv-key="${csvKey}" data-title="${title.replace(/"/g,'&quot;')}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Télécharger les données</button>`:'';
+  const btnIframe=chartId?`<button class="chart-btn" onclick="showIframe('${chartId}')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Obtenir l'iframe</button>`:'';
+  const safeTitle=title.replace(/'/g,"\\'");
+  const btnImg=chartId?`<button class="chart-btn" onclick="downloadPNG('${chartId}','${safeTitle}')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Télécharger PNG</button>`:'';
+  return `<div class="chart-meta">
+    ${note?`<div class="chart-meta-note">${note}</div>`:''}
+    ${source?`<div class="chart-meta-source"><strong>Source :</strong> ${source}</div>`:''}
+    <div class="chart-actions">${btnDownload}${btnIframe}${btnImg}</div>
+  </div>`;
+}
+
+const _csvStore={};
+let currentEmbedId=null;
+// Delegated click handler for CSV download buttons — avoids all inline JS quoting issues
+document.addEventListener('click', function(e){
+  const btn=e.target.closest('.btn-csv');
+  if(!btn) return;
+  const csvKey=btn.dataset.csvKey;
+  const title=btn.dataset.title||'donnees';
+  if(!csvKey||!_csvStore[csvKey]){ console.warn('CSV introuvable pour la clé:',csvKey,Object.keys(_csvStore)); return; }
+  const blob=new Blob([_csvStore[csvKey]],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`${title.replace(/[^a-z0-9_\-]/gi,'_')}.csv`; a.click();
+  URL.revokeObjectURL(a.href);
+});
+function storeCSV(cardId, rows){
+  if(!rows||!rows.length) return;
+  const keys=Object.keys(rows[0]);
+  const csv=[keys.join(','),...rows.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
+  _csvStore[cardId]=csv;
+  const card=document.getElementById(cardId); if(card) card.dataset.csvKey=cardId;
+}
+function buildStateUrl(embedId=''){
+  const url=new URL(window.location.href.split('#')[0]);
+  url.searchParams.set('tab', currentTab);
+  if(currentMRC) url.searchParams.set('mrc', currentMRC); else url.searchParams.delete('mrc');
+  if(currentYear!==null) url.searchParams.set('year', currentYear);
+  if(currentYearMin!==null) url.searchParams.set('ymin', currentYearMin);
+  if(currentYearMax!==null) url.searchParams.set('ymax', currentYearMax);
+  if(embedId) url.searchParams.set('embed', embedId); else url.searchParams.delete('embed');
+  return url.toString();
+}
+function showIframe(chartId){
+  const url=buildStateUrl(chartId);
+  document.getElementById('iframe-code').value=`<iframe src="${url}" width="100%" height="560" frameborder="0" title="Profil de l'habitation"></iframe>`;
+  document.getElementById('iframe-modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('iframe-modal').classList.remove('open'); }
+function copyIframe(){ const ta=document.getElementById('iframe-code'); ta.select(); document.execCommand('copy'); }
+function downloadPNG(chartId, title){
+  const card=document.getElementById(chartId);
+  const svg=card?.querySelector('svg');
+  if(!svg){ alert('Aucun graphique SVG trouvé.'); return; }
+  const serializer=new XMLSerializer();
+  const svgStr=serializer.serializeToString(svg);
+  const svgBlob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
+  const url=URL.createObjectURL(svgBlob);
+  const img=new Image();
+  img.onload=()=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=svg.clientWidth||800; canvas.height=svg.clientHeight||400;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#f7f5f1'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0);
+    const a=document.createElement('a'); a.href=canvas.toDataURL('image/png');
+    a.download=`${title.replace(/[^a-z0-9]/gi,'_')}.png`; a.click();
+    URL.revokeObjectURL(url);
+  };
+  img.src=url;
+}
+function applyEmbedMode(){
+  document.body.classList.toggle('embed-mode', !!currentEmbedId);
+  if(!currentEmbedId) return;
+  const content=document.getElementById('content');
+  const target=document.getElementById(currentEmbedId);
+  if(!content||!target) return;
+  Array.from(content.children).forEach(child=>{ if(!child.contains(target)) child.style.display='none'; });
+  const parent=target.parentElement;
+  if(parent?.classList.contains('charts-grid')){
+    Array.from(parent.children).forEach(child=>{ if(child!==target) child.style.display='none'; });
+    parent.classList.add('wide');
+  }
+}
+function applyStateFromUrl(){
+  const params=new URLSearchParams(window.location.search);
+  const tab=params.get('tab'); if(tab) currentTab=tab;
+  const mrc=params.get('mrc'); currentMRC=mrc||null;
+  const year=Number(params.get('year')); if(Number.isFinite(year)&&year>0) currentYear=year;
+  const ymin=Number(params.get('ymin')); if(Number.isFinite(ymin)&&ymin>0) currentYearMin=ymin;
+  const ymax=Number(params.get('ymax')); if(Number.isFinite(ymax)&&ymax>0) currentYearMax=ymax;
+  currentEmbedId=params.get('embed')||null;
+}
+
+// ── SORTABLE FILTERABLE TABLE ─────────────────────────────────────────────────
+function makeSortableTable(containerId, columns, rows, opts={}){
+  const container=document.getElementById(containerId);
+  if(!container) return;
+  let sortCol=opts.defaultSort||columns[0].key, sortDir='asc';
+  let filterText='';
+  let page=1; const rowsPerPage=opts.rowsPerPage||20;
+
+  function sortedRows(){
+    let r=[...rows];
+    if(filterText){
+      const q=filterText.toLowerCase();
+      r=r.filter(row=>columns.some(c=>String(row[c.key]??'').toLowerCase().includes(q)));
+    }
+    r.sort((a,b)=>{
+      const av=a[sortCol]??'', bv=b[sortCol]??'';
+      const col=columns.find(c=>c.key===sortCol);
+      if(col?.numeric) return sortDir==='asc'?(Number(av)-Number(bv)):(Number(bv)-Number(av));
+      return sortDir==='asc'?String(av).localeCompare(String(bv),'fr'):String(bv).localeCompare(String(av),'fr');
+    });
+    return r;
+  }
+
+  function render(){
+    const filtered=sortedRows();
+    const totalPages=Math.max(1, Math.ceil(filtered.length/rowsPerPage));
+    if(page>totalPages) page=totalPages;
+    const start=(page-1)*rowsPerPage;
+    const shown=filtered.slice(start, start+rowsPerPage);
+    const totalKey=opts.totalKey;
+    let html=`<div class="table-toolbar">
+      <input class="table-search" type="text" placeholder="Rechercher…" value="${filterText}" id="search-${containerId}">
+      <span class="table-count">${filtered.length} résultat${filtered.length!==1?'s':''}</span>
+    </div>
+    <div class="table-wrap"><table class="data-table"><thead><tr>`;
+    columns.forEach(c=>{
+      const cls=c.key===sortCol?(sortDir==='asc'?'sort-asc':'sort-desc'):'';
+      html+=`<th class="${cls}" data-key="${c.key}">${c.label}</th>`;
+    });
+    html+=`</tr></thead><tbody>`;
+    shown.forEach(row=>{
+      const isTotal=totalKey&&String(row[totalKey]??'').startsWith('Total');
+      html+=`<tr${isTotal?' class="total-row"':''}>`;
+      columns.forEach(c=>{
+        const v=row[c.key]??'';
+        const fv=c.numeric?Number(v).toLocaleString('fr-CA')+(c.suffix||''):v;
+        html+=`<td class="${c.numeric?'num':''}${c.pct?' pct':''}">${fv}</td>`;
+      });
+      html+='</tr>';
+    });
+    html+=`</tbody></table></div>`;
+    if(totalPages>1){
+      html+=`<div class="table-pagination"><span class="table-page-info">Page ${page} sur ${totalPages}</span><button class="chart-btn" id="prev-${containerId}" ${page===1?'disabled':''}>← Précédent</button><button class="chart-btn" id="next-${containerId}" ${page===totalPages?'disabled':''}>Suivant →</button></div>`;
+    }
+    container.innerHTML=html;
+    document.getElementById(`search-${containerId}`)?.addEventListener('input',function(){ filterText=this.value; page=1; render(); });
+    container.querySelectorAll('th[data-key]').forEach(th=>{
+      th.addEventListener('click',()=>{
+        const k=th.dataset.key;
+        if(sortCol===k) sortDir=sortDir==='asc'?'desc':'asc';
+        else{ sortCol=k; sortDir='asc'; }
+        page=1; render();
+      });
+    });
+    document.getElementById(`prev-${containerId}`)?.addEventListener('click',()=>{ if(page>1){ page--; render(); } });
+    document.getElementById(`next-${containerId}`)?.addEventListener('click',()=>{ if(page<totalPages){ page++; render(); } });
+  }
+  render();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(){
+  const content=document.getElementById('content');
+  const mrcLabel=currentMRC||'Toutes les MRC';
+  const annee=currentYear;
+  const filterMRC=arr=>currentMRC?arr.filter(d=>d.CDNAME===currentMRC):arr;
+  const filterYear=arr=>arr.filter(d=>d.Annee==annee);
+  const filterYearRange=arr=>arr.filter(d=>{
+    const y=Number(d.Annee);
+    if(currentYearMin!==null&&y<currentYearMin) return false;
+    if(currentYearMax!==null&&y>currentYearMax) return false;
+    return true;
+  });
+  const filterYearMRC=arr=>filterMRC(filterYear(arr));
+  const filterYearRangeMRC=arr=>filterMRC(filterYearRange(arr));
+
+  if(currentTab==='logements') renderLogements(content,mrcLabel,annee,filterMRC,filterYear,filterYearMRC,filterYearRangeMRC);
+  else if(currentTab==='valeur') renderValeur(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC);
+  else if(currentTab==='age') renderAge(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC);
+  else if(currentTab==='periode') renderPeriode(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC);
+  else if(currentTab==='superficie') renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC);
+  applyEmbedMode();
+}
+
+// ── TAB: LOGEMENTS ────────────────────────────────────────────────────────────
+function renderLogements(content,mrcLabel,annee,filterMRC,filterYear,filterYearMRC,filterYearRangeMRC){
+  const mrcData=filterYearMRC(DATA.logements_types_mrc||[]);
+  const munData=filterYearMRC(DATA.logements_types_mun||[]);
+  const agg={};
+  mrcData.forEach(row=>TYPE_COLS.forEach(t=>{ agg[t]=(agg[t]||0)+(row[t]||0); }));
+  const total=TYPE_COLS.reduce((s,t)=>s+(agg[t]||0),0);
+  const allYears=filterYearRangeMRC(DATA.logements_types_mrc||[]);
+  const byYear={};
+  allYears.forEach(row=>{ if(!byYear[row.Annee]) byYear[row.Annee]={}; TYPE_COLS.forEach(t=>{ byYear[row.Annee][t]=(byYear[row.Annee][t]||0)+(row[t]||0); }); });
+  const years=Object.keys(byYear).map(Number).sort((a,b)=>a-b).map(String);
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>Nombre de logements par type de construction résidentielle, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Rôle d'évaluation foncière ${annee}</div>
+  </div>
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card" id="card-log-stacked">
+      <h3>Évolution ${years.length?`${years[0]}–${years[years.length-1]}`:annee}</h3>
+      <div class="chart-subtitle">Nombre de logements par type de construction</div>
+      <div class="chart-legend" id="legend-log"></div>
+      <div class="chart-area" id="chart-stacked"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES,source:SOURCE,csvData:true,chartId:'card-log-stacked',title:`Logements_evolution_${mrcLabel}`})}
+    </div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card" id="card-log-bar">
+      <h3>Répartition par type, ${annee}</h3>
+      <div class="chart-subtitle">MRC : ${mrcLabel} · Total : ${total.toLocaleString('fr-CA')}</div>
+      <div class="chart-area" id="chart-bar-types"></div>
+      ${chartMeta({source:SOURCE,csvData:true,chartId:'card-log-bar',title:`Logements_repartition_${annee}_${mrcLabel}`})}
+    </div>
+    <div class="chart-card" id="card-log-table" style="overflow-x:auto">
+      <h3>Données détaillées ${annee}</h3>
+      <div class="chart-subtitle">Par type de construction résidentielle</div>
+      <div id="table-types"></div>
+    </div>
+  </div>
+  ${munData.length>0?`
+  <div class="charts-grid wide" style="margin-top:24px">
+    <div class="chart-card" id="card-log-mun" style="overflow-x:auto">
+      <h3>Par municipalité, ${annee}</h3>
+      <div id="table-mun"></div>
+      ${chartMeta({source:SOURCE,csvData:true,chartId:'card-log-mun',title:`Logements_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`:''}`;
+
+  const legendEl=document.getElementById('legend-log');
+  TYPE_COLS.forEach(t=>{ legendEl.innerHTML+=`<div class="legend-item"><div class="legend-dot" style="background:${TYPE_COLORS[t]}"></div>${t}</div>`; });
+
+  drawStackedBar('chart-stacked',years,byYear,TYPE_COLS);
+  drawHorizBar('chart-bar-types',TYPE_COLS,agg,total);
+
+  // Summary table (non-filterable, small)
+  const tableEl=document.getElementById('table-types');
+  const yearHeaders=years.map(y=>`<th class="sort-asc" style="cursor:default">${y}</th>`).join('');
+  let html=`<table class="data-table"><thead><tr><th>Type</th>${yearHeaders}<th class="num">%</th></tr></thead><tbody>`;
+  TYPE_COLS.forEach(t=>{
+    const vals=years.map(y=>(byYear[y]?.[t]||0));
+    const pct=total>0?((agg[t]||0)/total*100).toFixed(1):'0.0';
+    html+=`<tr><td>${t}</td>${vals.map(v=>`<td class="num">${v.toLocaleString('fr-CA')}</td>`).join('')}<td class="pct">${pct}%</td></tr>`;
+  });
+  const tots=years.map(y=>TYPE_COLS.reduce((s,t)=>s+(byYear[y]?.[t]||0),0));
+  html+=`<tr class="total-row"><td>Total</td>${tots.map(v=>`<td class="num">${v.toLocaleString('fr-CA')}</td>`).join('')}<td class="pct">100%</td></tr>`;
+  html+='</tbody></table>';
+  tableEl.innerHTML=html;
+
+  if(munData.length>0){
+    const rows=munData.map(d=>({
+      Annee:d.Annee, Municipalité:d.CSDNAME, MRC:d.CDNAME,
+      'Type':d['Types de construction résidentielle'],
+      'Nombre de logements':d['Nombre de logements']||0,
+    }));
+    makeSortableTable('table-mun',[
+      {key:'Annee',label:'Année',numeric:true},
+      {key:'Municipalité',label:'Municipalité'},
+      {key:'MRC',label:'MRC'},
+      {key:'Type',label:'Type de construction'},
+      {key:'Nombre de logements',label:'Logements',numeric:true},
+    ],rows,{defaultSort:'Municipalité'});
+    storeCSV('card-log-mun',rows);
+  }
+
+  // Store CSV for other cards
+  const csvRows=TYPE_COLS.map(t=>({Type:t,...Object.fromEntries(years.map(y=>[y,byYear[y]?.[t]||0])),Total:agg[t]||0}));
+  storeCSV('card-log-stacked',csvRows); storeCSV('card-log-bar',csvRows);
+  renderMapCard(content);
+}
+
+// ── TAB: VALEUR ───────────────────────────────────────────────────────────────
+function renderValeur(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
+  const mrcData=filterYearMRC(DATA.valeur_mrc||[]);
+  const munData=filterYearMRC(DATA.valeur_mun||[]);
+  const byType={};
+  mrcData.forEach(d=>{ byType[d.Types]={terrain:Number(d.terrain)||0,batiment:Number(d.batiment)||0,immeuble:Number(d.immeuble)||0}; });
+  const orderedTypes=Object.keys(byType).sort((a,b)=>(byType[a]?.immeuble||0)-(byType[b]?.immeuble||0));
+
+  const allData=filterYearRangeMRC(DATA.valeur_mrc||[]);
+  const mrcRows=allData.map(d=>({Année:Number(d.Annee),Type:d.Types,Terrain:Math.round(d.terrain||0),Bâtiment:Math.round(d.batiment||0),Immeuble:Math.round(d.immeuble||0)}))
+    .sort((a,b)=>a.Année-b.Année||a.Type.localeCompare(b.Type,'fr'));
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>Valeur foncière moyenne des propriétés, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Valeurs moyennes en dollars</div>
+  </div>
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card" id="card-val-chart">
+      <h3>Valeur foncière moyenne par type, ${annee}</h3>
+      <div class="chart-subtitle">Valeur du terrain et du bâtiment · MRC : ${mrcLabel}</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#0b5d5e"></div>Valeur du terrain</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4fa7a5"></div>Valeur du bâtiment</div>
+      </div>
+      <div class="chart-area" id="chart-val-types"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES,source:SOURCE,csvData:true,chartId:'card-val-chart',title:`Valeur_fonciere_${annee}_${mrcLabel}`})}
+    </div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card" id="card-val-mrc" style="overflow-x:auto">
+      <h3>Tableau détaillé — MRC</h3>
+      <div id="table-val-mrc"></div>
+      ${chartMeta({source:SOURCE,csvData:true,chartId:'card-val-mrc',title:`Valeur_fonciere_detail_${annee}_${mrcLabel}`})}
+    </div>
+    <div class="chart-card" id="card-val-mun" style="overflow-x:auto">
+      <h3>Par municipalité, ${annee}</h3>
+      <div id="table-val-mun"></div>
+      ${chartMeta({source:SOURCE,csvData:true,chartId:'card-val-mun',title:`Valeur_fonciere_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`;
+
+  drawValeurChart('chart-val-types',orderedTypes,byType);
+  makeSortableTable('table-val-mrc',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Type',label:'Type'},
+    {key:'Terrain',label:'Terrain ($)',numeric:true,suffix:' $'},
+    {key:'Bâtiment',label:'Bâtiment ($)',numeric:true,suffix:' $'},
+    {key:'Immeuble',label:'Total ($)',numeric:true,suffix:' $'},
+  ],mrcRows,{defaultSort:'Année',totalKey:'Type'});
+  storeCSV('card-val-mrc',mrcRows); storeCSV('card-val-chart',mrcRows);
+
+  const munRows=(munData||[]).map(d=>({Année:Number(d.Annee),Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,Terrain:Math.round(d.terrain||0),Bâtiment:Math.round(d.batiment||0),Immeuble:Math.round(d.immeuble||0)}));
+  makeSortableTable('table-val-mun',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Municipalité',label:'Municipalité'},
+    {key:'MRC',label:'MRC'},
+    {key:'Type',label:'Type'},
+    {key:'Terrain',label:'Terrain ($)',numeric:true,suffix:' $'},
+    {key:'Bâtiment',label:'Bâtiment ($)',numeric:true,suffix:' $'},
+    {key:'Immeuble',label:'Total ($)',numeric:true,suffix:' $'},
+  ],munRows,{defaultSort:'Municipalité',totalKey:'Type'});
+  storeCSV('card-val-mun',munRows);
+}
+
+// ── TAB: AGE ──────────────────────────────────────────────────────────────────
+function renderAge(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
+  const mrcData=filterYearMRC(DATA.age_mrc||[]);
+  const munData=filterYearMRC(DATA.age_mun||[]);
+  const byType={};
+  mrcData.forEach(d=>{ if(!byType[d.Types]) byType[d.Types]={age:0,n:0}; byType[d.Types].age+=d.age_moyen||0; byType[d.Types].n++; });
+  Object.keys(byType).forEach(t=>{ byType[t].age/=byType[t].n||1; });
+  const sortedTypes=Object.entries(byType).filter(([t])=>!t.startsWith('Total')).sort(([,a],[,b])=>a.age-b.age);
+  const total=byType["Total des unités d'évaluation résidentielles"];
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>L'âge moyen des bâtiments selon les types de construction, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> En années · Rôle d'évaluation foncière ${annee}</div>
+  </div>
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card" id="card-age-chart">
+      <h3>Âge moyen par type de construction, ${annee}</h3>
+      <div class="chart-subtitle">MRC : ${mrcLabel} · Total des unités : ${total?Math.round(total.age)+' ans':'N/D'}</div>
+      <div class="chart-area" id="chart-age"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES,source:SOURCE,csvData:true,chartId:'card-age-chart',title:`Age_batiments_${annee}_${mrcLabel}`})}
+    </div>
+  </div>
+  <div class="charts-grid wide">
+    <div class="chart-card" id="card-age-mun" style="overflow-x:auto">
+      <h3>Par municipalité, ${annee}</h3>
+      <div id="table-age-mun"></div>
+      ${chartMeta({source:SOURCE,csvData:true,chartId:'card-age-mun',title:`Age_batiments_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`;
+
+  drawAgeChart('chart-age',sortedTypes,total);
+
+  const mrcRows=sortedTypes.map(([t,d])=>({Type:t,'Âge moyen (ans)':Math.round(d.age||0)}));
+  storeCSV('card-age-chart',mrcRows);
+
+  const munRows=(munData||[]).map(d=>({Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,'Âge moyen (ans)':Math.round(d.age_moyen||0)}));
+  makeSortableTable('table-age-mun',[
+    {key:'Municipalité',label:'Municipalité'},
+    {key:'MRC',label:'MRC'},
+    {key:'Type',label:'Type de construction'},
+    {key:'Âge moyen (ans)',label:'Âge moyen (ans)',numeric:true},
+  ],munRows,{defaultSort:'Municipalité',totalKey:'Type'});
+  storeCSV('card-age-mun',munRows);
+  renderMapCard(content);
+}
+
+// ── TAB: PÉRIODE ──────────────────────────────────────────────────────────────
+function renderPeriode(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
+  const mrcData=filterYearMRC(DATA.periode_mrc||[]);
+  const munData=filterYearMRC(DATA.periode_mun||[]);
+  const totals=Object.fromEntries(PERIODES_ORDER.map(p=>[p,0]));
+  mrcData.forEach(d=>{ totals[d.Période]=(totals[d.Période]||0)+(d.N||0); });
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>Unité d'évaluation résidentielle selon la période de construction, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Rôle d'évaluation foncière ${annee}</div>
+  </div>
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card" id="card-per-chart">
+      <h3>Répartition par période de construction, ${annee}</h3>
+      <div class="chart-subtitle">Nombre d'unités d'évaluation · MRC : ${mrcLabel}</div>
+      <div class="chart-area" id="chart-periode"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES,source:SOURCE,csvData:true,chartId:'card-per-chart',title:`Periode_construction_${annee}_${mrcLabel}`})}
+    </div>
+  </div>
+  <div class="charts-grid wide">
+    <div class="chart-card" id="card-per-mun" style="overflow-x:auto">
+      <h3>Par municipalité, ${annee}</h3>
+      <div id="table-per-mun"></div>
+      ${chartMeta({source:SOURCE,csvData:true,chartId:'card-per-mun',title:`Periode_construction_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`;
+
+  drawPeriodeChart('chart-periode', totals);
+  const mrcRows=PERIODES_ORDER.map(p=>({Période:p,"Nombre d'unités":totals[p]||0}));
+  storeCSV('card-per-chart',mrcRows);
+
+  const munRows=(munData||[]).map(d=>({Année:Number(d.Annee),Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,Période:d.Période,"Nombre d'unités":d.N||0}));
+  makeSortableTable('table-per-mun',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Municipalité',label:'Municipalité'},
+    {key:'MRC',label:'MRC'},
+    {key:'Type',label:'Type de construction'},
+    {key:'Période',label:'Période'},
+    {key:"Nombre d'unités",label:"Nb d'unités",numeric:true},
+  ],munRows,{defaultSort:'Municipalité'});
+  storeCSV('card-per-mun',munRows);
+}
+
+// ── TAB: SUPERFICIE ───────────────────────────────────────────────────────────
+function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
+  const munData=filterYearMRC(DATA.superficie_mun||[]);
+  const allData=filterYearRangeMRC(DATA.superficie_mrc||[]);
+  // For the bar chart, use data for the selected year only, excluding totals
+  const yearData=(DATA.superficie_mrc||[]).filter(d=>Number(d.Annee)===annee&&d.Types&&!d.Types.startsWith('Total'));
+  // Filter by MRC if selected
+  const yearDataFiltered=currentMRC?yearData.filter(d=>d.CDNAME===currentMRC):yearData;
+  // Aggregate by type (average across MRCs if multiple)
+  const typeAgg={};
+  yearDataFiltered.forEach(d=>{
+    const t=d.Types;
+    if(!typeAgg[t]) typeAgg[t]={terrain:0,aire:0,count:0};
+    typeAgg[t].terrain+=Number(d.superficie_terrain)||0;
+    typeAgg[t].aire+=Number(d.aire_etages)||0;
+    typeAgg[t].count++;
+  });
+  const residentialTypes=TYPE_COLS.filter(t=>typeAgg[t]);
+
+  const mrcRows=allData.map(d=>({Année:Number(d.Annee),Type:d.Types,'Superficie terrain (m²)':Math.round(d.superficie_terrain||0),"Aire d'étages (m²)":Math.round(d.aire_etages||0)}))
+    .sort((a,b)=>a.Année-b.Année||a.Type.localeCompare(b.Type,'fr'));
+
+  // Combined rows for the chart card CSV
+  const chartRows=residentialTypes.map(t=>({
+    Type:t,
+    'Superficie terrain (m²)':Math.round((typeAgg[t]?.terrain||0)/Math.max(typeAgg[t]?.count||1,1)),
+    "Aire d'étages (m²)":Math.round((typeAgg[t]?.aire||0)/Math.max(typeAgg[t]?.count||1,1)),
+  }));
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>Superficie moyenne du terrain et aire d'étages</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Moyennes en mètres carrés · ${annee}</div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card" id="card-sup-chart" style="grid-column:1/-1">
+      <h3>Superficie terrain et aire d'étages par type de construction résidentielle, ${annee}</h3>
+      <div class="chart-subtitle">MRC : ${mrcLabel} · En mètres carrés (m²) · <span style="display:inline-flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#1a4e4b;border-radius:2px"></span>Superficie terrain</span> &nbsp;<span style="display:inline-flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:12px;background:#6dbfb8;border-radius:2px"></span>Aire d'étages</span></div>
+      <div class="chart-area" id="chart-sup-combined"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES,source:SOURCE,csvData:'card-sup-chart',chartId:'card-sup-chart',title:`Superficie_etages_${mrcLabel}_${annee}`})}
+    </div>
+  </div>
+  <div class="charts-grid" style="margin-top:24px">
+    <div class="chart-card" id="card-sup-mrc" style="overflow-x:auto">
+      <h3>Tableau détaillé — MRC</h3>
+      <div id="table-sup-mrc"></div>
+      ${chartMeta({source:SOURCE,csvData:'card-sup-mrc',chartId:'card-sup-mrc',title:`Superficie_detail_${annee}_${mrcLabel}`})}
+    </div>
+    <div class="chart-card" id="card-sup-mun" style="overflow-x:auto">
+      <h3>Par municipalité, ${annee}</h3>
+      <div id="table-sup-mun"></div>
+      ${chartMeta({source:SOURCE,csvData:'card-sup-mun',chartId:'card-sup-mun',title:`Superficie_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`;
+
+  drawSuperficieStackedChart('chart-sup-combined', residentialTypes, typeAgg);
+
+  makeSortableTable('table-sup-mrc',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Type',label:'Type de construction'},
+    {key:'Superficie terrain (m²)',label:'Superficie terrain (m²)',numeric:true},
+    {key:"Aire d'étages (m²)",label:"Aire d'étages (m²)",numeric:true},
+  ],mrcRows,{defaultSort:'Année',totalKey:'Type'});
+
+  storeCSV('card-sup-chart', chartRows);
+  storeCSV('card-sup-mrc', mrcRows);
+
+  const munRows=(munData||[]).map(d=>({Année:Number(d.Annee),Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,'Superficie terrain (m²)':Math.round(d.superficie_terrain||0),"Aire d'étages (m²)":Math.round(d.aire_etages||0)}));
+  makeSortableTable('table-sup-mun',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Municipalité',label:'Municipalité'},
+    {key:'MRC',label:'MRC'},
+    {key:'Type',label:'Type'},
+    {key:'Superficie terrain (m²)',label:'Superficie terrain (m²)',numeric:true},
+    {key:"Aire d'étages (m²)",label:"Aire d'étages (m²)",numeric:true},
+  ],munRows,{defaultSort:'Municipalité'});
+  storeCSV('card-sup-mun',munRows);
+}
+
+function drawSuperficieStackedChart(id, types, typeAgg){
+  const el=document.getElementById(id); if(!el||!types.length) return;
+  const W=el.clientWidth||900, H=340, margin={top:20,right:30,bottom:120,left:80};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+
+  // Compute averages per type
+  const terrainVals=types.map(t=>(typeAgg[t]?.terrain||0)/Math.max(typeAgg[t]?.count||1,1));
+  const aireVals=types.map(t=>(typeAgg[t]?.aire||0)/Math.max(typeAgg[t]?.count||1,1));
+  const maxVal=d3.max(types.map((_,i)=>terrainVals[i]+aireVals[i]))||0;
+
+  const x=d3.scaleBand().domain(types).range([0,w]).padding(0.28);
+  const y=d3.scaleLinear().domain([0,maxVal*1.12]).range([h,0]);
+
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('')).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickFormat('')).select('.domain').remove();
+
+  types.forEach((t,i)=>{
+    const terrain=terrainVals[i];
+    const aire=aireVals[i];
+    const total=terrain+aire;
+    const bw=x.bandwidth();
+
+    // Bottom segment: Superficie terrain
+    g.append('rect')
+      .attr('x',x(t)).attr('y',y(terrain))
+      .attr('width',bw).attr('height',Math.max(0,h-y(terrain)))
+      .attr('fill','#1a4e4b').attr('rx',2)
+      .on('mouseover',(event)=>showTooltip(event,`<strong>${t}</strong><br>Superficie terrain : ${Math.round(terrain).toLocaleString('fr-CA')} m²`))
+      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+
+    // Top segment: Aire d'étages
+    g.append('rect')
+      .attr('x',x(t)).attr('y',y(total))
+      .attr('width',bw).attr('height',Math.max(0,y(terrain)-y(total)))
+      .attr('fill','#6dbfb8').attr('rx',2)
+      .on('mouseover',(event)=>showTooltip(event,`<strong>${t}</strong><br>Aire d'étages : ${Math.round(aire).toLocaleString('fr-CA')} m²`))
+      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+
+    // Total label on top
+    g.append('text').attr('x',x(t)+bw/2).attr('y',y(total)-4)
+      .attr('text-anchor','middle').attr('font-size','10px').attr('fill','#1a1a1a')
+      .text(Math.round(total).toLocaleString('fr-CA'));
+  });
+
+  // Rotated x-axis labels
+  const labelG=svg.append('g').attr('transform',`translate(${margin.left},${margin.top+h+6})`);
+  types.forEach(t=>{
+    labelG.append('text')
+      .attr('x',x(t)+x.bandwidth()/2).attr('y',0)
+      .attr('transform',`rotate(-38,${x(t)+x.bandwidth()/2},0)`)
+      .attr('text-anchor','end').attr('font-size','10.5px').attr('fill','#5a5a5a')
+      .text(t.length>32?t.slice(0,30)+'…':t);
+  });
+}
+
+// ── CHART FUNCTIONS ───────────────────────────────────────────────────────────
+function drawStackedBar(id,years,byYear,typeCols){
+  const el=document.getElementById(id); if(!el||!years.length) return;
+  const W=el.clientWidth||700, H=240, margin={top:10,right:20,bottom:30,left:60};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const stack=d3.stack().keys(typeCols)(years.map(y=>({year:y,...byYear[y]})));
+  const maxY=d3.max(stack[stack.length-1],d=>d[1]);
+  const x=d3.scaleBand().domain(years).range([0,w]).padding(0.25);
+  const y=d3.scaleLinear().domain([0,maxY*1.05]).range([h,0]);
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat(''));
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+  typeCols.forEach((type,i)=>{
+    g.selectAll(`.bar-${i}`).data(stack[i]).join('rect').attr('class',`bar bar-${i}`)
+      .attr('x',d=>x(d.data.year)).attr('y',d=>y(d[1]))
+      .attr('height',d=>Math.max(0,y(d[0])-y(d[1]))).attr('width',x.bandwidth())
+      .attr('fill',TYPE_COLORS[type])
+      .on('mouseover',(event,d)=>showTooltip(event,`<strong>${d.data.year}</strong><br>${type}<br>${(d[1]-d[0]).toLocaleString('fr-CA')} logements`))
+      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+  });
+  years.forEach(y_val=>{
+    const tot=typeCols.reduce((s,t)=>s+(byYear[y_val]?.[t]||0),0);
+    g.append('text').attr('class','total-label').attr('x',x(y_val)+x.bandwidth()/2).attr('y',y(tot)-5)
+      .attr('text-anchor','middle').attr('font-size','11px').attr('fill','#1a1a1a').text(tot.toLocaleString('fr-CA'));
+  });
+}
+
+function drawHorizBar(id,types,agg,total){
+  const el=document.getElementById(id); if(!el) return;
+  const W=el.clientWidth||400, H=Math.max(types.length*36+40,200), margin={top:10,right:80,bottom:20,left:240};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const sorted=[...types].sort((a,b)=>(agg[a]||0)-(agg[b]||0));
+  const x=d3.scaleLinear().domain([0,d3.max(types,t=>agg[t]||0)*1.15]).range([0,w]);
+  const y=d3.scaleBand().domain(sorted).range([h,0]).padding(0.3);
+  sorted.forEach(t=>{
+    g.append('rect').attr('class','bar').attr('y',y(t)).attr('height',y.bandwidth())
+      .attr('x',0).attr('width',x(agg[t]||0)).attr('fill',TYPE_COLORS[t])
+      .on('mouseover',event=>showTooltip(event,`${t}<br><strong>${(agg[t]||0).toLocaleString('fr-CA')}</strong> logements`))
+      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+    g.append('text').attr('class','bar-label').attr('x',x(agg[t]||0)+6).attr('y',y(t)+y.bandwidth()/2+4).attr('font-size','11px').attr('fill','#1a1a1a').text((agg[t]||0).toLocaleString('fr-CA'));
+    g.append('text').attr('x',-8).attr('y',y(t)+y.bandwidth()/2+4).attr('text-anchor','end').attr('font-size','11px').attr('fill','#5a5a5a').text(t.length>35?t.substring(0,33)+'…':t);
+  });
+}
+
+function drawValeurChart(id,types,byType){
+  const el=document.getElementById(id); if(!el||!types.length) return;
+  const W=el.clientWidth||900, H=Math.max(types.length*48+70,320), margin={top:10,right:120,bottom:20,left:260};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const maxVal=d3.max(types,t=>(byType[t]?.terrain||0)+(byType[t]?.batiment||0))||0;
+  const x=d3.scaleLinear().domain([0,maxVal*1.08]).range([0,w]);
+  const y=d3.scaleBand().domain(types).range([0,h]).padding(0.22);
+  types.forEach(t=>{
+    const d=byType[t]||{}; const total=(d.terrain||0)+(d.batiment||0);
+    g.append('rect').attr('x',0).attr('y',y(t)).attr('width',x(d.terrain||0)).attr('height',y.bandwidth()).attr('fill','#0b5d5e');
+    g.append('rect').attr('x',x(d.terrain||0)).attr('y',y(t)).attr('width',x(d.batiment||0)).attr('height',y.bandwidth()).attr('fill','#4fa7a5');
+    if((d.terrain||0)>maxVal*0.05) g.append('text').attr('x',x(d.terrain||0)-8).attr('y',y(t)+y.bandwidth()/2+4).attr('text-anchor','end').attr('fill','white').attr('font-weight','600').attr('font-size','11px').text(Math.round(d.terrain||0).toLocaleString('fr-CA')+' $');
+    if((d.batiment||0)>maxVal*0.08) g.append('text').attr('x',x(d.terrain||0)+8).attr('y',y(t)+y.bandwidth()/2+4).attr('fill','white').attr('font-weight','600').attr('font-size','11px').text(Math.round(d.batiment||0).toLocaleString('fr-CA')+' $');
+    g.append('text').attr('x',x(total)+10).attr('y',y(t)+y.bandwidth()/2+5).attr('fill','#1a1a1a').attr('font-weight','700').text(Math.round(total).toLocaleString('fr-CA')+' $');
+    g.append('text').attr('x',-12).attr('y',y(t)+y.bandwidth()/2+5).attr('text-anchor','end').attr('fill','#2a2a2a').attr('font-size','11px').text(t.length>38?t.slice(0,36)+'…':t);
+  });
+}
+
+function drawAgeChart(id,sortedTypes,total){
+  const el=document.getElementById(id); if(!el||!sortedTypes.length) return;
+  const allTypes=[...sortedTypes,["Total des unités d'évaluation résidentielles",total||{age:0}]];
+  const W=el.clientWidth||700, H=(allTypes.length+1)*48+60, margin={top:10,right:60,bottom:20,left:240};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const maxAge=d3.max(allTypes,([,d])=>d.age||0);
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const x=d3.scaleLinear().domain([0,maxAge*1.1]).range([0,w]);
+  const y=d3.scaleBand().domain(allTypes.map(([t])=>t)).range([h,0]).padding(0.3);
+  g.append('g').attr('class','grid').call(d3.axisBottom(x).tickSize(h).tickFormat('').ticks(5)).attr('transform','translate(0,0)').select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(5)).select('.domain').remove();
+  allTypes.forEach(([type,data])=>{
+    const age=Math.round(data.age||0); const isTotal=type.startsWith('Total');
+    g.append('rect').attr('class','bar').attr('y',y(type)).attr('height',y.bandwidth()).attr('x',0).attr('width',x(age)).attr('fill',isTotal?'#3d8f8a':'#1a4e4b').attr('rx',3)
+      .on('mouseover',event=>showTooltip(event,`${type}<br><strong>${age} ans</strong>`)).on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+    g.append('text').attr('class','bar-label').attr('x',x(age)+6).attr('y',y(type)+y.bandwidth()/2+4).attr('font-size','12px').attr('font-weight',isTotal?'600':'400').attr('fill','#1a1a1a').text(age);
+    g.append('text').attr('x',-8).attr('y',y(type)+y.bandwidth()/2+4).attr('text-anchor','end').attr('font-size','11px').attr('fill',isTotal?'#1a4e4b':'#5a5a5a').attr('font-weight',isTotal?'600':'400').text(type.length>33?type.substring(0,31)+'…':type);
+  });
+}
+
+function drawPeriodeChart(id, totals){
+  const el=document.getElementById(id); if(!el) return;
+  const data=PERIODES_ORDER.map(p=>({label:p,value:totals[p]||0}));
+  const W=el.clientWidth||900, H=340, margin={top:20,right:20,bottom:55,left:70};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const maxVal=d3.max(data,d=>d.value)||0;
+  const peak=d3.max(data,d=>d.value);
+  const x=d3.scaleBand().domain(data.map(d=>d.label)).range([0,w]).padding(0.3);
+  const y=d3.scaleLinear().domain([0,maxVal*1.1]).range([h,0]);
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('')).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x)).select('.domain').remove();
+  data.forEach(d=>{
+    const color=d.value===peak?'#178785':'#55aba7';
+    g.append('rect').attr('x',x(d.label)).attr('y',y(d.value)).attr('width',x.bandwidth()).attr('height',h-y(d.value)).attr('fill',color)
+      .on('mouseover',event=>showTooltip(event,`<strong>${d.label}</strong><br>${d.value.toLocaleString('fr-CA')} unités`)).on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+    g.append('text').attr('x',x(d.label)+x.bandwidth()/2).attr('y',y(d.value)-10).attr('text-anchor','middle').attr('font-weight','700').text(d.value.toLocaleString('fr-CA'));
+  });
+}
+
+function drawMultiLineChart(id, years, series, suffix=''){
+  const el=document.getElementById(id); if(!el||!years.length) return;
+  const clean=series.filter(s=>s.values.some(v=>v.value!==null));
+  const W=el.clientWidth||800, H=320, margin={top:16,right:24,bottom:36,left:70};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const allVals=clean.flatMap(s=>s.values.map(v=>v.value).filter(v=>v!==null));
+  const yMax=d3.max(allVals)||0;
+  const x=d3.scalePoint().domain(years.map(String)).range([0,w]);
+  const y=d3.scaleLinear().domain([0,yMax*1.1]).range([h,0]);
+  const palette=['#0b5d5e','#178785','#4fa7a5','#7cc9c5','#6a7dab','#c49a6c','#8a5d5d','#7b8f47'];
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('')).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x)).select('.domain').remove();
+  const line=d3.line().defined(d=>d.value!==null).x(d=>x(String(d.year))).y(d=>y(d.value));
+  clean.forEach((s,i)=>{
+    g.append('path').datum(s.values).attr('fill','none').attr('stroke',palette[i%palette.length]).attr('stroke-width',2.2).attr('d',line);
+    g.selectAll(`.pt-${i}`).data(s.values.filter(d=>d.value!==null)).join('circle').attr('cx',d=>x(String(d.year))).attr('cy',d=>y(d.value)).attr('r',3.2).attr('fill',palette[i%palette.length])
+      .on('mouseover',(event,d)=>showTooltip(event,`<strong>${s.name}</strong><br>${d.year} : ${Math.round(d.value).toLocaleString('fr-CA')} ${suffix}`)).on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+  });
+  const legend=svg.append('g').attr('transform',`translate(${margin.left},${H-8})`);
+  clean.forEach((s,i)=>{
+    const xPos=(i%2)*320, yPos=Math.floor(i/2)*16;
+    legend.append('rect').attr('x',xPos).attr('y',-yPos-12).attr('width',10).attr('height',10).attr('fill',palette[i%palette.length]);
+    legend.append('text').attr('x',xPos+14).attr('y',-yPos-3).attr('font-size','11px').text(s.name.length>40?s.name.slice(0,38)+'…':s.name);
+  });
+}
+
+// ── EVENTS ────────────────────────────────────────────────────────────────────
+const maybeRedrawMap=()=>{};
+document.getElementById('sel-region').addEventListener('change',function(){ populateMRCSelect(this.value); currentMRC=null; maybeRedrawMap(); render(); });
+document.getElementById('sel-mrc').addEventListener('change',function(){ currentMRC=this.value||null; maybeRedrawMap(); render(); });
+document.getElementById('sel-annee').addEventListener('change',function(){ currentYear=parseInt(this.value,10); maybeRedrawMap(); render(); });
+document.getElementById('sel-annee-min').addEventListener('change',function(){ currentYearMin=parseInt(this.value,10); syncYearRange('min'); maybeRedrawMap(); render(); });
+document.getElementById('sel-annee-max').addEventListener('change',function(){ currentYearMax=parseInt(this.value,10); syncYearRange('max'); maybeRedrawMap(); render(); });
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',function(){ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); currentTab=this.dataset.tab; render(); });
+});
+document.getElementById('iframe-modal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  try{
+    await loadAll();
+    applyStateFromUrl();
+    populateYearSelect();
+    populateMRCSelect(document.getElementById('sel-region').value||'');
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===currentTab));
+    render();
+  }catch(e){
+    document.getElementById('content').innerHTML=`<div class="loading">⚠ Erreur de chargement des données.<br><small>${e.message}</small></div>`;
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
