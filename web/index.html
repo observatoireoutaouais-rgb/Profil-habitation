@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil de l'habitation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,600;0,8..60,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--teal-dark:#1a4e4b;--teal:#2d6e6a;--teal-mid:#3d8f8a;--teal-light:#6dbfb8;--teal-pale:#b2deda;--accent:#e8a048;--bg:#f7f5f1;--bg2:#eeeae3;--text:#1a1a1a;--text-light:#5a5a5a;--border:#d4cfc6;--white:#ffffff;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+header{background:var(--teal-dark);color:white;padding:24px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.18);}
+header h1{font-family:'Source Serif 4',serif;font-size:1.5rem;font-weight:600;letter-spacing:-.02em;}
+header .subtitle{font-size:.8rem;opacity:.7;margin-top:2px;}
+.source-badge{font-size:.7rem;opacity:.6;text-align:right;line-height:1.4;}
+.controls{background:var(--white);border-bottom:1px solid var(--border);padding:16px 40px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.06);}
+.control-group{display:flex;align-items:center;gap:10px;}
+.control-group label{font-size:.78rem;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;}
+select{border:1.5px solid var(--border);border-radius:6px;padding:8px 32px 8px 12px;font-family:inherit;font-size:.875rem;background:var(--bg);color:var(--text);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a5a5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer;transition:border-color .2s;}
+select:focus{outline:none;border-color:var(--teal);}
+.year-range{display:flex;align-items:center;gap:8px;}
+.year-range-sep{font-size:.8rem;color:var(--text-light);}
+.tabs{display:flex;gap:0;background:var(--bg2);border-radius:8px;padding:3px;margin-left:auto;flex-wrap:wrap;}
+.tab-btn{padding:7px 14px;border:none;background:transparent;border-radius:6px;font-family:inherit;font-size:.8rem;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.tab-btn.active{background:var(--white);color:var(--teal-dark);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.main{display:block;min-height:calc(100vh - 130px);}
+.map-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-top:24px;}
+.map-card h3{font-family:'Source Serif 4',serif;font-size:1rem;font-weight:600;color:var(--teal-dark);margin-bottom:12px;}
+.map-card-inner{display:grid;grid-template-columns:1fr 180px;gap:16px;align-items:start;}
+#map-container{height:320px;}
+#map-svg{width:100%;height:100%;}
+.mrc-path{cursor:pointer;transition:opacity .2s;}
+.mrc-path:hover{opacity:.75;}
+.mrc-path.selected{stroke:var(--accent)!important;stroke-width:2.5!important;}
+.map-legend{padding:0;}
+.map-legend h4{font-size:.72rem;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.legend-scale{display:flex;flex-direction:column;gap:3px;}
+.legend-bar{height:8px;border-radius:2px;flex:1;}
+.legend-labels{display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-light);margin-top:3px;}
+.content{flex:1;padding:32px 40px;overflow-y:auto;}
+.section-header{margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--teal-pale);}
+.section-header h2{font-family:'Source Serif 4',serif;font-size:1.6rem;font-weight:700;color:var(--teal-dark);line-height:1.2;}
+.section-header .meta{font-size:.78rem;color:var(--text-light);margin-top:4px;}
+.mrc-tag{display:inline-block;background:var(--teal-pale);color:var(--teal-dark);padding:2px 10px;border-radius:20px;font-size:.75rem;font-weight:500;margin-right:8px;}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.charts-grid.wide{grid-template-columns:1fr;}
+.chart-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.chart-card h3{font-family:'Source Serif 4',serif;font-size:1rem;font-weight:600;color:var(--teal-dark);margin-bottom:4px;line-height:1.3;}
+.chart-card .chart-subtitle{font-size:.75rem;color:var(--text-light);margin-bottom:16px;}
+.chart-area{width:100%;}
+.bar{transition:opacity .2s;}.bar:hover{opacity:.8;}
+.axis text{font-family:'DM Sans',sans-serif;font-size:11px;fill:var(--text-light);}
+.axis line,.axis path{stroke:var(--border);}
+.grid line{stroke:var(--border);stroke-dasharray:3,3;}.grid path{display:none;}
+.bar-label{font-size:11px;font-weight:500;font-family:'DM Sans',sans-serif;}
+.total-label{font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;fill:var(--text);}
+.chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--text-light);}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+
+/* SORTABLE TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.data-table th{text-align:left;padding:8px 12px;background:var(--bg2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-light);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+.data-table th:hover{background:var(--teal-pale);color:var(--teal-dark);}
+.data-table th::after{content:' ⇅';opacity:.35;font-size:.65rem;}
+.data-table th.sort-asc::after{content:' ↑';opacity:1;color:var(--teal-dark);}
+.data-table th.sort-desc::after{content:' ↓';opacity:1;color:var(--teal-dark);}
+.data-table td{padding:7px 12px;border-bottom:1px solid var(--bg2);color:var(--text);}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr.total-row td{font-weight:600;background:var(--teal-pale);color:var(--teal-dark);}
+.data-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.data-table td.pct{text-align:right;color:var(--text-light);font-size:.75rem;}
+.data-table tr:not(.total-row):hover td{background:#f0f8f7;}
+
+/* TABLE TOOLBAR */
+.table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.table-search{border:1.5px solid var(--border);border-radius:6px;padding:6px 10px 6px 30px;font-family:inherit;font-size:.8rem;background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%235a5a5a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 8px center;color:var(--text);flex:1;min-width:120px;}
+.table-search:focus{outline:none;border-color:var(--teal);}
+.table-count{font-size:.72rem;color:var(--text-light);white-space:nowrap;}
+.table-wrap{overflow-x:auto;}
+.table-pagination{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.table-page-info{font-size:.72rem;color:var(--text-light);margin-right:auto;}
+body.embed-mode header,body.embed-mode .controls{display:none;}
+body.embed-mode .content{padding:16px;}
+body.embed-mode .section-header,body.embed-mode .footnote{display:none;}
+body.embed-mode .chart-card{box-shadow:none;border:none;padding:0;background:transparent;}
+
+/* CHART META */
+.chart-meta{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+.chart-meta-note{font-size:.72rem;color:var(--text-light);line-height:1.5;font-style:italic;margin-bottom:6px;}
+.chart-meta-source{font-size:.72rem;color:var(--text-light);margin-bottom:10px;}
+.chart-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.chart-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);font-family:inherit;font-size:.68rem;color:var(--text-light);cursor:pointer;transition:all .15s;}
+.chart-btn svg{width:10px;height:10px;}
+.chart-btn:hover{border-color:var(--teal);color:var(--teal-dark);background:var(--teal-pale);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:none;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--white);border-radius:10px;padding:28px;max-width:520px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.22);}
+.modal-box h4{font-family:'Source Serif 4',serif;font-size:1rem;color:var(--teal-dark);margin-bottom:12px;}
+.modal-box textarea{width:100%;height:80px;font-family:monospace;font-size:.76rem;border:1.5px solid var(--border);border-radius:6px;padding:10px;color:var(--text);resize:none;}
+.modal-actions{display:flex;gap:10px;margin-top:12px;}
+.modal-btn{padding:7px 18px;border:none;border-radius:6px;font-family:inherit;font-size:.82rem;cursor:pointer;}
+.modal-btn.primary{background:var(--teal-dark);color:white;}
+.modal-btn.secondary{background:var(--bg2);color:var(--text);}
+
+.tooltip{position:fixed;pointer-events:none;background:var(--teal-dark);color:white;padding:10px 14px;border-radius:8px;font-size:.78rem;line-height:1.6;max-width:220px;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .15s;}
+.footnote{margin-top:20px;font-size:.72rem;color:var(--text-light);line-height:1.5;font-style:italic;border-top:1px solid var(--border);padding-top:12px;}
+.loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-light);font-size:.9rem;gap:12px;}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr;}.controls{padding:12px 16px;}.content{padding:20px 16px;}.map-card-inner{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Profil de l'habitation</h1>
+    <div class="subtitle">Rôle d'évaluation foncière · Outaouais · Laurentides · Montérégie</div>
+  </div>
+  <div class="source-badge">Source : MAMH, Rôle d'évaluation<br>foncière des municipalités</div>
+</header>
+
+<div class="controls">
+  <div class="control-group">
+    <label>Région</label>
+    <select id="sel-region">
+      <option value="">Toutes</option>
+      <option value="7">Outaouais</option>
+      <option value="15">Laurentides</option>
+      <option value="16">Montérégie</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>MRC</label>
+    <select id="sel-mrc"><option value="">Chargement…</option></select>
+  </div>
+  <div class="control-group">
+    <label>Année affichée</label>
+    <select id="sel-annee"><option value="">Chargement…</option></select>
+  </div>
+  <div class="control-group">
+    <label>Période</label>
+    <div class="year-range">
+      <select id="sel-annee-min"><option value="">Début</option></select>
+      <span class="year-range-sep">à</span>
+      <select id="sel-annee-max"><option value="">Fin</option></select>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>Catégories</label>
+    <select id="sel-category-mode">
+      <option value="mamh_strict">MAMH sans optionnelles</option>
+      <option value="mamh_optional">MAMH avec optionnelles</option>
+      <option value="mamh_plus_others" selected>MAMH + autres catégories</option>
+    </select>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="logements">Logements</button>
+    <button class="tab-btn" data-tab="valeur">Valeur foncière</button>
+    <button class="tab-btn" data-tab="age">Âge des bâtiments</button>
+    <button class="tab-btn" data-tab="periode">Période de construction</button>
+    <button class="tab-btn" data-tab="superficie">Superficie</button>
+    <button class="tab-btn" data-tab="indicateurs">Indicateurs stratégiques</button>
+  </div>
+</div>
+
+<div class="main">
+  <main class="content" id="content">
+    <div class="loading"><div class="spinner"></div> Chargement des données…</div>
+  </main>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="modal-overlay" id="iframe-modal">
+  <div class="modal-box">
+    <h4>Code d'intégration (iframe)</h4>
+    <textarea id="iframe-code" readonly></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn primary" onclick="copyIframe()">Copier</button>
+      <button class="modal-btn secondary" onclick="closeModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script src="./script.js"></script>
+</body>
+</html>
