@@ -761,7 +761,7 @@ document.getElementById('sel-annee-max').addEventListener('change', function() {
   render();
 });
 
-document.getElementById('sel-categories').addEventListener('change', function() {
+document.getElementById('sel-category-mode').addEventListener('change', function() {
   currentCategoryMode = this.value || 'mamh_plus_others';
   populateYearSelect();
   drawMap();
