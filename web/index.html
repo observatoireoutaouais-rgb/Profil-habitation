@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Profil de l’habitation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" href="./style.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+</head>
+
+<body>
+
+<div class="controls">
+  <label>Région</label>
+  <select id="region"></select>
+
+  <label>MRC</label>
+  <select id="mrc"></select>
+
+  <label>Année affichée</label>
+  <select id="annee"></select>
+
+  <label>Période</label>
+  <select id="periodeMin"></select>
+  <span>à</span>
+  <select id="periodeMax"></select>
+
+  <label>Catégories</label>
+  <select id="categoryMode">
+    <option value="mamh_strict">MAMH sans optionnelles</option>
+    <option value="mamh_optional">MAMH avec optionnelles</option>
+    <option value="mamh_plus_others" selected>MAMH + autres catégories</option>
+  </select>
+</div>
+
+<div class="tabs">
+  <button data-tab="logements" class="active">Logements</button>
+  <button data-tab="valeur">Valeur foncière</button>
+  <button data-tab="age">Âge des bâtiments</button>
+  <button data-tab="periode">Période de construction</button>
+  <button data-tab="superficie">Superficie</button>
+</div>
+
+<div id="content">
+  <div id="logements" class="tab-content active">
+    <h2>Évolution 2012–2026</h2>
+    <div id="chart_logements"></div>
+  </div>
+
+  <div id="valeur" class="tab-content">
+    <h2>Valeur foncière</h2>
+    <div id="chart_valeur"></div>
+  </div>
+
+  <div id="age" class="tab-content">
+    <h2>Âge des bâtiments</h2>
+    <div id="chart_age"></div>
+  </div>
+
+  <div id="periode" class="tab-content">
+    <h2>Période de construction</h2>
+    <div id="chart_periode"></div>
+  </div>
+
+  <div id="superficie" class="tab-content">
+    <h2>Superficie</h2>
+    <div id="chart_superficie"></div>
+  </div>
+</div>
+
+<script src="./script.js"></script>
+
+</body>
+</html>
