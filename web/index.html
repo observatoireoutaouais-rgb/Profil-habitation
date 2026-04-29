@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil de l'habitation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,600;0,8..60,700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--teal-dark:#1a4e4b;--teal:#2d6e6a;--teal-mid:#3d8f8a;--teal-light:#6dbfb8;--teal-pale:#b2deda;--accent:#e8a048;--bg:#f7f5f1;--bg2:#eeeae3;--text:#1a1a1a;--text-light:#5a5a5a;--border:#d4cfc6;--white:#ffffff;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+header{background:var(--teal-dark);color:white;padding:24px 40px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.18);}
+header h1{font-family:'Source Serif 4',serif;font-size:1.5rem;font-weight:600;letter-spacing:-.02em;}
+header .subtitle{font-size:.8rem;opacity:.7;margin-top:2px;}
+.source-badge{font-size:.7rem;opacity:.6;text-align:right;line-height:1.4;}
+.controls{background:var(--white);border-bottom:1px solid var(--border);padding:12px 40px;display:flex;align-items:center;gap:16px;flex-wrap:nowrap;overflow-x:auto;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.06);scrollbar-width:none;}
+.control-group{display:flex;align-items:center;gap:10px;}
+.control-group label{font-size:.78rem;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;}
+select{border:1.5px solid var(--border);border-radius:6px;padding:8px 32px 8px 12px;font-family:inherit;font-size:.875rem;background:var(--bg);color:var(--text);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a5a5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer;transition:border-color .2s;}
+select:focus{outline:none;border-color:var(--teal);}
+.year-range{display:flex;align-items:center;gap:8px;}
+.year-range-sep{font-size:.8rem;color:var(--text-light);}
+.tabs{display:flex;gap:0;background:var(--bg2);border-radius:8px;padding:3px;margin-left:auto;flex-wrap:wrap;}
+.tab-btn{padding:7px 14px;border:none;background:transparent;border-radius:6px;font-family:inherit;font-size:.8rem;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.tab-btn.active{background:var(--white);color:var(--teal-dark);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.cubf-group{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;}
+.cubf-btn{padding:6px 11px;border:1.5px solid var(--border);background:var(--bg);border-radius:6px;font-family:inherit;font-size:.75rem;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .2s;white-space:nowrap;line-height:1.3;}
+.cubf-btn:hover{border-color:var(--teal-light);color:var(--teal);}
+.cubf-btn.active{background:var(--teal-dark);border-color:var(--teal-dark);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15);}
+.cubf-sep{width:1px;height:24px;background:var(--border);}
+.cubf-tooltip{position:fixed;z-index:9999;background:#1a1a1a;color:#fff;font-size:.75rem;padding:6px 10px;border-radius:5px;pointer-events:none;opacity:0;transition:opacity .15s;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.cubf-tooltip.visible{opacity:1;}
+.main{display:flex;flex-direction:column;min-height:calc(100vh - 130px);}
+.map-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.04);margin-top:24px;}
+.map-card h3{font-family:'Source Serif 4',serif;font-size:1rem;font-weight:600;color:var(--teal-dark);margin-bottom:12px;}
+.map-card-inner{display:grid;grid-template-columns:1fr 180px;gap:16px;align-items:start;}
+#map-container{height:320px;}
+#map-svg{width:100%;height:100%;}
+.mrc-path{cursor:pointer;transition:opacity .2s;}
+.mrc-path:hover{opacity:.75;}
+.mrc-path.selected{stroke:var(--accent)!important;stroke-width:2.5!important;}
+.map-legend{padding:0;}
+.map-legend h4{font-size:.72rem;color:var(--text-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.legend-scale{display:flex;flex-direction:column;gap:3px;}
+.legend-bar{height:8px;border-radius:2px;flex:1;}
+.legend-labels{display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-light);margin-top:3px;}
+.content{flex:1;padding:32px 40px;overflow-y:auto;}
+.section-header{margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid var(--teal-pale);}
+.section-header h2{font-family:'Source Serif 4',serif;font-size:1.6rem;font-weight:700;color:var(--teal-dark);line-height:1.2;}
+.section-header .meta{font-size:.78rem;color:var(--text-light);margin-top:4px;}
+.mrc-tag{display:inline-block;background:var(--teal-pale);color:var(--teal-dark);padding:2px 10px;border-radius:20px;font-size:.75rem;font-weight:500;margin-right:8px;}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.charts-grid.wide{grid-template-columns:1fr;}
+.chart-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.chart-card h3{font-family:'Source Serif 4',serif;font-size:1rem;font-weight:600;color:var(--teal-dark);margin-bottom:4px;line-height:1.3;}
+.chart-card .chart-subtitle{font-size:.75rem;color:var(--text-light);margin-bottom:16px;}
+.chart-area{width:100%;}
+.bar{transition:opacity .2s;}.bar:hover{opacity:.8;}
+.axis text{font-family:'DM Sans',sans-serif;font-size:11px;fill:var(--text-light);}
+.axis line,.axis path{stroke:var(--border);}
+.grid line{stroke:var(--border);stroke-dasharray:3,3;}.grid path{display:none;}
+.bar-label{font-size:11px;font-weight:500;font-family:'DM Sans',sans-serif;}
+.total-label{font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;fill:var(--text);}
+.chart-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:16px;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--text-light);}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+
+/* SORTABLE TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.data-table th{text-align:left;padding:8px 12px;background:var(--bg2);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-light);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+.data-table th:hover{background:var(--teal-pale);color:var(--teal-dark);}
+.data-table th::after{content:' ⇅';opacity:.35;font-size:.65rem;}
+.data-table th.sort-asc::after{content:' ↑';opacity:1;color:var(--teal-dark);}
+.data-table th.sort-desc::after{content:' ↓';opacity:1;color:var(--teal-dark);}
+.data-table td{padding:7px 12px;border-bottom:1px solid var(--bg2);color:var(--text);}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr.total-row td{font-weight:600;background:var(--teal-pale);color:var(--teal-dark);}
+.data-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.data-table td.pct{text-align:right;color:var(--text-light);font-size:.75rem;}
+.data-table tr:not(.total-row):hover td{background:#f0f8f7;}
+
+/* TABLE TOOLBAR */
+.table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.table-search{border:1.5px solid var(--border);border-radius:6px;padding:6px 10px 6px 30px;font-family:inherit;font-size:.8rem;background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%235a5a5a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 8px center;color:var(--text);flex:1;min-width:120px;}
+.table-search:focus{outline:none;border-color:var(--teal);}
+.table-count{font-size:.72rem;color:var(--text-light);white-space:nowrap;}
+.table-wrap{overflow-x:auto;}
+.table-pagination{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.table-page-info{font-size:.72rem;color:var(--text-light);margin-right:auto;}
+body.embed-mode header,body.embed-mode .controls{display:none;}
+body.embed-mode .content{padding:16px;}
+body.embed-mode .section-header,body.embed-mode .footnote{display:none;}
+body.embed-mode .chart-meta{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:block!important;overflow:visible;}
+body.embed-mode .chart-card{box-shadow:none;border:none;padding:0;background:transparent;}
+body.embed-mode .content{box-sizing:border-box;width:100%;}
+body.embed-mode .chart-area{width:100%;box-sizing:border-box;}
+body.embed-mode svg{max-width:100%;}
+body.embed-mode .embed-controls{display:flex!important;}
+.embed-controls{display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px;background:var(--white);border-bottom:1px solid var(--border);}
+body.embed-mode .embed-controls{position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+body.embed-mode .content{padding-top:12px!important;overflow-y:auto;}
+body.embed-mode{overflow-y:auto;height:auto;}
+.embed-controls label{font-size:.72rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);}
+.embed-cubf-btn{padding:4px 9px;border:1.5px solid var(--border);border-radius:5px;background:var(--bg);font-family:inherit;font-size:.72rem;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .15s;}
+.embed-cubf-btn:hover{border-color:var(--teal);color:var(--teal-dark);}
+.embed-cubf-btn.active{background:var(--teal-dark);border-color:var(--teal-dark);color:white;}
+.embed-year-select{border:1.5px solid var(--border);border-radius:5px;padding:4px 24px 4px 8px;font-family:inherit;font-size:.72rem;background:var(--bg);color:var(--text);appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a5a5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;cursor:pointer;}
+.embed-sep{width:1px;height:20px;background:var(--border);}
+
+/* CHART META */
+.chart-meta{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+.chart-meta-note{font-size:.72rem;color:var(--text-light);line-height:1.5;font-style:italic;margin-bottom:6px;}
+.chart-meta-source{font-size:.72rem;color:var(--text-light);margin-bottom:10px;}
+.chart-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.chart-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg);font-family:inherit;font-size:.68rem;color:var(--text-light);cursor:pointer;transition:all .15s;}
+.chart-btn svg{color:#5a5a5a;stroke:#5a5a5a;}
+.chart-btn svg{width:12px;height:12px;display:inline-block;vertical-align:middle;flex-shrink:0;}
+.chart-btn:hover{border-color:var(--teal);color:var(--teal-dark);background:var(--teal-pale);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:none;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--white);border-radius:10px;padding:28px;max-width:520px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.22);}
+.modal-box h4{font-family:'Source Serif 4',serif;font-size:1rem;color:var(--teal-dark);margin-bottom:12px;}
+.modal-box textarea{width:100%;height:80px;font-family:monospace;font-size:.76rem;border:1.5px solid var(--border);border-radius:6px;padding:10px;color:var(--text);resize:none;}
+.modal-actions{display:flex;gap:10px;margin-top:12px;}
+.modal-btn{padding:7px 18px;border:none;border-radius:6px;font-family:inherit;font-size:.82rem;cursor:pointer;}
+.modal-btn.primary{background:var(--teal-dark);color:white;}
+.modal-btn.secondary{background:var(--bg2);color:var(--text);}
+.iframe-opt-btn{padding:5px 10px;border:1.5px solid var(--border);border-radius:5px;background:var(--bg);font-family:inherit;font-size:.75rem;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .15s;}
+.iframe-opt-btn:hover{border-color:var(--teal);color:var(--teal-dark);}
+.iframe-opt-btn.active{background:var(--teal-dark);border-color:var(--teal-dark);color:white;}
+
+.tooltip{position:fixed;pointer-events:none;background:var(--teal-dark);color:white;padding:10px 14px;border-radius:8px;font-size:.78rem;line-height:1.6;max-width:220px;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;transition:opacity .15s;}
+.footnote{margin-top:20px;font-size:.72rem;color:var(--text-light);line-height:1.5;font-style:italic;border-top:1px solid var(--border);padding-top:12px;}
+.loading{display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-light);font-size:.9rem;gap:12px;}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr;}.controls{padding:12px 16px;}.content{padding:20px 16px;}.map-card-inner{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Profil de l'habitation</h1>
+    <div class="subtitle">Rôle d'évaluation foncière · Outaouais · Laurentides · Montérégie</div>
+  </div>
+  <div class="source-badge">Source : MAMH, Rôle d'évaluation<br>foncière des municipalités</div>
+</header>
+
+<div class="controls">
+  <div class="control-group">
+    <label>Région</label>
+    <select id="sel-region">
+      <option value="">Toutes</option>
+      <option value="7">Outaouais</option>
+      <option value="15">Laurentides</option>
+      <option value="16">Montérégie</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>MRC</label>
+    <select id="sel-mrc"><option value="">Chargement…</option></select>
+  </div>
+  <div class="control-group">
+    <label>Année affichée</label>
+    <select id="sel-annee"><option value="">Chargement…</option></select>
+  </div>
+  <div class="control-group">
+    <label>Période</label>
+    <div class="year-range">
+      <select id="sel-annee-min"><option value="">Début</option></select>
+      <span class="year-range-sep">à</span>
+      <select id="sel-annee-max"><option value="">Fin</option></select>
+    </div>
+  </div>
+  <div class="control-group">
+    <label>Filtre CUBF</label>
+    <div class="cubf-group">
+      <button class="cubf-btn active" data-cubf="mamh_strict" title="CUBF : 1000, 1010, 1211, 5000 à 5999">Strict</button>
+      <button class="cubf-btn" data-cubf="mamh_optional" title="CUBF : 1000, 1010, 1211, 1543, 1549, 5000 à 5999, 8100 à 8199">Élargi</button>
+      <button class="cubf-btn" data-cubf="mamh_plus_others" title="CUBF : 1000 à 1999, 5000 à 5999, 8100 à 8199">Complet</button>
+    </div>
+  </div>
+<button onclick="document.getElementById('method-modal').classList.add('open')" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--teal);border-radius:6px;background:transparent;font-family:inherit;font-size:.78rem;font-weight:500;color:var(--teal-dark);cursor:pointer;transition:all .15s;white-space:nowrap;" onmouseover="this.style.background='var(--teal-pale)'" onmouseout="this.style.background='transparent'">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+    Méthodologie CUBF
+  </button>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="logements">Logements</button>
+    <button class="tab-btn" data-tab="valeur">Valeur foncière</button>
+    <button class="tab-btn" data-tab="age">Âge des bâtiments</button>
+    <button class="tab-btn" data-tab="periode">Période de construction</button>
+    <button class="tab-btn" data-tab="superficie">Superficie</button>
+    <button class="tab-btn" data-tab="indicateurs">Indicateurs stratégiques</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="embed-controls" id="embed-controls">
+    <label>Filtre</label>
+    <button class="embed-cubf-btn active" data-cubf="mamh_strict" onclick="setEmbedCubf(this)">Strict</button>
+    <button class="embed-cubf-btn" data-cubf="mamh_optional" onclick="setEmbedCubf(this)">Élargi</button>
+    <button class="embed-cubf-btn" data-cubf="mamh_plus_others" onclick="setEmbedCubf(this)">Complet</button>
+    <div class="embed-sep"></div>
+    <div id="embed-period-controls" style="display:flex;align-items:center;gap:8px;">
+      <label>De</label>
+      <select class="embed-year-select" id="embed-ymin" onchange="setEmbedYear()"></select>
+      <label>à</label>
+      <select class="embed-year-select" id="embed-ymax" onchange="setEmbedYear()"></select>
+    </div>
+    <div id="embed-single-controls" style="display:none;align-items:center;gap:8px;">
+      <label>Année affichée</label>
+      <select class="embed-year-select" id="embed-ysingle" onchange="setEmbedYearSingle()"></select>
+    </div>
+  </div>
+<main class="content" id="content">
+    <div class="loading"><div class="spinner"></div> Chargement des données…</div>
+  </main>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<!-- METHODOLOGY MODAL -->
+<div class="modal-overlay" id="method-modal">
+  <div class="modal-box" style="max-width:720px;max-height:85vh;overflow-y:auto;">
+    <h4 style="font-size:1.1rem;margin-bottom:16px;">Méthodologie — Filtre CUBF et types de construction résidentielle</h4>
+
+    <!-- VARIABLES CLÉS -->
+    <div style="font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--teal-dark);margin-bottom:10px;">Variables clés du rôle d'évaluation foncière</div>
+    <table style="width:100%;border-collapse:collapse;font-size:.78rem;margin-bottom:20px;">
+      <thead><tr style="background:var(--teal-dark);color:white;"><th style="padding:7px 12px;text-align:left;font-weight:500;">Variable</th><th style="padding:7px 12px;text-align:left;font-weight:500;">Description</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--bg2);"><td style="padding:7px 12px;font-weight:600;font-family:monospace;color:var(--teal-dark);">RL0105a</td><td style="padding:7px 12px;"><strong>Utilisation prédominante (CUBF)</strong> — Code d'utilisation des biens-fonds décrivant l'utilisation effective de l'unité d'évaluation selon l'usage fait à la fois du terrain et des bâtiments.</td></tr>
+        <tr style="border-bottom:1px solid var(--bg2);"><td style="padding:7px 12px;font-weight:600;font-family:monospace;color:var(--teal-dark);">RL0309a</td><td style="padding:7px 12px;"><strong>Lien physique</strong> — Indique si le bâtiment est détaché (1), jumelé (2), en rangée 1 côté (3), en rangée plus de 1 côté (4) ou intégré (5). Cette variable est déterminante pour l'attribution du type de construction.</td></tr>
+        <tr><td style="padding:7px 12px;font-weight:600;font-family:monospace;color:var(--teal-dark);">RL0311a</td><td style="padding:7px 12px;"><strong>Nombre total de logements</strong> de l'unité d'évaluation. Utilisé conjointement avec RL0309a pour déterminer le type de construction.</td></tr>
+      </tbody>
+    </table>
+
+    <!-- MÉTHODE DE CALCUL ODO -->
+    <div style="font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--teal-dark);margin-bottom:10px;">Méthode de calcul des types de construction (ODO)</div>
+    <p style="font-size:.78rem;color:var(--text-light);margin-bottom:10px;line-height:1.6;">L'attribution du type résidentiel repose sur la combinaison de <strong>RL0309a</strong> (lien physique) et <strong>RL0311a</strong> (nombre de logements) :</p>
+    <table style="width:100%;border-collapse:collapse;font-size:.77rem;margin-bottom:8px;">
+      <thead><tr style="background:var(--bg2);"><th style="padding:6px 10px;text-align:left;font-weight:500;">RL0309a — Lien physique</th><th style="padding:6px 10px;text-align:left;font-weight:500;">RL0311a — Logements</th><th style="padding:6px 10px;text-align:left;font-weight:500;">Type attribué</th></tr></thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--bg2);background:#f0f8f7;"><td style="padding:6px 10px;">Bâtiment détaché (1)</td><td style="padding:6px 10px;">= 1</td><td style="padding:6px 10px;font-weight:500;">Maisons individuelles détachées</td></tr>
+        <tr style="border-bottom:1px solid var(--bg2);"><td style="padding:6px 10px;">Bâtiment jumelé (2), en rangée 1 côté (3), en rangée + de 1 côté (4)</td><td style="padding:6px 10px;">= 1</td><td style="padding:6px 10px;font-weight:500;">Maisons jumelées ou en rangée</td></tr>
+        <tr style="border-bottom:1px solid var(--bg2);background:#f0f8f7;"><td style="padding:6px 10px;">Bâtiment intégré (5)</td><td style="padding:6px 10px;">= 1</td><td style="padding:6px 10px;font-weight:500;">Immeuble comportant deux logements ou plus</td></tr>
+        <tr style="border-bottom:1px solid var(--bg2);"><td style="padding:6px 10px;">Bâtiment détaché (1)</td><td style="padding:6px 10px;">≥ 2</td><td style="padding:6px 10px;font-weight:500;">Immeuble comportant deux logements ou plus</td></tr>
+        <tr style="border-bottom:1px solid var(--bg2);background:#f0f8f7;"><td style="padding:6px 10px;">Bâtiment jumelé (2), en rangée 1 côté (3), en rangée + de 1 côté (4)</td><td style="padding:6px 10px;">≥ 2</td><td style="padding:6px 10px;font-weight:500;">Immeuble comportant deux logements ou plus <em style="color:var(--text-light)">(spécificité ODO)</em></td></tr>
+        <tr style="border-bottom:1px solid var(--bg2);"><td style="padding:6px 10px;">Aucun lien physique</td><td style="padding:6px 10px;">≥ 2</td><td style="padding:6px 10px;font-weight:500;">Immeuble comportant deux logements ou plus <em style="color:var(--text-light)">(spécificité ODO)</em></td></tr>
+        <tr style="background:#fff8f0;"><td style="padding:6px 10px;">Aucun lien physique</td><td style="padding:6px 10px;">= 1</td><td style="padding:6px 10px;color:var(--text-light);font-style:italic;">Non catégorisé — exclu des calculs</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:.75rem;color:var(--text-light);font-style:italic;margin-bottom:20px;line-height:1.5;">La méthode ODO diffère de la méthode standard du MAMH sur deux points : elle reclasse les bâtiments jumelés/en rangée avec ≥ 2 logements et les unités sans lien physique avec ≥ 2 logements dans la catégorie « Immeuble comportant deux logements ou plus », plutôt que de les exclure. Cela permet de comptabiliser un plus grand nombre de logements multifamiliaux.</p>
+
+    <!-- FILTRES CUBF -->
+    <div style="font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--teal-dark);margin-bottom:10px;">Filtres CUBF disponibles dans l'outil</div>
+    <p style="font-size:.78rem;color:var(--text-light);margin-bottom:14px;line-height:1.6;">L'étape 1 de la méthode consiste à filtrer la colonne <code style="background:var(--bg2);padding:1px 5px;border-radius:3px;">RL0105a</code> pour ne retenir que les unités à vocation résidentielle. Trois niveaux d'inclusion sont proposés :</p>
+
+    <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:20px;">
+
+      <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="background:#1a4e4b;color:white;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-weight:600;font-size:.85rem;">Filtre Strict</span>
+          <span style="font-size:.72rem;opacity:.8;font-family:monospace;">1000 · 1010 · 1211 · 5000–5999</span>
+        </div>
+        <div style="padding:12px 16px;font-size:.79rem;line-height:1.7;color:var(--text);">
+          <p style="margin-bottom:8px;">Retient uniquement les unités à utilisation prédominante <strong>résidentielle</strong> et <strong>commerciale-résidentielle</strong> au sens strict du CUBF. Correspond aux codes retenus par le MAMH pour le calcul de l'indicateur stratégique de base.</p>
+          <table style="width:100%;border-collapse:collapse;font-size:.76rem;">
+            <thead><tr style="background:var(--bg2);"><th style="padding:4px 10px;text-align:left;font-weight:500;">CUBF</th><th style="padding:4px 10px;text-align:left;font-weight:500;">Utilisation prédominante</th><th style="padding:4px 10px;text-align:left;font-weight:500;">Types produits</th></tr></thead>
+            <tbody>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1000</td><td style="padding:4px 10px;">Résidentiel — unifamiliale détachée</td><td rowspan="4" style="padding:4px 10px;vertical-align:middle;color:var(--text-light);font-style:italic;">4 types<br>(excluant chalet, mobile, commun)</td></tr>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1010</td><td style="padding:4px 10px;">Résidentiel — jumelée ou en rangée</td></tr>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1211</td><td style="padding:4px 10px;">Résidentiel — immeuble multifamilial</td></tr>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">5000–5999</td><td style="padding:4px 10px;">Commercial avec logements</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:8px;color:var(--text-light);font-style:italic;font-size:.75rem;">→ Recommandé pour les comparaisons intercommunales et le suivi des cibles MAMH. Exclut les maisons de retraite, chalets, mobiles et habitations en commun.</p>
+        </div>
+      </div>
+
+      <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="background:#2d6e6a;color:white;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-weight:600;font-size:.85rem;">Filtre Élargi</span>
+          <span style="font-size:.72rem;opacity:.8;font-family:monospace;">+ 1543 · 1549 · 8100–8199</span>
+        </div>
+        <div style="padding:12px 16px;font-size:.79rem;line-height:1.7;color:var(--text);">
+          <p style="margin-bottom:8px;">Ajoute les unités à utilisation prédominante <strong>maison de retraite</strong> et <strong>agriculture résidentielle</strong>, tel que prévu en option dans la méthode du MAMH lorsque la MRC dispose de données précises. Inclut notamment les résidences pour aînés (RPA légères) et certains logements agricoles.</p>
+          <table style="width:100%;border-collapse:collapse;font-size:.76rem;">
+            <thead><tr style="background:var(--bg2);"><th style="padding:4px 10px;text-align:left;font-weight:500;">CUBF ajoutés</th><th style="padding:4px 10px;text-align:left;font-weight:500;">Utilisation prédominante</th><th style="padding:4px 10px;text-align:left;font-weight:500;">Types produits</th></tr></thead>
+            <tbody>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1543</td><td style="padding:4px 10px;">Maison de retraite avec services légers</td><td rowspan="3" style="padding:4px 10px;vertical-align:middle;color:var(--text-light);font-style:italic;">4 types<br>(même catégories que Strict)</td></tr>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1549</td><td style="padding:4px 10px;">Autre résidence supervisée</td></tr>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">8100–8199</td><td style="padding:4px 10px;">Logements en milieu agricole ou institutionnel</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:8px;color:var(--text-light);font-style:italic;font-size:.75rem;">→ Recommandé lorsqu'on souhaite intégrer l'hébergement résidentiel supervisé. Produit les mêmes 4 types, mais avec un volume plus élevé.</p>
+        </div>
+      </div>
+
+      <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="background:#3d8f8a;color:white;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-weight:600;font-size:.85rem;">Filtre Complet</span>
+          <span style="font-size:.72rem;opacity:.8;font-family:monospace;">1000–1999 · 5000–5999 · 8100–8199</span>
+        </div>
+        <div style="padding:12px 16px;font-size:.79rem;line-height:1.7;color:var(--text);">
+          <p style="margin-bottom:8px;">Retient <strong>l'ensemble de la plage résidentielle 1000–1999</strong> du CUBF, incluant les chalets, maisons mobiles et habitations en commun. Offre le portrait le plus exhaustif du parc bâti. Lorsqu'il y a plusieurs bâtiments résidentiels sur un même lot (ex. : parc de maisons mobiles), toutes les unités d'évaluation sont comptabilisées.</p>
+          <table style="width:100%;border-collapse:collapse;font-size:.76rem;">
+            <thead><tr style="background:var(--bg2);"><th style="padding:4px 10px;text-align:left;font-weight:500;">Plage CUBF ajoutée</th><th style="padding:4px 10px;text-align:left;font-weight:500;">Utilisation prédominante</th><th style="padding:4px 10px;text-align:left;font-weight:500;">Type dans l'outil</th></tr></thead>
+            <tbody>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1100–1199</td><td style="padding:4px 10px;">Chalets, résidences secondaires, villégiature</td><td style="padding:4px 10px;">Chalet et maison de villégiature</td></tr>
+              <tr style="border-top:1px solid var(--bg2);background:#f0f8f7;"><td style="padding:4px 10px;font-family:monospace;">1200–1299</td><td style="padding:4px 10px;">Maisons mobiles, roulottes résidentielles</td><td style="padding:4px 10px;">Maison mobile et roulotte</td></tr>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1500–1599</td><td style="padding:4px 10px;">RPA, refuges, coopératives, résidences étudiantes, foyers de groupe</td><td style="padding:4px 10px;">Habitation en commun</td></tr>
+              <tr style="border-top:1px solid var(--bg2);background:#f0f8f7;"><td style="padding:4px 10px;font-family:monospace;">Autres 1000–1999</td><td style="padding:4px 10px;">Autres usages résidentiels CUBF</td><td style="padding:4px 10px;">Autres immeubles résidentiels</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:8px;color:var(--text-light);font-style:italic;font-size:.75rem;">→ Produit les <strong>7 types</strong> complets. À utiliser avec précaution dans les territoires à forte composante touristique (ex. : Laurentides) où les chalets peuvent représenter une part disproportionnée du parc.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIMITES -->
+    <div style="font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--teal-dark);margin-bottom:10px;">Limites de la méthodologie</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div style="background:var(--bg2);border-radius:6px;padding:12px 14px;font-size:.77rem;line-height:1.6;">
+        <div style="font-weight:600;color:var(--text);margin-bottom:6px;">Lien physique manquant</div>
+        Dans certains cas, la colonne <code style="background:white;padding:1px 4px;border-radius:3px;">RL0309a</code> peut être vide. Deux approches sont possibles : <strong>exclure</strong> ces logements des calculs (ce qui peut affecter le total), ou les <strong>corriger manuellement</strong> via une validation visuelle (ex. : Google Maps). La méthode ODO attribue les unités sans lien physique avec ≥ 2 logements à la catégorie multifamiliale.
+      </div>
+      <div style="background:var(--bg2);border-radius:6px;padding:12px 14px;font-size:.77rem;line-height:1.6;">
+        <div style="font-weight:600;color:var(--text);margin-bottom:6px;">Couverture temporelle</div>
+        Les données proviennent de <strong>deux sources distinctes</strong> selon la période. Pour <strong>2023 et les années suivantes</strong>, le pipeline interroge automatiquement le portail <strong>donneesouvertes.affmunqc.net</strong> du MAMH : il télécharge un fichier index (<code style="background:white;padding:1px 4px;border-radius:3px;">indexRole{année}.csv</code>) contenant les URL vers les fichiers XML de chaque municipalité, puis parse chacun individuellement. Les années futures (2027 et au-delà) seront captées dès que le MAMH publiera leurs index. Pour <strong>2012 à 2022</strong>, les données proviennent des fichiers SHP provinciaux (<code style="background:white;padding:1px 4px;border-radius:3px;">ROLE{YYYY}_SHP.zip</code>) fournis par le MAMH et placés manuellement dans le répertoire du projet.
+      </div>
+    </div>
+
+    <div style="background:#f0f8f7;border:1px solid var(--teal-pale);border-radius:6px;padding:12px 14px;font-size:.77rem;color:var(--text-light);line-height:1.6;margin-bottom:16px;">
+      <strong style="color:var(--teal-dark);">Source :</strong> Ministère des Affaires municipales et de l'Habitation (MAMH), rôle d'évaluation foncière des municipalités. Méthode de calcul adaptée de l'indicateur stratégique de l'Observatoire du développement de l'Outaouais (ODO).
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn secondary" onclick="document.getElementById('method-modal').classList.remove('open')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="iframe-modal">
+  <div class="modal-box" style="max-width:580px;">
+    <h4>Code d'intégration (iframe)</h4>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:16px;">
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <div style="font-size:.72rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);margin-bottom:6px;">Filtre CUBF</div>
+          <div style="display:flex;gap:4px;">
+            <button class="iframe-opt-btn active" data-iopt="cubf" data-val="mamh_strict" onclick="setIframeOpt('cubf',this)">Strict</button>
+            <button class="iframe-opt-btn" data-iopt="cubf" data-val="mamh_optional" onclick="setIframeOpt('cubf',this)">Élargi</button>
+            <button class="iframe-opt-btn" data-iopt="cubf" data-val="mamh_plus_others" onclick="setIframeOpt('cubf',this)">Complet</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div id="iframe-range-row" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div>
+          <div style="font-size:.72rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);margin-bottom:6px;">Année début</div>
+          <select id="iframe-ymin" onchange="updateIframeCode()" style="border:1.5px solid var(--border);border-radius:6px;padding:6px 28px 6px 10px;font-family:inherit;font-size:.82rem;background:var(--bg);color:var(--text);appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a5a5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;"></select>
+        </div>
+        <div>
+          <div style="font-size:.72rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);margin-bottom:6px;">Année fin</div>
+          <select id="iframe-ymax" onchange="updateIframeCode()" style="border:1.5px solid var(--border);border-radius:6px;padding:6px 28px 6px 10px;font-family:inherit;font-size:.82rem;background:var(--bg);color:var(--text);appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a5a5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;"></select>
+        </div>
+        </div>
+        <div id="iframe-single-row" style="display:none;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div>
+            <div style="font-size:.72rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);margin-bottom:6px;">Année affichée</div>
+            <select id="iframe-ysingle" onchange="updateIframeCode()" style="border:1.5px solid var(--border);border-radius:6px;padding:6px 28px 6px 10px;font-family:inherit;font-size:.82rem;background:var(--bg);color:var(--text);appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a5a5a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 8px center;cursor:pointer;"></select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;color:var(--text-light);margin-bottom:6px;">Code à intégrer</div>
+    <textarea id="iframe-code" readonly style="font-size:.72rem;"></textarea>
+    <div class="modal-actions">
+      <button class="modal-btn primary" onclick="copyIframe()">Copier le code</button>
+      <button class="modal-btn secondary" onclick="closeModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const DATA={}, TOPOS={};
+const TYPE_COLORS={
+  "Autres immeubles résidentiels":"#8fbc8f",
+  "Chalet et maison de villégiature":"#b2deda",
+  "Habitation en commun":"#6dbfb8",
+  "Logements dans un immeuble comportant deux logements ou plus":"#5a6fa0",
+  "Maison mobile et roulotte":"#4a90a4",
+  "Maisons individuelles détachées":"#1a4e4b",
+  "Maisons jumelées ou en rangée":"#c8b89a",
+  "Total des unités d'évaluation résidentielles":"#3d8f8a",
+};
+const PERIODE_COLORS={
+  "1960 ou avant":"#1a4e4b","1961-1980":"#2d6e6a","1981-2000":"#3d8f8a",
+  "2001-2015":"#6dbfb8","2016 et plus":"#b2deda",
+};
+const PERIODES_ORDER=["1960 ou avant","1961-1980","1981-2000","2001-2015","2016 et plus"];
+const TYPE_COLS_MAMH=["Maisons individuelles détachées","Maisons jumelées ou en rangée","Logements dans un immeuble comportant deux logements ou plus","Autres immeubles résidentiels"];
+const TYPE_COLS_FULL=["Maisons individuelles détachées","Maisons jumelées ou en rangée","Logements dans un immeuble comportant deux logements ou plus","Autres immeubles résidentiels","Chalet et maison de villégiature","Habitation en commun","Maison mobile et roulotte"];
+function getTypeCols(){return currentCubf==='mamh_plus_others'?TYPE_COLS_FULL:TYPE_COLS_MAMH;}
+const FOOTNOTE_TYPES_MAP={
+  mamh_strict:`Les types de logements sont classés selon leur utilisation prédominante, identifiée par le code d'utilisation des biens-fonds (CUBF : 1000, 1010, 1211, 5000-5999), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec. Les maisons individuelles détachées sont des bâtiments détachés comprenant un seul logement. Les maisons jumelées ou en rangée regroupent les bâtiments jumelés ou en rangée (1 côté ou plus) lorsqu'ils ne comptent qu'un seul logement. Les logements situés dans un immeuble comportant deux logements ou plus incluent les bâtiments intégrés avec un seul logement ainsi que les bâtiments ayant au moins deux logements. Enfin, les autres immeubles résidentiels regroupent les unités résidentielles n'ayant pas de lien physique au rôle d'évaluation foncière.`,
+  mamh_optional:`Les types de logements sont classés selon leur utilisation prédominante, identifiée par le code d'utilisation des biens-fonds (CUBF : 1000, 1010, 1211, 1543, 1549, 5000-5999, 8100-8199), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec. Les maisons individuelles détachées sont des bâtiments détachés comprenant un seul logement. Les maisons jumelées ou en rangée regroupent les bâtiments jumelés ou en rangée (1 côté ou plus) lorsqu'ils ne comptent qu'un seul logement. Les logements situés dans un immeuble comportant deux logements ou plus incluent les bâtiments intégrés avec un seul logement ainsi que les bâtiments ayant au moins deux logements. Enfin, les autres immeubles résidentiels regroupent les unités résidentielles n'ayant pas de lien physique au rôle d'évaluation foncière.`,
+  mamh_plus_others:`Les types de construction sont classés selon leur utilisation prédominante (CUBF : 1000–1999, 5000–5999, 8100–8199), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec. Les maisons individuelles détachées sont des bâtiments détachés comprenant un seul logement. Les maisons jumelées ou en rangée regroupent les bâtiments jumelés ou en rangée (1 côté ou plus) lorsqu'ils ne comptent qu'un seul logement. Les logements situés dans un immeuble comportant deux logements ou plus incluent les bâtiments intégrés avec un seul logement ainsi que les bâtiments ayant au moins deux logements. Les chalet et maison de villégiature (11), les maison mobile et roulotte (12), et les habitation en commun (15) sont identifiés. Enfin, les autres immeubles résidentiels regroupent les hôtels et motels résidentiels, les résidences provisoires et les unités résidentielles n'ayant pas de lien physique au rôle d'évaluation foncière.`,
+};
+function FOOTNOTE_TYPES(){ return FOOTNOTE_TYPES_MAP[currentCubf] || FOOTNOTE_TYPES_MAP.mamh_strict; }
+const SOURCE=`Ministère des Affaires municipales et de l'Habitation (MAMH), rôle d'évaluation foncière des municipalités.`;
+
+let currentMRC=null,currentTab='logements',currentYear=null,currentYearMin=null,currentYearMax=null,currentCubf='mamh_strict';
+const CUBF_LABELS={mamh_strict:'Filtre CUBF strict — 1000, 1010, 1211, 5000–5999',mamh_optional:'Filtre CUBF élargi — 1000, 1010, 1211, 1543, 1549, 5000–5999, 8100–8199',mamh_plus_others:'Filtre CUBF complet — 1000–1999, 5000–5999, 8100–8199'};
+function getCubfLabel(){return CUBF_LABELS[currentCubf]||'';}
+function dk(base){const s=['mrc_list','nouveaux_logements_mrc','nouveaux_logements_mun','densite_pu_mrc','densite_pu_mun','types_nouveaux_mrc'];if(s.includes(base))return base;return base+'_'+currentCubf;}
+
+// ── LOAD ──────────────────────────────────────────────────────────────────────
+async function loadAll(){
+  const files=['mrc_list',
+    'nouveaux_logements_mrc','nouveaux_logements_mun','densite_pu_mrc','densite_pu_mun','types_nouveaux_mrc'];
+  const variantFiles=['logements_types_mrc','logements_types_mun','valeur_mrc','valeur_mun','age_mrc','age_mun','periode_mrc','periode_mun','superficie_mrc','superficie_mun'];
+  const suffixes=['mamh_strict','mamh_optional','mamh_plus_others'];
+  variantFiles.forEach(f=>suffixes.forEach(s=>files.push(f+'_'+s)));
+  const _dummy=[
+    'nouveaux_logements_mrc','nouveaux_logements_mun','densite_pu_mrc','densite_pu_mun',
+    'types_nouveaux_mrc','types_nouveaux_mun'];
+  await Promise.all(files.map(async f=>{
+    try{ const r=await fetch(`./data/${f}.json`); DATA[f]=await r.json(); }
+    catch(e){ DATA[f]=[]; console.warn(`Missing: ${f}.json`); }
+  }));
+}
+
+function getAvailableYears(){
+  const years=new Set();
+  [DATA[dk('logements_types_mrc')],DATA[dk('valeur_mrc')],DATA[dk('age_mrc')],DATA[dk('periode_mrc')],DATA[dk('superficie_mrc')]]
+    .forEach(arr=>(arr||[]).forEach(d=>{ const y=Number(d?.Annee); if(Number.isFinite(y)) years.add(y); }));
+  return [...years].sort((a,b)=>a-b);
+}
+
+function populateYearSelect(){
+  const ys=document.getElementById('sel-annee');
+  const mn=document.getElementById('sel-annee-min');
+  const mx=document.getElementById('sel-annee-max');
+  const years=getAvailableYears();
+  if(!years.length){ [ys,mn,mx].forEach(s=>s&&(s.innerHTML='<option value="">Aucune donnée</option>')); return; }
+  const earliest=years[0], latest=years[years.length-1];
+  if(!years.includes(currentYear)) currentYear=latest;
+  if(!years.includes(currentYearMin)) currentYearMin=earliest;
+  if(!years.includes(currentYearMax)) currentYearMax=latest;
+  if(currentYearMin>currentYearMax) currentYearMin=currentYearMax;
+  const desc=years.slice().reverse().map(y=>`<option value="${y}">${y}</option>`).join('');
+  const asc=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(ys){ ys.innerHTML=desc; ys.value=String(currentYear); }
+  if(mn){ mn.innerHTML=asc; mn.value=String(currentYearMin); }
+  if(mx){ mx.innerHTML=asc; mx.value=String(currentYearMax); }
+}
+
+function getFilteredYears(){
+  return getAvailableYears().filter(y=>{
+    if(currentYearMin!==null&&y<currentYearMin) return false;
+    if(currentYearMax!==null&&y>currentYearMax) return false;
+    return true;
+  });
+}
+function syncYearRange(changed){
+  if(changed==='min'&&currentYearMin>currentYearMax) currentYearMax=currentYearMin;
+  if(changed==='max'&&currentYearMax<currentYearMin) currentYearMin=currentYearMax;
+  const f=getFilteredYears();
+  if(f.length&&!f.includes(currentYear)) currentYear=f[f.length-1];
+  populateYearSelect();
+}
+function populateMRCSelect(regionFilter){
+  const sel=document.getElementById('sel-mrc');
+  const mrcList=DATA.mrc_list||[];
+  const filtered=regionFilter?mrcList.filter(d=>String(d.Region)===regionFilter):mrcList;
+  sel.innerHTML='<option value="">Toutes les MRC</option>'+
+    filtered.map(d=>`<option value="${d.CDNAME}">${d.CDNAME}</option>`).join('');
+  if(currentMRC&&filtered.find(d=>d.CDNAME===currentMRC)) sel.value=currentMRC;
+  else currentMRC=null;
+}
+
+// ── MAP (retirée) ─────────────────────────────────────────────────────────────
+function renderMapCard(container){ return; }
+function drawMap(){ return; }
+function drawLegend(){ return; }
+function selectMRC(mrc){ currentMRC=currentMRC===mrc?null:mrc; document.getElementById('sel-mrc').value=currentMRC||''; render(); }
+
+// ── TOOLTIP ───────────────────────────────────────────────────────────────────
+function showTooltip(event,html){ const t=document.getElementById('tooltip'); t.innerHTML=html; t.style.opacity='1'; moveTooltip(event); }
+function moveTooltip(event){ const t=document.getElementById('tooltip'); t.style.left=(event.clientX+12)+'px'; t.style.top=(event.clientY-10)+'px'; }
+function hideTooltip(){ document.getElementById('tooltip').style.opacity='0'; }
+
+// ── CHART META HELPER ─────────────────────────────────────────────────────────
+function chartMeta({note='', source='', csvData=null, chartId=null, title='', singleYear=false}){
+  const svgDown='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5a5a5a" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+  const svgCode='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5a5a5a" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+  const svgImg='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5a5a5a" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+  const btnDownload=(csvData&&chartId)?`<button class="chart-btn" data-card-id="${chartId}" data-title="${title.replace(/"/g,'&quot;')}" onclick="downloadCSV(this)">${svgDown}Télécharger les données</button>`:'';
+  const btnIframe=chartId?`<button class="chart-btn" onclick="showIframe('${chartId}',${singleYear})">${svgCode}Obtenir l'iframe</button>`:'';
+  const btnImg=chartId?`<button class="chart-btn" onclick="downloadPNG('${chartId}','${title}')">${svgImg}Télécharger PNG</button>`:'';
+  return `<div class="chart-meta">
+    ${note?`<div class="chart-meta-note">${note}</div>`:''}
+    ${source?`<div class="chart-meta-source"><strong>Source :</strong> ${source}</div>`:''}
+    <div class="chart-actions">${btnDownload}${btnIframe}${btnImg}</div>
+  </div>`;
+}
+
+const _csvStore={};
+let currentEmbedId=null;
+function downloadCSV(btn){
+  const key=btn.getAttribute('data-card-id');
+  const title=btn.getAttribute('data-title')||'donnees';
+  const csv=key?_csvStore[key]:null;
+  if(!csv){
+    const orig=btn.innerHTML;
+    btn.textContent='⚠ Non disponible';
+    setTimeout(()=>{ btn.innerHTML=orig; },2000);
+    return;
+  }
+  // data URI works inside sandboxed iframes unlike createObjectURL
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+  a.download=(title||'donnees').replace(/[^a-z0-9_À-ɏ]/gi,'_')+'.csv';
+  a.target='_blank';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+function storeCSV(cardId, rows){
+  if(!rows||!rows.length) return;
+  const keys=Object.keys(rows[0]);
+  const csv=[keys.join(','),...rows.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n');
+  _csvStore[cardId]=csv;
+}
+function buildStateUrl(embedId=''){
+  const url=new URL(window.location.href.split('#')[0]);
+  url.searchParams.set('tab', currentTab);
+  if(currentMRC) url.searchParams.set('mrc', currentMRC); else url.searchParams.delete('mrc');
+  if(currentYear!==null) url.searchParams.set('year', currentYear);
+  if(currentYearMin!==null) url.searchParams.set('ymin', currentYearMin);
+  if(currentYearMax!==null) url.searchParams.set('ymax', currentYearMax);
+  if(embedId) url.searchParams.set('embed', embedId); else url.searchParams.delete('embed');
+  url.searchParams.set('cubf', currentCubf);
+  return url.toString();
+}
+let _iframeChartId=null, _iframeCubf=null, _iframeYmin=null, _iframeYmax=null;
+function setIframeOpt(type, btn){
+  document.querySelectorAll(`.iframe-opt-btn[data-iopt="${type}"]`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(type==='cubf') _iframeCubf=btn.dataset.val;
+  updateIframeCode();
+}
+function updateIframeCode(){
+  let url;
+  if(_iframeSingleYear){
+    const ySingle=document.getElementById('iframe-ysingle');
+    const yr=ySingle?parseInt(ySingle.value,10):(currentYear||currentYearMax);
+    url=buildIframeUrl(_iframeChartId, _iframeCubf, yr, yr, true);
+  } else {
+    const yminSel=document.getElementById('iframe-ymin');
+    const ymaxSel=document.getElementById('iframe-ymax');
+    _iframeYmin=yminSel?parseInt(yminSel.value,10):currentYearMin;
+    _iframeYmax=ymaxSel?parseInt(ymaxSel.value,10):currentYearMax;
+    if(_iframeYmin>_iframeYmax){ _iframeYmax=_iframeYmin; if(ymaxSel) ymaxSel.value=_iframeYmax; }
+    url=buildIframeUrl(_iframeChartId, _iframeCubf, _iframeYmin, _iframeYmax, false);
+  }
+  const ta=document.getElementById('iframe-code');
+  if(ta) ta.value=`<iframe src="${url}" width="100%" height="560" frameborder="0" title="Profil de l'habitation"></iframe>`;
+}
+function buildIframeUrl(chartId, cubf, ymin, ymax, singleYear=false){
+  const url=new URL(window.location.href.split('#')[0]);
+  url.searchParams.set('tab', currentTab);
+  if(currentMRC) url.searchParams.set('mrc', currentMRC);
+  if(singleYear){
+    url.searchParams.set('year', ymin||currentYear);
+    url.searchParams.set('embed_single','1');
+  } else {
+    if(ymin!=null) url.searchParams.set('ymin', ymin);
+    if(ymax!=null) url.searchParams.set('ymax', ymax);
+    url.searchParams.set('year', ymax||currentYear);
+  }
+  if(cubf) url.searchParams.set('cubf', cubf);
+  if(chartId) url.searchParams.set('embed', chartId);
+  return url.toString();
+}
+let _iframeSingleYear=false;
+function showIframe(chartId, singleYear=false){
+  // In embed mode, allow modal to open normally (it's part of the same page)
+  _iframeChartId=chartId;
+  _iframeSingleYear=singleYear;
+  _iframeCubf=currentCubf;
+  _iframeYmin=currentYearMin;
+  _iframeYmax=currentYearMax;
+  // Set cubf buttons
+  document.querySelectorAll('.iframe-opt-btn[data-iopt="cubf"]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.val===_iframeCubf);
+  });
+  // Show/hide year controls
+  const rangeRow=document.getElementById('iframe-range-row');
+  const singleRow=document.getElementById('iframe-single-row');
+  if(rangeRow) rangeRow.style.display=singleYear?'none':'flex';
+  if(singleRow) singleRow.style.display=singleYear?'flex':'none';
+  // Populate year selects
+  const years=getAvailableYears();
+  const yminSel=document.getElementById('iframe-ymin');
+  const ymaxSel=document.getElementById('iframe-ymax');
+  const ySingle=document.getElementById('iframe-ysingle');
+  const opts=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(yminSel){ yminSel.innerHTML=opts; yminSel.value=String(_iframeYmin||years[0]); }
+  if(ymaxSel){ ymaxSel.innerHTML=opts; ymaxSel.value=String(_iframeYmax||years[years.length-1]); }
+  if(ySingle){ ySingle.innerHTML=opts; ySingle.value=String(currentYear||years[years.length-1]); }
+  updateIframeCode();
+  document.getElementById('iframe-modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('iframe-modal').classList.remove('open'); }
+function copyIframe(){
+  const ta=document.getElementById('iframe-code'); ta.select(); document.execCommand('copy');
+  const btn=document.querySelector('#iframe-modal .modal-btn.primary');
+  if(btn){ const orig=btn.textContent; btn.textContent='✓ Copié !'; setTimeout(()=>btn.textContent=orig,1500); }
+}
+function downloadPNG(chartId, title){
+  const card=document.getElementById(chartId);
+  if(!card) return;
+
+  const actions=card.querySelector('.chart-actions');
+  const metaNote=card.querySelector('.chart-meta-note');
+  const metaSource=card.querySelector('.chart-meta-source');
+
+  // Hide UI chrome before capture
+  if(actions) actions.style.visibility='hidden';
+
+  function doCapture(){
+    const scale=2;
+    html2canvas(card,{
+      scale,
+      backgroundColor:'#ffffff',
+      useCORS:true,
+      allowTaint:true,
+      logging:false,
+      onclone:(doc)=>{
+        const root=doc.documentElement;
+        const vars={
+          '--teal-dark':'#1a4e4b','--teal':'#2d6e6a','--teal-mid':'#3d8f8a',
+          '--teal-light':'#6dbfb8','--teal-pale':'#b2deda','--accent':'#e8a048',
+          '--bg':'#f7f5f1','--bg2':'#eeeae3','--text':'#1a1a1a',
+          '--text-light':'#5a5a5a','--border':'#d4cfc6','--white':'#ffffff',
+        };
+        Object.entries(vars).forEach(([k,v])=>root.style.setProperty(k,v));
+        // Make sure actions are invisible in clone too
+        doc.querySelectorAll('.chart-actions').forEach(el=>el.style.visibility='hidden');
+      }
+    }).then(canvas=>{
+      if(actions) actions.style.visibility='';
+
+      const pad=24, s=scale;
+      const out=document.createElement('canvas');
+      out.width=canvas.width+pad*2*s;
+      out.height=canvas.height+pad*2*s;
+      const ctx=out.getContext('2d');
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(0,0,out.width,out.height);
+      ctx.fillStyle='#1a4e4b';
+      ctx.fillRect(0,0,out.width,4*s);
+      ctx.drawImage(canvas,pad*s,pad*s);
+
+      // Use a link with download attribute — must be appended to doc to work in Firefox
+      const dataUrl=out.toDataURL('image/png');
+      const filename=(title||chartId).replace(/[^a-z0-9À-ɏ\-_]/gi,'_')+'.png';
+      const a=document.createElement('a');
+      a.href=dataUrl;
+      a.download=filename;
+      a.style.display='none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>document.body.removeChild(a), 100);
+    }).catch(err=>{
+      console.error('html2canvas error:', err);
+      if(actions) actions.style.visibility='';
+    });
+  }
+
+  if(window.html2canvas){
+    doCapture();
+  } else {
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s.onload=doCapture;
+    s.onerror=()=>{ if(actions) actions.style.visibility=''; };
+    document.head.appendChild(s);
+  }
+}
+function setEmbedCubf(btn){
+  document.querySelectorAll('.embed-cubf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  currentCubf=btn.dataset.cubf;
+  // sync main cubf buttons too
+  document.querySelectorAll('.cubf-btn').forEach(b=>b.classList.toggle('active',b.dataset.cubf===currentCubf));
+  render();
+}
+function setEmbedYearSingle(){
+  const sel=document.getElementById('embed-ysingle'); if(!sel) return;
+  currentYear=parseInt(sel.value,10);
+  const mainSel=document.getElementById('sel-annee'); if(mainSel) mainSel.value=String(currentYear);
+  render();
+}
+function setEmbedYear(){
+  const mn=document.getElementById('embed-ymin');
+  const mx=document.getElementById('embed-ymax');
+  let ymin=parseInt(mn.value,10), ymax=parseInt(mx.value,10);
+  if(ymin>ymax){ ymax=ymin; mx.value=String(ymax); }
+  currentYearMin=ymin; currentYearMax=ymax;
+  currentYear=ymax;
+  const sel=document.getElementById('sel-annee'); if(sel) sel.value=String(currentYear);
+  syncYearRange('min');
+  render();
+}
+function populateEmbedYearSelects(){
+  const years=getAvailableYears();
+  const mn=document.getElementById('embed-ymin');
+  const mx=document.getElementById('embed-ymax');
+  if(!mn||!mx) return;
+  const opts=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  mn.innerHTML=opts; mx.innerHTML=opts;
+  mn.value=String(currentYearMin||years[0]);
+  mx.value=String(currentYearMax||years[years.length-1]);
+}
+function applyEmbedMode(){
+  document.body.classList.toggle('embed-mode', !!currentEmbedId);
+  if(!currentEmbedId) return;
+  const content=document.getElementById('content');
+  const target=document.getElementById(currentEmbedId);
+  if(!content||!target) return;
+  Array.from(content.children).forEach(child=>{ if(!child.contains(target)) child.style.display='none'; });
+  // Configure embed controls
+  const ec=document.getElementById('embed-controls'); if(ec) ec.style.display='';
+  const isSingle=window._embedSingleYear||false;
+  const pCtrl=document.getElementById('embed-period-controls');
+  const sCtrl=document.getElementById('embed-single-controls');
+  if(pCtrl) pCtrl.style.display=isSingle?'none':'flex';
+  if(sCtrl) sCtrl.style.display=isSingle?'flex':'none';
+  if(isSingle){ const yrs=getAvailableYears(); const sel=document.getElementById('embed-ysingle'); if(sel){ sel.innerHTML=yrs.map(y=>`<option value="${y}">${y}</option>`).join(''); sel.value=String(currentYear||yrs[yrs.length-1]); } }
+  else { const yrs=getAvailableYears(); const opts=yrs.map(y=>`<option value="${y}">${y}</option>`).join(''); const mn=document.getElementById('embed-ymin'); const mx=document.getElementById('embed-ymax'); if(mn){ mn.innerHTML=opts; mn.value=String(currentYearMin||yrs[0]); } if(mx){ mx.innerHTML=opts; mx.value=String(currentYearMax||yrs[yrs.length-1]); } }
+  // Sync active cubf button
+  document.querySelectorAll('.embed-cubf-btn').forEach(b=>b.classList.toggle('active', b.dataset.cubf===currentCubf));
+  const parent=target.parentElement;
+  if(parent?.classList.contains('charts-grid')){
+    Array.from(parent.children).forEach(child=>{ if(child!==target) child.style.display='none'; });
+    parent.classList.add('wide');
+    parent.style.display='block';
+  }
+}
+function applyStateFromUrl(){
+  const params=new URLSearchParams(window.location.search);
+  const tab=params.get('tab'); if(tab) currentTab=tab;
+  const mrc=params.get('mrc'); currentMRC=mrc||null;
+  const year=Number(params.get('year')); if(Number.isFinite(year)&&year>0) currentYear=year;
+  const ymin=Number(params.get('ymin')); if(Number.isFinite(ymin)&&ymin>0) currentYearMin=ymin;
+  const ymax=Number(params.get('ymax')); if(Number.isFinite(ymax)&&ymax>0) currentYearMax=ymax;
+  currentEmbedId=params.get('embed')||null;
+  const cubf=params.get('cubf'); if(cubf&&['mamh_strict','mamh_optional','mamh_plus_others'].includes(cubf)) currentCubf=cubf;
+  window._embedSingleYear=params.get('embed_single')==='1';
+}
+
+// ── SORTABLE FILTERABLE TABLE ─────────────────────────────────────────────────
+function makeSortableTable(containerId, columns, rows, opts={}){
+  const container=document.getElementById(containerId);
+  if(!container) return;
+  let sortCol=opts.defaultSort||columns[0].key, sortDir='asc';
+  let filterText='';
+  let page=1; const rowsPerPage=opts.rowsPerPage||20;
+
+  function sortedRows(){
+    let r=[...rows];
+    if(filterText){
+      const q=filterText.toLowerCase();
+      r=r.filter(row=>columns.some(c=>String(row[c.key]??'').toLowerCase().includes(q)));
+    }
+    r.sort((a,b)=>{
+      const av=a[sortCol]??'', bv=b[sortCol]??'';
+      const col=columns.find(c=>c.key===sortCol);
+      if(col?.numeric) return sortDir==='asc'?(Number(av)-Number(bv)):(Number(bv)-Number(av));
+      return sortDir==='asc'?String(av).localeCompare(String(bv),'fr'):String(bv).localeCompare(String(av),'fr');
+    });
+    return r;
+  }
+
+  function render(){
+    const filtered=sortedRows();
+    const totalPages=Math.max(1, Math.ceil(filtered.length/rowsPerPage));
+    if(page>totalPages) page=totalPages;
+    const start=(page-1)*rowsPerPage;
+    const shown=filtered.slice(start, start+rowsPerPage);
+    const totalKey=opts.totalKey;
+    let html=`<div class="table-toolbar">
+      <input class="table-search" type="text" placeholder="Rechercher…" value="${filterText}" id="search-${containerId}">
+      <span class="table-count">${filtered.length} résultat${filtered.length!==1?'s':''}</span>
+    </div>
+    <div class="table-wrap"><table class="data-table"><thead><tr>`;
+    columns.forEach(c=>{
+      const cls=c.key===sortCol?(sortDir==='asc'?'sort-asc':'sort-desc'):'';
+      html+=`<th class="${cls}" data-key="${c.key}">${c.label}</th>`;
+    });
+    html+=`</tr></thead><tbody>`;
+    shown.forEach(row=>{
+      const isTotal=totalKey&&String(row[totalKey]??'').startsWith('Total');
+      html+=`<tr${isTotal?' class="total-row"':''}>`;
+      columns.forEach(c=>{
+        const v=row[c.key]??'';
+        const fv=c.numeric?Number(v).toLocaleString('fr-CA')+(c.suffix||''):v;
+        html+=`<td class="${c.numeric?'num':''}${c.pct?' pct':''}">${fv}</td>`;
+      });
+      html+='</tr>';
+    });
+    html+=`</tbody></table></div>`;
+    if(totalPages>1){
+      html+=`<div class="table-pagination"><span class="table-page-info">Page ${page} sur ${totalPages}</span><button class="chart-btn" id="prev-${containerId}" ${page===1?'disabled':''}>← Précédent</button><button class="chart-btn" id="next-${containerId}" ${page===totalPages?'disabled':''}>Suivant →</button></div>`;
+    }
+    container.innerHTML=html;
+    document.getElementById(`search-${containerId}`)?.addEventListener('input',function(){ filterText=this.value; page=1; render(); });
+    container.querySelectorAll('th[data-key]').forEach(th=>{
+      th.addEventListener('click',()=>{
+        const k=th.dataset.key;
+        if(sortCol===k) sortDir=sortDir==='asc'?'desc':'asc';
+        else{ sortCol=k; sortDir='asc'; }
+        page=1; render();
+      });
+    });
+    document.getElementById(`prev-${containerId}`)?.addEventListener('click',()=>{ if(page>1){ page--; render(); } });
+    document.getElementById(`next-${containerId}`)?.addEventListener('click',()=>{ if(page<totalPages){ page++; render(); } });
+  }
+  render();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render(){
+  const content=document.getElementById('content');
+  const mrcLabel=currentMRC||'Toutes les MRC';
+  const annee=currentYear;
+  const filterMRC=arr=>currentMRC?arr.filter(d=>d.CDNAME===currentMRC):arr;
+  const filterYear=arr=>arr.filter(d=>d.Annee==annee);
+  const filterYearRange=arr=>arr.filter(d=>{
+    const y=Number(d.Annee);
+    if(currentYearMin!==null&&y<currentYearMin) return false;
+    if(currentYearMax!==null&&y>currentYearMax) return false;
+    return true;
+  });
+  const filterYearMRC=arr=>filterMRC(filterYear(arr));
+  const filterYearRangeMRC=arr=>filterMRC(filterYearRange(arr));
+
+  if(currentTab==='logements') renderLogements(content,mrcLabel,annee,filterMRC,filterYear,filterYearMRC,filterYearRangeMRC);
+  else if(currentTab==='valeur') renderValeur(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC);
+  else if(currentTab==='age') renderAge(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC);
+  else if(currentTab==='periode') renderPeriode(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC);
+  else if(currentTab==='superficie') renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC);
+  else if(currentTab==='indicateurs') renderIndicateurs(content,mrcLabel,annee);
+  applyEmbedMode();
+  // In embed mode: resize SVGs to fit container without rebuilding DOM
+  if(currentEmbedId && !window._embedRenderScheduled){
+    window._embedRenderScheduled=true;
+    setTimeout(()=>{
+      window._embedRenderScheduled=false;
+      // Just fix SVG viewBox widths to match actual container — no full re-render
+      document.querySelectorAll('.chart-area svg, .chart-card svg').forEach(svg=>{
+        const parent=svg.parentElement;
+        if(!parent) return;
+        const w=parent.clientWidth;
+        if(w>50){
+          const vb=svg.getAttribute('viewBox');
+          if(vb){
+            const parts=vb.split(' ');
+            if(parts.length===4){ parts[2]=w; svg.setAttribute('viewBox',parts.join(' ')); }
+          }
+          svg.setAttribute('width','100%');
+        }
+      });
+    }, 80);
+  }
+}
+
+// ── TAB: LOGEMENTS──────────────
+function chartWidth(el){
+  const w=el?el.clientWidth:0;
+  return (w>50&&w<3000)?w:(window.innerWidth?Math.min(window.innerWidth-48,900):700);
+}
+
+function renderLogements(content,mrcLabel,annee,filterMRC,filterYear,filterYearMRC,filterYearRangeMRC){
+  const mrcData=filterYearMRC(DATA[dk('logements_types_mrc')]||[]);
+  const munData=filterYearMRC(DATA[dk('logements_types_mun')]||[]);
+  const agg={};
+  mrcData.forEach(row=>getTypeCols().forEach(t=>{ agg[t]=(agg[t]||0)+(row[t]||0); }));
+  const total=getTypeCols().reduce((s,t)=>s+(agg[t]||0),0);
+  const allYears=filterYearRangeMRC(DATA[dk('logements_types_mrc')]||[]);
+  const byYear={};
+  allYears.forEach(row=>{ if(!byYear[row.Annee]) byYear[row.Annee]={}; getTypeCols().forEach(t=>{ byYear[row.Annee][t]=(byYear[row.Annee][t]||0)+(row[t]||0); }); });
+  const years=Object.keys(byYear).map(Number).sort((a,b)=>a-b).map(String);
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>Nombre de logements par type de construction résidentielle, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Rôle d'évaluation foncière ${annee}</div>
+  </div>
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card" id="card-log-stacked">
+      <h3>Nombre de logements par type de construction résidentielle · ${mrcLabel}</h3>
+      <div class="chart-subtitle">Évolution ${years.length?`${years[0]}–${years[years.length-1]}`:annee} · Par type de construction</div>
+      <div class="chart-legend" id="legend-log"></div>
+      <div class="chart-area" id="chart-stacked"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-log-stacked',title:`Logements_evolution_${mrcLabel}`})}
+    </div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card" id="card-log-bar">
+      <h3>Nombre de logements par type de construction résidentielle, ${annee} · ${mrcLabel}</h3>
+      <div class="chart-subtitle">Répartition par type · Total : ${total.toLocaleString('fr-CA')} logements</div>
+      <div class="chart-area" id="chart-bar-types"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-log-bar',singleYear:true,title:`Logements_repartition_${annee}_${mrcLabel}`})}
+    </div>
+    <div class="chart-card" id="card-log-table" style="overflow-x:auto">
+      <h3>Nombre de logements par type de construction résidentielle, données détaillées · ${mrcLabel}</h3>
+      <div class="chart-subtitle">Évolution ${years.length?`${years[0]}–${years[years.length-1]}`:annee} · Par type de construction</div>
+      <div id="table-types"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-log-table',singleYear:true,title:`Logements_detail_${mrcLabel}`})}
+    </div>
+  </div>
+  ${munData.length>0?`
+  <div class="charts-grid wide" style="margin-top:24px">
+    <div class="chart-card" id="card-log-mun" style="overflow-x:auto">
+      <h3>Nombre de logements par type de construction résidentielle par municipalité, ${annee} · ${mrcLabel}</h3>
+      <div id="table-mun"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-log-mun',singleYear:true,title:`Logements_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`:''}`;
+
+  const legendEl=document.getElementById('legend-log');
+  getTypeCols().forEach(t=>{ legendEl.innerHTML+=`<div class="legend-item"><div class="legend-dot" style="background:${TYPE_COLORS[t]}"></div>${t}</div>`; });
+
+  drawStackedBar('chart-stacked',years,byYear,getTypeCols());
+  drawHorizBar('chart-bar-types',getTypeCols(),agg,total);
+
+  // Summary table (non-filterable, small)
+  const tableEl=document.getElementById('table-types');
+  const yearHeaders=years.map(y=>`<th class="sort-asc" style="cursor:default">${y}</th>`).join('');
+  let html=`<table class="data-table"><thead><tr><th>Type</th>${yearHeaders}<th class="num">%</th></tr></thead><tbody>`;
+  getTypeCols().forEach(t=>{
+    const vals=years.map(y=>(byYear[y]?.[t]||0));
+    const pct=total>0?((agg[t]||0)/total*100).toFixed(1):'0.0';
+    html+=`<tr><td>${t}</td>${vals.map(v=>`<td class="num">${v.toLocaleString('fr-CA')}</td>`).join('')}<td class="pct">${pct}%</td></tr>`;
+  });
+  const tots=years.map(y=>getTypeCols().reduce((s,t)=>s+(byYear[y]?.[t]||0),0));
+  html+=`<tr class="total-row"><td>Total</td>${tots.map(v=>`<td class="num">${v.toLocaleString('fr-CA')}</td>`).join('')}<td class="pct">100%</td></tr>`;
+  html+='</tbody></table>';
+  tableEl.innerHTML=html;
+
+  if(munData.length>0){
+    const rows=munData.map(d=>({
+      Annee:d.Annee, Municipalité:d.CSDNAME, MRC:d.CDNAME,
+      'Type':d['Types de construction résidentielle'],
+      'Nombre de logements':d['Nombre de logements']||0,
+    }));
+    makeSortableTable('table-mun',[
+      {key:'Annee',label:'Année',numeric:true},
+      {key:'Municipalité',label:'Municipalité'},
+      {key:'MRC',label:'MRC'},
+      {key:'Type',label:'Type de construction'},
+      {key:'Nombre de logements',label:'Logements',numeric:true},
+    ],rows,{defaultSort:'Municipalité'});
+    storeCSV('card-log-mun',rows);
+  }
+
+  // Store CSV for other cards
+  const csvRows=getTypeCols().map(t=>({Type:t,...Object.fromEntries(years.map(y=>[y,byYear[y]?.[t]||0])),Total:agg[t]||0}));
+  storeCSV('card-log-stacked',csvRows); storeCSV('card-log-bar',csvRows); storeCSV('card-log-table',csvRows);
+  renderMapCard(content);
+}
+
+// ── TAB: VALEUR ───────────────────────────────────────────────────────────────
+function renderValeur(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
+  const mrcData=filterYearMRC(DATA[dk('valeur_mrc')]||[]);
+  const munData=filterYearMRC(DATA[dk('valeur_mun')]||[]);
+  const byType={};
+  mrcData.forEach(d=>{ byType[d.Types]={terrain:Number(d.terrain)||0,batiment:Number(d.batiment)||0,immeuble:Number(d.immeuble)||0}; });
+  const orderedTypes=Object.keys(byType).sort((a,b)=>(byType[a]?.immeuble||0)-(byType[b]?.immeuble||0));
+
+  const allData=filterYearRangeMRC(DATA[dk('valeur_mrc')]||[]);
+  const mrcRows=allData.map(d=>({Année:Number(d.Annee),Type:d.Types,Terrain:Math.round(d.terrain||0),Bâtiment:Math.round(d.batiment||0),Immeuble:Math.round(d.immeuble||0)}))
+    .sort((a,b)=>a.Année-b.Année||a.Type.localeCompare(b.Type,'fr'));
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>Valeur foncière moyenne des propriétés, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Valeurs moyennes en dollars</div>
+  </div>
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card" id="card-val-chart">
+      <h3>Valeur foncière moyenne par type de construction résidentielle · ${mrcLabel}</h3>
+      <div class="chart-subtitle">${annee} · Valeur du terrain et du bâtiment</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#0b5d5e"></div>Valeur du terrain</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4fa7a5"></div>Valeur du bâtiment</div>
+      </div>
+      <div class="chart-area" id="chart-val-types"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-val-chart',singleYear:true,title:`Valeur_fonciere_${annee}_${mrcLabel}`})}
+    </div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card" id="card-val-mrc" style="overflow-x:auto">
+      <h3>Valeur foncière moyenne par type de construction résidentielle, données détaillées · ${mrcLabel}</h3>
+      <div id="table-val-mrc"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-val-mrc',title:`Valeur_fonciere_detail_${annee}_${mrcLabel}`})}
+    </div>
+    <div class="chart-card" id="card-val-mun" style="overflow-x:auto">
+      <h3>Valeur foncière moyenne par type de construction résidentielle par municipalité, ${annee} · ${mrcLabel}</h3>
+      <div id="table-val-mun"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-val-mun',singleYear:true,title:`Valeur_fonciere_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`;
+
+  drawValeurChart('chart-val-types',orderedTypes,byType);
+  makeSortableTable('table-val-mrc',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Type',label:'Type'},
+    {key:'Terrain',label:'Terrain ($)',numeric:true,suffix:' $'},
+    {key:'Bâtiment',label:'Bâtiment ($)',numeric:true,suffix:' $'},
+    {key:'Immeuble',label:'Total ($)',numeric:true,suffix:' $'},
+  ],mrcRows,{defaultSort:'Année',totalKey:'Type'});
+  storeCSV('card-val-mrc',mrcRows); storeCSV('card-val-chart',mrcRows);
+
+  const munRows=(munData||[]).map(d=>({Année:Number(d.Annee),Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,Terrain:Math.round(d.terrain||0),Bâtiment:Math.round(d.batiment||0),Immeuble:Math.round(d.immeuble||0)}));
+  makeSortableTable('table-val-mun',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Municipalité',label:'Municipalité'},
+    {key:'MRC',label:'MRC'},
+    {key:'Type',label:'Type'},
+    {key:'Terrain',label:'Terrain ($)',numeric:true,suffix:' $'},
+    {key:'Bâtiment',label:'Bâtiment ($)',numeric:true,suffix:' $'},
+    {key:'Immeuble',label:'Total ($)',numeric:true,suffix:' $'},
+  ],munRows,{defaultSort:'Municipalité',totalKey:'Type'});
+  storeCSV('card-val-mun',munRows);
+}
+
+// ── TAB: AGE ──────────────────────────────────────────────────────────────────
+function renderAge(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
+  const mrcData=filterYearMRC(DATA[dk('age_mrc')]||[]);
+  const munData=filterYearMRC(DATA[dk('age_mun')]||[]);
+  const byType={};
+  mrcData.forEach(d=>{ if(!byType[d.Types]) byType[d.Types]={age:0,n:0}; byType[d.Types].age+=d.age_moyen||0; byType[d.Types].n++; });
+  Object.keys(byType).forEach(t=>{ byType[t].age/=byType[t].n||1; });
+  const sortedTypes=Object.entries(byType).filter(([t])=>!t.startsWith('Total')).sort(([,a],[,b])=>a.age-b.age);
+  const total=byType["Total des unités d'évaluation résidentielles"];
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>L'âge moyen des bâtiments selon les types de construction, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> En années · Rôle d'évaluation foncière ${annee}</div>
+  </div>
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card" id="card-age-chart">
+      <h3>Âge moyen des bâtiments par type de construction résidentielle · ${mrcLabel}</h3>
+      <div class="chart-subtitle">${annee} · Total des unités : ${total?Math.round(total.age)+' ans':'N/D'}</div>
+      <div class="chart-area" id="chart-age"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-age-chart',singleYear:true,title:`Age_batiments_${annee}_${mrcLabel}`})}
+    </div>
+  </div>
+  <div class="charts-grid wide">
+    <div class="chart-card" id="card-age-mun" style="overflow-x:auto">
+      <h3>Âge moyen des bâtiments par type de construction résidentielle par municipalité, ${annee} · ${mrcLabel}</h3>
+      <div id="table-age-mun"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-age-mun',singleYear:true,title:`Age_batiments_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`;
+
+  drawAgeChart('chart-age',sortedTypes,total);
+
+  const mrcRows=sortedTypes.map(([t,d])=>({Type:t,'Âge moyen (ans)':Math.round(d.age||0)}));
+  storeCSV('card-age-chart',mrcRows);
+
+  const munRows=(munData||[]).map(d=>({Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,'Âge moyen (ans)':Math.round(d.age_moyen||0)}));
+  makeSortableTable('table-age-mun',[
+    {key:'Municipalité',label:'Municipalité'},
+    {key:'MRC',label:'MRC'},
+    {key:'Type',label:'Type de construction'},
+    {key:'Âge moyen (ans)',label:'Âge moyen (ans)',numeric:true},
+  ],munRows,{defaultSort:'Municipalité',totalKey:'Type'});
+  storeCSV('card-age-mun',munRows);
+  renderMapCard(content);
+}
+
+// ── TAB: PÉRIODE ──────────────────────────────────────────────────────────────
+function renderPeriode(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
+  const mrcData=filterYearMRC(DATA[dk('periode_mrc')]||[]);
+  const munData=filterYearMRC(DATA[dk('periode_mun')]||[]);
+  const totals=Object.fromEntries(PERIODES_ORDER.map(p=>[p,0]));
+  mrcData.forEach(d=>{ totals[d.Période]=(totals[d.Période]||0)+(d.N||0); });
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>Unité d'évaluation résidentielle selon la période de construction, ${annee}</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Rôle d'évaluation foncière ${annee}</div>
+  </div>
+  <div class="charts-grid wide" style="margin-bottom:24px">
+    <div class="chart-card" id="card-per-chart">
+      <h3>Unités d'évaluation résidentielles par période de construction · ${mrcLabel}</h3>
+      <div class="chart-subtitle">${annee} · Nombre d'unités d'évaluation par période</div>
+      <div class="chart-area" id="chart-periode"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-per-chart',singleYear:true,title:`Periode_construction_${annee}_${mrcLabel}`})}
+    </div>
+  </div>
+  <div class="charts-grid wide">
+    <div class="chart-card" id="card-per-mun" style="overflow-x:auto">
+      <h3>Unités d'évaluation résidentielles par période de construction par municipalité, ${annee} · ${mrcLabel}</h3>
+      <div id="table-per-mun"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-per-mun',singleYear:true,title:`Periode_construction_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`;
+
+  drawPeriodeChart('chart-periode', totals);
+  const mrcRows=PERIODES_ORDER.map(p=>({Période:p,"Nombre d'unités":totals[p]||0}));
+  storeCSV('card-per-chart',mrcRows);
+
+  const munRows=(munData||[]).map(d=>({Année:Number(d.Annee),Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,Période:d.Période,"Nombre d'unités":d.N||0}));
+  makeSortableTable('table-per-mun',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Municipalité',label:'Municipalité'},
+    {key:'MRC',label:'MRC'},
+    {key:'Type',label:'Type de construction'},
+    {key:'Période',label:'Période'},
+    {key:"Nombre d'unités",label:"Nb d'unités",numeric:true},
+  ],munRows,{defaultSort:'Municipalité'});
+  storeCSV('card-per-mun',munRows);
+}
+
+// ── TAB: SUPERFICIE ───────────────────────────────────────────────────────────
+function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
+  const munData=filterYearMRC(DATA[dk('superficie_mun')]||[]);
+  const allData=filterYearRangeMRC(DATA[dk('superficie_mrc')]||[]);
+  const years=[...new Set(allData.map(d=>Number(d.Annee)).filter(Boolean))].sort((a,b)=>a-b);
+  const types=[...new Set(allData.map(d=>d.Types).filter(t=>t && !t.startsWith('Total')))];
+  const terrainSeries=types.map(type=>({name:type,values:years.map(year=>{ const row=allData.find(d=>Number(d.Annee)===year&&d.Types===type); return {year, value:row?Number(row.superficie_terrain)||0:null}; })}));
+  const aireSeries=types.map(type=>({name:type,values:years.map(year=>{ const row=allData.find(d=>Number(d.Annee)===year&&d.Types===type); return {year, value:row?Number(row.aire_etages)||0:null}; })}));
+  const mrcRows=allData.map(d=>({Année:Number(d.Annee),Type:d.Types,'Superficie terrain (m²)':Math.round(d.superficie_terrain||0),"Aire d'étages (m²)":Math.round(d.aire_etages||0)}))
+    .sort((a,b)=>a.Année-b.Année||a.Type.localeCompare(b.Type,'fr'));
+
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>Superficie moyenne du terrain et aire d'étages</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Moyennes en mètres carrés · ${currentYearMin} à ${currentYearMax}</div>
+  </div>
+  <div class="charts-grid">
+    <div class="chart-card" id="card-sup-chart">
+      <h3>Superficie moyenne du terrain par type de construction résidentielle · ${mrcLabel}</h3>
+      <div class="chart-subtitle">Évolution ${currentYearMin}–${currentYearMax} · En mètres carrés (m²)</div>
+      <div class="chart-area" id="chart-sup-terrain"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-sup-chart',title:`Superficie_terrain_${mrcLabel}_${currentYearMin}_${currentYearMax}`})}
+    </div>
+    <div class="chart-card" id="card-sup-chart-aire">
+      <h3>Aire d'étages moyenne par type de construction résidentielle · ${mrcLabel}</h3>
+      <div class="chart-subtitle">Évolution ${currentYearMin}–${currentYearMax} · En mètres carrés (m²)</div>
+      <div class="chart-area" id="chart-sup-aire"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-sup-chart-aire',title:`Aire_etages_${mrcLabel}_${currentYearMin}_${currentYearMax}`})}
+    </div>
+  </div>
+  <div class="charts-grid" style="margin-top:24px">
+    <div class="chart-card" id="card-sup-mrc" style="overflow-x:auto">
+      <h3>Superficie moyenne du terrain et aire d'étages par type de construction résidentielle, données détaillées · ${mrcLabel}</h3>
+      <div id="table-sup-mrc"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-sup-mrc',title:`Superficie_detail_${annee}_${mrcLabel}`})}
+    </div>
+    <div class="chart-card" id="card-sup-mun" style="overflow-x:auto">
+      <h3>Superficie moyenne du terrain et aire d'étages par type de construction résidentielle par municipalité, ${annee} · ${mrcLabel}</h3>
+      <div id="table-sup-mun"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-sup-mun',singleYear:true,title:`Superficie_municipalites_${annee}_${mrcLabel}`})}
+    </div>
+  </div>`;
+
+  drawMultiLineChart('chart-sup-terrain', years, terrainSeries, 'm²');
+  drawMultiLineChart('chart-sup-aire', years, aireSeries, 'm²');
+  makeSortableTable('table-sup-mrc',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Type',label:'Type de construction'},
+    {key:'Superficie terrain (m²)',label:'Superficie terrain (m²)',numeric:true},
+    {key:"Aire d'étages (m²)",label:"Aire d'étages (m²)",numeric:true},
+  ],mrcRows,{defaultSort:'Année',totalKey:'Type'});
+  storeCSV('card-sup-mrc',mrcRows); storeCSV('card-sup-chart',mrcRows); storeCSV('card-sup-chart-aire',mrcRows);
+
+  const munRows=(munData||[]).map(d=>({Année:Number(d.Annee),Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,'Superficie terrain (m²)':Math.round(d.superficie_terrain||0),"Aire d'étages (m²)":Math.round(d.aire_etages||0)}));
+  makeSortableTable('table-sup-mun',[
+    {key:'Année',label:'Année',numeric:true},
+    {key:'Municipalité',label:'Municipalité'},
+    {key:'MRC',label:'MRC'},
+    {key:'Type',label:'Type'},
+    {key:'Superficie terrain (m²)',label:'Superficie terrain (m²)',numeric:true},
+    {key:"Aire d'étages (m²)",label:"Aire d'étages (m²)",numeric:true},
+  ],munRows,{defaultSort:'Municipalité'});
+  storeCSV('card-sup-mun',munRows);
+}
+
+// ── CHART FUNCTIONS ───────────────────────────────────────────────────────────
+function drawStackedBar(id,years,byYear,typeCols){
+  const el=document.getElementById(id); if(!el||!years.length) return;
+  const W=chartWidth(el), H=240, margin={top:10,right:20,bottom:30,left:60};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const stack=d3.stack().keys(typeCols)(years.map(y=>({year:y,...byYear[y]})));
+  const maxY=d3.max(stack[stack.length-1],d=>d[1]);
+  const x=d3.scaleBand().domain(years).range([0,w]).padding(0.25);
+  const y=d3.scaleLinear().domain([0,maxY*1.05]).range([h,0]);
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat(''));
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+  typeCols.forEach((type,i)=>{
+    g.selectAll(`.bar-${i}`).data(stack[i]).join('rect').attr('class',`bar bar-${i}`)
+      .attr('x',d=>x(d.data.year)).attr('y',d=>y(d[1]))
+      .attr('height',d=>Math.max(0,y(d[0])-y(d[1]))).attr('width',x.bandwidth())
+      .attr('fill',TYPE_COLORS[type])
+      .on('mouseover',(event,d)=>showTooltip(event,`<strong>${d.data.year}</strong><br>${type}<br>${(d[1]-d[0]).toLocaleString('fr-CA')} logements`))
+      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+  });
+  years.forEach(y_val=>{
+    const tot=typeCols.reduce((s,t)=>s+(byYear[y_val]?.[t]||0),0);
+    g.append('text').attr('class','total-label').attr('x',x(y_val)+x.bandwidth()/2).attr('y',y(tot)-5)
+      .attr('text-anchor','middle').attr('font-size','11px').attr('fill','#1a1a1a').text(tot.toLocaleString('fr-CA'));
+  });
+}
+
+function drawHorizBar(id,types,agg,total){
+  const el=document.getElementById(id); if(!el) return;
+  const W=chartWidth(el), H=Math.max(types.length*36+40,200), margin={top:10,right:80,bottom:20,left:240};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const sorted=[...types].sort((a,b)=>(agg[a]||0)-(agg[b]||0));
+  const x=d3.scaleLinear().domain([0,d3.max(types,t=>agg[t]||0)*1.15]).range([0,w]);
+  const y=d3.scaleBand().domain(sorted).range([h,0]).padding(0.3);
+  sorted.forEach(t=>{
+    g.append('rect').attr('class','bar').attr('y',y(t)).attr('height',y.bandwidth())
+      .attr('x',0).attr('width',x(agg[t]||0)).attr('fill',TYPE_COLORS[t])
+      .on('mouseover',event=>showTooltip(event,`${t}<br><strong>${(agg[t]||0).toLocaleString('fr-CA')}</strong> logements`))
+      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+    g.append('text').attr('class','bar-label').attr('x',x(agg[t]||0)+6).attr('y',y(t)+y.bandwidth()/2+4).attr('font-size','11px').attr('fill','#1a1a1a').text((agg[t]||0).toLocaleString('fr-CA'));
+    g.append('text').attr('x',-8).attr('y',y(t)+y.bandwidth()/2+4).attr('text-anchor','end').attr('font-size','11px').attr('fill','#5a5a5a').text(t.length>35?t.substring(0,33)+'…':t);
+  });
+}
+
+function drawValeurChart(id,types,byType){
+  const el=document.getElementById(id); if(!el||!types.length) return;
+  const W=chartWidth(el), H=Math.max(types.length*48+70,320), margin={top:10,right:120,bottom:20,left:260};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const maxVal=d3.max(types,t=>(byType[t]?.terrain||0)+(byType[t]?.batiment||0))||0;
+  const x=d3.scaleLinear().domain([0,maxVal*1.08]).range([0,w]);
+  const y=d3.scaleBand().domain(types).range([0,h]).padding(0.22);
+  types.forEach(t=>{
+    const d=byType[t]||{}; const total=(d.terrain||0)+(d.batiment||0);
+    g.append('rect').attr('x',0).attr('y',y(t)).attr('width',x(d.terrain||0)).attr('height',y.bandwidth()).attr('fill','#0b5d5e');
+    g.append('rect').attr('x',x(d.terrain||0)).attr('y',y(t)).attr('width',x(d.batiment||0)).attr('height',y.bandwidth()).attr('fill','#4fa7a5');
+    if((d.terrain||0)>maxVal*0.05) g.append('text').attr('x',x(d.terrain||0)-8).attr('y',y(t)+y.bandwidth()/2+4).attr('text-anchor','end').attr('fill','white').attr('font-weight','600').attr('font-size','11px').text(Math.round(d.terrain||0).toLocaleString('fr-CA')+' $');
+    if((d.batiment||0)>maxVal*0.08) g.append('text').attr('x',x(d.terrain||0)+8).attr('y',y(t)+y.bandwidth()/2+4).attr('fill','white').attr('font-weight','600').attr('font-size','11px').text(Math.round(d.batiment||0).toLocaleString('fr-CA')+' $');
+    g.append('text').attr('x',x(total)+10).attr('y',y(t)+y.bandwidth()/2+5).attr('fill','#1a1a1a').attr('font-weight','700').text(Math.round(total).toLocaleString('fr-CA')+' $');
+    g.append('text').attr('x',-12).attr('y',y(t)+y.bandwidth()/2+5).attr('text-anchor','end').attr('fill','#2a2a2a').attr('font-size','11px').text(t.length>38?t.slice(0,36)+'…':t);
+  });
+}
+
+function drawAgeChart(id,sortedTypes,total){
+  const el=document.getElementById(id); if(!el||!sortedTypes.length) return;
+  const allTypes=[...sortedTypes,["Total des unités d'évaluation résidentielles",total||{age:0}]];
+  const W=chartWidth(el), H=(allTypes.length+1)*48+60, margin={top:10,right:60,bottom:20,left:240};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const maxAge=d3.max(allTypes,([,d])=>d.age||0);
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const x=d3.scaleLinear().domain([0,maxAge*1.1]).range([0,w]);
+  const y=d3.scaleBand().domain(allTypes.map(([t])=>t)).range([h,0]).padding(0.3);
+  g.append('g').attr('class','grid').call(d3.axisBottom(x).tickSize(h).tickFormat('').ticks(5)).attr('transform','translate(0,0)').select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).ticks(5)).select('.domain').remove();
+  allTypes.forEach(([type,data])=>{
+    const age=Math.round(data.age||0); const isTotal=type.startsWith('Total');
+    g.append('rect').attr('class','bar').attr('y',y(type)).attr('height',y.bandwidth()).attr('x',0).attr('width',x(age)).attr('fill',isTotal?'#3d8f8a':'#1a4e4b').attr('rx',3)
+      .on('mouseover',event=>showTooltip(event,`${type}<br><strong>${age} ans</strong>`)).on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+    g.append('text').attr('class','bar-label').attr('x',x(age)+6).attr('y',y(type)+y.bandwidth()/2+4).attr('font-size','12px').attr('font-weight',isTotal?'600':'400').attr('fill','#1a1a1a').text(age);
+    g.append('text').attr('x',-8).attr('y',y(type)+y.bandwidth()/2+4).attr('text-anchor','end').attr('font-size','11px').attr('fill',isTotal?'#1a4e4b':'#5a5a5a').attr('font-weight',isTotal?'600':'400').text(type.length>33?type.substring(0,31)+'…':type);
+  });
+}
+
+function drawPeriodeChart(id, totals){
+  const el=document.getElementById(id); if(!el) return;
+  const data=PERIODES_ORDER.map(p=>({label:p,value:totals[p]||0}));
+  const W=chartWidth(el), H=340, margin={top:20,right:20,bottom:55,left:70};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+  const maxVal=d3.max(data,d=>d.value)||0;
+  const peak=d3.max(data,d=>d.value);
+  const x=d3.scaleBand().domain(data.map(d=>d.label)).range([0,w]).padding(0.3);
+  const y=d3.scaleLinear().domain([0,maxVal*1.1]).range([h,0]);
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('')).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x)).select('.domain').remove();
+  data.forEach(d=>{
+    const color=d.value===peak?'#178785':'#55aba7';
+    g.append('rect').attr('x',x(d.label)).attr('y',y(d.value)).attr('width',x.bandwidth()).attr('height',h-y(d.value)).attr('fill',color)
+      .on('mouseover',event=>showTooltip(event,`<strong>${d.label}</strong><br>${d.value.toLocaleString('fr-CA')} unités`)).on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+    g.append('text').attr('x',x(d.label)+x.bandwidth()/2).attr('y',y(d.value)-10).attr('text-anchor','middle').attr('font-weight','700').text(d.value.toLocaleString('fr-CA'));
+  });
+}
+
+function drawMultiLineChart(id, years, series, suffix=''){
+  // Replaced: renders a grouped (clustered) bar chart instead of a line chart
+  const el=document.getElementById(id); if(!el||!years.length) return;
+  const clean=series.filter(s=>s.values.some(v=>v.value!==null));
+  if(!clean.length) return;
+  const palette=['#0b5d5e','#178785','#4fa7a5','#7cc9c5','#6a7dab','#c49a6c','#8a5d5d','#7b8f47'];
+
+  // Legend rows (2 per row)
+  const legendRowH=18, legendCols=2;
+  const legendRows=Math.ceil(clean.length/legendCols);
+  const legendH=legendRows*legendRowH+8;
+
+  const W=chartWidth(el), H=320+legendH;
+  const margin={top:16, right:16, bottom:36+legendH, left:75};
+  const w=W-margin.left-margin.right, h=H-margin.top-margin.bottom;
+
+  const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
+
+  const allVals=clean.flatMap(s=>s.values.map(v=>v.value).filter(v=>v!==null&&v>0));
+  const yMax=d3.max(allVals)||0;
+
+  const xYear=d3.scaleBand().domain(years.map(String)).range([0,w]).padding(0.18);
+  const xType=d3.scaleBand().domain(clean.map((_,i)=>String(i))).range([0,xYear.bandwidth()]).padding(0.06);
+  const y=d3.scaleLinear().domain([0,yMax*1.1]).range([h,0]);
+
+  // Grid
+  g.append('g').attr('class','grid')
+    .call(d3.axisLeft(y).tickSize(-w).tickFormat(''))
+    .select('.domain').remove();
+  // Axes
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`)
+    .call(d3.axisBottom(xYear).tickSize(0))
+    .select('.domain').remove();
+
+  // Bars
+  clean.forEach((s,i)=>{
+    const color=palette[i%palette.length];
+    s.values.forEach(d=>{
+      if(d.value===null||d.value===0) return;
+      const xPos=xYear(String(d.year))+(xType(String(i))||0);
+      const barW=xType.bandwidth();
+      const barH=Math.max(0, h-y(d.value));
+      g.append('rect')
+        .attr('x',xPos).attr('y',y(d.value))
+        .attr('width',barW).attr('height',barH)
+        .attr('fill',color).attr('rx',2)
+        .on('mouseover',event=>showTooltip(event,`<strong>${s.name}</strong><br>${d.year} : ${Math.round(d.value).toLocaleString('fr-CA')} ${suffix}`))
+        .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+    });
+  });
+
+  // Legend at bottom inside SVG
+  const leg=svg.append('g').attr('transform',`translate(${margin.left},${H-legendH+4})`);
+  clean.forEach((s,i)=>{
+    const col=i%legendCols, row=Math.floor(i/legendCols);
+    const xPos=col*(w/legendCols), yPos=row*legendRowH;
+    leg.append('rect').attr('x',xPos).attr('y',yPos).attr('width',10).attr('height',10).attr('fill',palette[i%palette.length]).attr('rx',1);
+    leg.append('text').attr('x',xPos+14).attr('y',yPos+9).attr('font-size','11px').attr('fill','#5a5a5a')
+      .text(s.name.length>42?s.name.slice(0,40)+'…':s.name);
+  });
+}
+
+// ── EVENTS ────────────────────────────────────────────────────────────────────
+const maybeRedrawMap=()=>{};
+document.getElementById('sel-region').addEventListener('change',function(){ populateMRCSelect(this.value); currentMRC=null; maybeRedrawMap(); render(); });
+document.getElementById('sel-mrc').addEventListener('change',function(){ currentMRC=this.value||null; maybeRedrawMap(); render(); });
+document.getElementById('sel-annee').addEventListener('change',function(){ currentYear=parseInt(this.value,10); maybeRedrawMap(); render(); });
+document.getElementById('sel-annee-min').addEventListener('change',function(){ currentYearMin=parseInt(this.value,10); syncYearRange('min'); maybeRedrawMap(); render(); });
+document.getElementById('sel-annee-max').addEventListener('change',function(){ currentYearMax=parseInt(this.value,10); syncYearRange('max'); maybeRedrawMap(); render(); });
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',function(){ document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); this.classList.add('active'); currentTab=this.dataset.tab; render(); });
+});
+
+document.getElementById('method-modal').addEventListener('click',function(e){ if(e.target===this) document.getElementById('method-modal').classList.remove('open'); });
+document.getElementById('iframe-modal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  try{
+    await loadAll();
+    applyStateFromUrl();
+  // sync cubf button UI from URL param
+  document.querySelectorAll('.cubf-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cubf===currentCubf);
+  });
+  // sync embed bar cubf buttons
+  document.querySelectorAll('.embed-cubf-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cubf===currentCubf);
+  });
+  populateEmbedYearSelects();
+    populateYearSelect();
+    populateMRCSelect(document.getElementById('sel-region').value||'');
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===currentTab));
+    render();
+  }catch(e){
+    document.getElementById('content').innerHTML=`<div class="loading">⚠ Erreur de chargement des données.<br><small>${e.message}</small></div>`;
+    console.error(e);
+  }
+})();
+
+// ── TAB: INDICATEURS STRATÉGIQUES ─────────────────────────────────────────────
+function renderIndicateurs(content, mrcLabel, annee) {
+  function fi(data){ return currentMRC ? data.filter(d=>d.CDNAME===currentMRC) : data; }
+
+  // ── IND 1: Variation par type ──────────────────────────────────────────────
+  const TYPES_IND1 = [
+    'Maisons individuelles détachées',
+    'Maisons jumelées ou en rangée',
+    'Logements dans un immeuble comportant deux logements ou plus',
+  ];
+  const stockRaw = fi(DATA[dk('logements_types_mrc')]||[]);
+  const stockByYr = {};
+  stockRaw.forEach(d=>{
+    if(!stockByYr[d.Annee]) stockByYr[d.Annee]={Total:0};
+    TYPES_IND1.forEach(t=>{ stockByYr[d.Annee][t]=(stockByYr[d.Annee][t]||0)+(d[t]||0); });
+    stockByYr[d.Annee].Total=(stockByYr[d.Annee].Total||0)+(d.Total||0);
+  });
+  const allStockYrs = Object.keys(stockByYr).map(Number).sort((a,b)=>a-b);
+  const stockYrs = allStockYrs.filter(y=>y>=2014);
+  const base = stockByYr[2014] || stockByYr[stockYrs[0]] || {};
+  const baseYr = stockYrs[0] || 2014;
+
+  // ── IND 2: Part dans PU ────────────────────────────────────────────────────
+  const nvxPU_MRC = fi(DATA.nouveaux_logements_mrc||[]);
+  const puByYr = {};
+  nvxPU_MRC.forEach(d=>{ const y=Math.round(d.Annee_construction); puByYr[y]=(puByYr[y]||0)+(d.logements_PU||0); });
+  // Estimate total new from consecutive-year stock deltas
+  const deltaByYr = {};
+  allStockYrs.forEach((y,i)=>{
+    if(i>0){ const prev=allStockYrs[i-1]; if(y-prev===1) deltaByYr[y]=Math.max(0,(stockByYr[y]?.Total||0)-(stockByYr[prev]?.Total||0)); }
+  });
+  const partYrs = Object.keys(puByYr).map(Number).sort((a,b)=>a-b)
+    .filter(y=>y>=2015&&deltaByYr[y]!==undefined&&deltaByYr[y]>0);
+  const partByYr = {};
+  partYrs.forEach(y=>{ partByYr[y]=Math.min(100,(puByYr[y]/deltaByYr[y])*100); });
+  const cumPU   = partYrs.reduce((s,y)=>s+(puByYr[y]||0),0);
+  const cumTot  = partYrs.reduce((s,y)=>s+(deltaByYr[y]||0),0);
+  const cumPart = cumTot>0?(cumPU/cumTot*100):null;
+
+  // ── IND 3: Densité ────────────────────────────────────────────────────────
+  const denMRC_all = DATA.densite_pu_mrc||[];
+  const denMRC = fi(denMRC_all);
+  const denMUN = fi(DATA.densite_pu_mun||[]);
+  // Aggregate by year (sum across MRCs when all selected)
+  const denByYr = {};
+  if(currentMRC){
+    denMRC.forEach(d=>{ const y=Math.round(d.Annee_construction); denByYr[y]={den:d.densite_nette_PU,cum_units:d.cum_units,cum_area:d.cum_area}; });
+  } else {
+    const agg={};
+    denMRC_all.forEach(d=>{ const y=Math.round(d.Annee_construction); if(!agg[y]) agg[y]={cu:0,ca:0}; agg[y].cu+=d.cum_units||0; agg[y].ca+=d.cum_area||0; });
+    Object.entries(agg).forEach(([y,v])=>{ denByYr[Number(y)]={den:v.ca>0?v.cu/v.ca:0,cum_units:v.cu,cum_area:v.ca}; });
+  }
+  const denYrs = Object.keys(denByYr).map(Number).sort((a,b)=>a-b).filter(y=>y>=2014);
+  const latestDen = denByYr[denYrs[denYrs.length-1]];
+  const latestMunYr = Math.max(...denMUN.map(d=>d.Annee_construction||0));
+  const denMUNlast = denMUN.filter(d=>d.Annee_construction===latestMunYr);
+
+  // Mun table for ind2
+  const nvxPU_MUN = fi(DATA.nouveaux_logements_mun||[]);
+  const munPU={};
+  nvxPU_MUN.forEach(d=>{ const k=d.CSDNAME; if(!munPU[k]) munPU[k]={CSDNAME:k,CDNAME:d.CDNAME,total_PU:0}; munPU[k].total_PU+=(d.logements_PU||0); });
+
+  const yr1=partYrs[0]||2015, yr2=partYrs[partYrs.length-1]||2024;
+
+  // ── HTML ──────────────────────────────────────────────────────────────────
+  content.innerHTML=`
+  <div class="section-header">
+    <h2>Indicateurs stratégiques OGAT · ${mrcLabel}</h2>
+    <div class="meta">Orientations gouvernementales en aménagement du territoire · Objectif 4.2 · Rôle d'évaluation foncière</div>
+  </div>
+
+  <!-- ═══ IND 1 ═══ -->
+  <div style="margin-bottom:8px;padding:12px 20px;background:var(--teal-dark);color:white;border-radius:8px 8px 0 0;display:flex;align-items:baseline;gap:14px;">
+    <span style="font-family:'Source Serif 4',serif;font-weight:700;font-size:1rem;white-space:nowrap;">Indicateur 1</span>
+    <span style="font-size:.82rem;opacity:.85;">Variation du nombre et des parts de logements par type de construction résidentielle</span>
+  </div>
+  <div style="border:1px solid var(--teal-pale);border-top:none;border-radius:0 0 8px 8px;padding:20px;background:var(--white);margin-bottom:28px;">
+    <div class="charts-grid" style="margin-bottom:20px;">
+      <div class="chart-card" id="card-ind1-shares">
+        <h3>Parts des types de construction résidentielle · ${mrcLabel}</h3>
+        <div class="chart-subtitle">Évolution ${baseYr}–${stockYrs[stockYrs.length-1]} · En % du total des logements</div>
+        <div class="chart-legend" id="legend-ind1-shares"></div>
+        <div class="chart-area" id="chart-ind1-shares"></div>
+        ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-ind1-shares',title:`Ind1_parts_types_${mrcLabel}`})}
+      </div>
+      <div class="chart-card" id="card-ind1-var">
+        <h3>Variation absolue par type depuis ${baseYr} · ${mrcLabel}</h3>
+        <div class="chart-subtitle">Nombre de logements ajoutés depuis ${baseYr} · Par type de construction</div>
+        <div class="chart-legend" id="legend-ind1-var"></div>
+        <div class="chart-area" id="chart-ind1-var"></div>
+        ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-ind1-var',title:`Ind1_variation_${mrcLabel}`})}
+      </div>
+    </div>
+    <div class="chart-card" id="card-ind1-table" style="overflow-x:auto">
+      <h3>Variation du nombre et des parts de logements par type de construction résidentielle · ${mrcLabel}</h3>
+      <div class="chart-subtitle">Données annuelles depuis ${baseYr} · Filtre ${getCubfLabel()}</div>
+      <div id="table-ind1"></div>
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-ind1-table',title:`Ind1_detail_${mrcLabel}`})}
+    </div>
+  </div>
+
+  <!-- ═══ IND 2 ═══ -->
+  <div style="margin-bottom:8px;padding:12px 20px;background:var(--teal);color:white;border-radius:8px 8px 0 0;display:flex;align-items:baseline;gap:14px;">
+    <span style="font-family:'Source Serif 4',serif;font-weight:700;font-size:1rem;white-space:nowrap;">Indicateur 2</span>
+    <span style="font-size:.82rem;opacity:.85;">Part des nouveaux logements localisés à l'intérieur des périmètres d'urbanisation</span>
+  </div>
+  <div style="border:1px solid var(--teal-pale);border-top:none;border-radius:0 0 8px 8px;padding:20px;background:var(--white);margin-bottom:28px;">
+    <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+      <div style="flex:0 0 220px;background:var(--teal-pale);border-radius:8px;padding:20px;text-align:center;">
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--teal-dark);font-weight:600;margin-bottom:6px;">Part cumulée ${yr1}–${yr2}</div>
+        <div style="font-family:'Source Serif 4',serif;font-size:2.6rem;font-weight:700;color:var(--teal-dark);line-height:1;">${cumPart!==null?cumPart.toFixed(1)+'%':'N/D'}</div>
+        <div style="font-size:.72rem;color:var(--teal-dark);opacity:.8;margin-top:6px;line-height:1.4;">${cumPU.toLocaleString('fr-CA')} log. dans PU<br>${cumTot.toLocaleString('fr-CA')} log. total estimé</div>
+      </div>
+      <div style="flex:1;min-width:220px;background:var(--bg2);border-radius:8px;padding:16px 18px;font-size:.76rem;color:var(--text-light);line-height:1.65;">
+        <strong style="color:var(--text);display:block;margin-bottom:6px;">Note méthodologique</strong>
+        Le numérateur (logements dans les PU) provient du fichier <code>nouveaux_logements_mrc</code> basé sur l'année de construction. Le dénominateur (total nouveaux logements sur le territoire) est estimé par la variation annuelle nette du stock total inscrit au rôle d'évaluation foncière. Seules les années consécutives au rôle sont retenues. L'indicateur officiel du MAMH requiert un SIG pour identifier précisément les logements à l'intérieur des PU.
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card" id="card-ind2-chart">
+        <h3>Part annuelle des nouveaux logements dans les périmètres d'urbanisation · ${mrcLabel}</h3>
+        <div class="chart-subtitle">Évolution ${yr1}–${yr2} · En % du total estimé · Ligne pointillée = moyenne cumulée</div>
+        <div class="chart-area" id="chart-ind2-part"></div>
+        ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-ind2-chart',title:`Ind2_part_PU_${mrcLabel}`})}
+      </div>
+      <div class="chart-card" id="card-ind2-mun" style="overflow-x:auto">
+        <h3>Nouveaux logements dans les périmètres d'urbanisation par municipalité · ${mrcLabel}</h3>
+        <div class="chart-subtitle">${yr1}–${yr2} · Total cumulé de logements dans les PU</div>
+        <div id="table-ind2-mun"></div>
+        ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-ind2-mun',title:`Ind2_mun_PU_${mrcLabel}`})}
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ IND 3 ═══ -->
+  <div style="margin-bottom:8px;padding:12px 20px;background:var(--teal-mid);color:white;border-radius:8px 8px 0 0;display:flex;align-items:baseline;gap:14px;">
+    <span style="font-family:'Source Serif 4',serif;font-weight:700;font-size:1rem;white-space:nowrap;">Indicateur 3</span>
+    <span style="font-size:.82rem;opacity:.85;">Densité résidentielle nette à l'intérieur des périmètres d'urbanisation</span>
+  </div>
+  <div style="border:1px solid var(--teal-pale);border-top:none;border-radius:0 0 8px 8px;padding:20px;background:var(--white);margin-bottom:28px;">
+    <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+      <div style="flex:0 0 220px;background:var(--teal-pale);border-radius:8px;padding:20px;text-align:center;">
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--teal-dark);font-weight:600;margin-bottom:6px;">Densité ${denYrs[denYrs.length-1]} (log/ha)</div>
+        <div style="font-family:'Source Serif 4',serif;font-size:2.6rem;font-weight:700;color:var(--teal-dark);line-height:1;">${latestDen?latestDen.den.toFixed(2):'N/D'}</div>
+        <div style="font-size:.72rem;color:var(--teal-dark);opacity:.8;margin-top:6px;line-height:1.4;">${latestDen?Math.round(latestDen.cum_units||0).toLocaleString('fr-CA')+' logements<br>'+(latestDen.cum_area||0).toFixed(0)+' ha dans PU':''}</div>
+      </div>
+      <div style="flex:1;min-width:220px;background:var(--bg2);border-radius:8px;padding:16px 18px;font-size:.76rem;color:var(--text-light);line-height:1.65;">
+        <strong style="color:var(--text);display:block;margin-bottom:6px;">Note méthodologique</strong>
+        Cet indicateur correspond à la densité résidentielle nette telle que définie par le MAMH : <em>nombre de logements ÷ superficie des terrains occupés (ha)</em> à l'intérieur des périmètres d'urbanisation. Les données cumulatives incluent l'ensemble du parc résidentiel dans les PU depuis 2012. Formule : Σ logements PU / Σ superficie terrains PU (ha).
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card" id="card-ind3-chart">
+        <h3>Densité résidentielle nette dans les périmètres d'urbanisation · ${mrcLabel}</h3>
+        <div class="chart-subtitle">Évolution ${denYrs[0]}–${denYrs[denYrs.length-1]} · Logements par hectare (log/ha)</div>
+        <div class="chart-area" id="chart-ind3-den"></div>
+        ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-ind3-chart',title:`Ind3_densite_PU_${mrcLabel}`})}
+      </div>
+      <div class="chart-card" id="card-ind3-mun" style="overflow-x:auto">
+        <h3>Densité résidentielle nette dans les périmètres d'urbanisation par municipalité, année la plus récente · ${mrcLabel}</h3>
+        <div id="table-ind3-mun"></div>
+        ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-ind3-mun',singleYear:true,title:`Ind3_densite_mun_${mrcLabel}`})}
+      </div>
+    </div>
+  </div>`;
+
+  // ── DRAW CHARTS ───────────────────────────────────────────────────────────
+  drawInd1Shares('chart-ind1-shares','legend-ind1-shares',stockYrs,stockByYr,TYPES_IND1);
+  drawInd1Variation('chart-ind1-var','legend-ind1-var',stockYrs,stockByYr,base,baseYr,TYPES_IND1);
+  drawInd2Part('chart-ind2-part',partYrs,partByYr,cumPart);
+  drawInd3Den('chart-ind3-den',denYrs,denByYr,denMRC);
+
+  // ── TABLES ────────────────────────────────────────────────────────────────
+  // Ind1
+  const ind1Rows=[];
+  stockYrs.forEach(y=>{
+    TYPES_IND1.forEach(t=>{
+      const val=stockByYr[y]?.[t]||0, tot=stockByYr[y]?.Total||0, bval=base[t]||0;
+      const varKey='Variation vs '+baseYr;
+      const row={Type:t,Année:y,Logements:Math.round(val),'Part (%)':tot>0?(val/tot*100).toFixed(1):'—','Var. %':bval>0?((val-bval)/bval*100).toFixed(1):'n/a'};
+      row[varKey]=Math.round(val-bval);
+      ind1Rows.push(row);
+    });
+    const tot=stockByYr[y]?.Total||0, btot=base.Total||0;
+    const varKeyT='Variation vs '+baseYr;
+    const rowT={Type:'Total',Année:y,Logements:Math.round(tot),'Part (%)':'100','Var. %':btot>0?((tot-btot)/btot*100).toFixed(1):'n/a'};
+    rowT[varKeyT]=Math.round(tot-btot);
+    ind1Rows.push(rowT);
+  });
+  makeSortableTable('table-ind1',[
+    {key:'Type',label:'Type de construction'},{key:'Année',label:'Année',numeric:true},
+    {key:'Logements',label:'Logements',numeric:true},{key:'Part (%)',label:'Part (%)'},
+    {key:'Variation vs '+baseYr,label:'Variation vs '+baseYr,numeric:true},{key:'Var. %',label:'Var. %'},
+  ],ind1Rows,{defaultSort:'Année',totalKey:'Type'});
+  storeCSV('card-ind1-table',ind1Rows); storeCSV('card-ind1-shares',ind1Rows); storeCSV('card-ind1-var',ind1Rows);
+
+  // Ind2 mun
+  const ind2MunRows=Object.values(munPU).sort((a,b)=>b.total_PU-a.total_PU).map(d=>({'Municipalité':d.CSDNAME,'MRC':d.CDNAME,'Logements dans PU':Math.round(d.total_PU)}));
+  makeSortableTable('table-ind2-mun',[
+    {key:'Municipalité',label:'Municipalité'},{key:'MRC',label:'MRC'},
+    {key:'Logements dans PU',label:'Logements dans PU',numeric:true},
+  ],ind2MunRows,{defaultSort:'Logements dans PU'});
+  storeCSV('card-ind2-mun',ind2MunRows);
+  storeCSV('card-ind2-chart',partYrs.map(y=>({Année:y,'Logements PU':puByYr[y]||0,'Total estimé':Math.round(deltaByYr[y]||0),'Part (%)':partByYr[y]?.toFixed(1)||''})));
+
+  // Ind3 mun
+  const ind3MunRows=denMUNlast.map(d=>({'Municipalité':d.CSDNAME,'MRC':d.CDNAME,'Densité (log/ha)':+(d.densite_nette_PU||0).toFixed(2),'Logements':Math.round(d.cum_units||0),'Superficie (ha)':+(d.cum_area||0).toFixed(1)}));
+  makeSortableTable('table-ind3-mun',[
+    {key:'Municipalité',label:'Municipalité'},{key:'MRC',label:'MRC'},
+    {key:'Densité (log/ha)',label:'Densité (log/ha)',numeric:true},
+    {key:'Logements',label:'Logements',numeric:true},{key:'Superficie (ha)',label:'Superficie (ha)',numeric:true},
+  ],ind3MunRows,{defaultSort:'Densité (log/ha)'});
+  storeCSV('card-ind3-mun',ind3MunRows);
+  storeCSV('card-ind3-chart',denYrs.map(y=>({Année:y,'Densité (log/ha)':(denByYr[y]?.den||0).toFixed(2),'Logements':denByYr[y]?.cum_units||0,'Superficie (ha)':(denByYr[y]?.cum_area||0).toFixed(1)})));
+}
+
+// ── IND 1 CHART A: Line chart of % shares ─────────────────────────────────────
+function drawInd1Shares(id,legId,years,byYr,types){
+  const el=document.getElementById(id); if(!el||!years.length) return;
+  const leg=document.getElementById(legId);
+  if(leg){ leg.innerHTML=types.map(t=>`<div class="legend-item"><div class="legend-dot" style="background:${TYPE_COLORS[t]}"></div>${t}</div>`).join(''); }
+  const W=chartWidth(el), H=260, m={top:12,right:20,bottom:30,left:45};
+  const w=W-m.left-m.right, h=H-m.top-m.bottom;
+  const svg=d3.select('#'+id).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
+  const x=d3.scalePoint().domain(years.map(String)).range([0,w]);
+  const y=d3.scaleLinear().domain([0,100]).range([h,0]);
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('').ticks(5)).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d+'%')).select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
+  const line=d3.line().defined(d=>d.pct!=null).x(d=>x(String(d.yr))).y(d=>y(d.pct));
+  types.forEach(t=>{
+    const pts=years.map(yr=>({yr,pct:byYr[yr]?.Total>0?((byYr[yr][t]||0)/byYr[yr].Total*100):null}));
+    g.append('path').datum(pts).attr('fill','none').attr('stroke',TYPE_COLORS[t]).attr('stroke-width',2.5).attr('d',line);
+    g.selectAll(`.pt-${t.replace(/\s/g,'')}`.slice(0,20)).data(pts.filter(d=>d.pct!=null)).join('circle')
+      .attr('cx',d=>x(String(d.yr))).attr('cy',d=>y(d.pct)).attr('r',3).attr('fill',TYPE_COLORS[t])
+      .on('mouseover',(ev,d)=>showTooltip(ev,`<strong>${t}</strong><br>${d.yr} : ${d.pct.toFixed(1)}%`))
+      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+  });
+}
+
+// ── IND 1 CHART B: Grouped bar — absolute variation since baseline ─────────────
+function drawInd1Variation(id,legId,years,byYr,base,baseYr,types){
+  const el=document.getElementById(id); if(!el||!years.length) return;
+  const leg=document.getElementById(legId);
+  if(leg){ leg.innerHTML=types.map(t=>`<div class="legend-item"><div class="legend-dot" style="background:${TYPE_COLORS[t]}"></div>${t}</div>`).join(''); }
+  const yrs=years.filter(y=>y>baseYr);
+  if(!yrs.length) return;
+  const W=chartWidth(el), H=260, m={top:12,right:20,bottom:30,left:65};
+  const w=W-m.left-m.right, h=H-m.top-m.bottom;
+  const svg=d3.select('#'+id).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
+  const vals=yrs.flatMap(y=>types.map(t=>(byYr[y]?.[t]||0)-(base[t]||0)));
+  const maxV=Math.max(...vals,0), minV=Math.min(...vals,0);
+  const x=d3.scaleBand().domain(yrs.map(String)).range([0,w]).padding(0.18);
+  const xT=d3.scaleBand().domain(types.map((_,i)=>String(i))).range([0,x.bandwidth()]).padding(0.06);
+  const y=d3.scaleLinear().domain([Math.min(minV*1.1,-100),maxV*1.15]).range([h,0]);
+  const zero=y(0);
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('').ticks(5)).select('.domain').remove();
+  g.append('line').attr('x1',0).attr('x2',w).attr('y1',zero).attr('y2',zero).attr('stroke','#aaa').attr('stroke-width',1);
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
+  yrs.forEach(yr=>{
+    types.forEach((t,i)=>{
+      const val=(byYr[yr]?.[t]||0)-(base[t]||0);
+      const bh=Math.abs(y(val)-zero), by2=val>=0?y(val):zero;
+      g.append('rect').attr('x',x(String(yr))+(xT(String(i))||0)).attr('y',by2)
+        .attr('width',xT.bandwidth()).attr('height',Math.max(1,bh)).attr('fill',TYPE_COLORS[t]).attr('rx',2)
+        .on('mouseover',ev=>showTooltip(ev,`<strong>${t}</strong><br>${yr} : ${val>=0?'+':''}${Math.round(val).toLocaleString('fr-CA')} depuis ${baseYr}`))
+        .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+    });
+  });
+}
+
+// ── IND 2 CHART: Bar chart of % per year + mean line ─────────────────────────
+function drawInd2Part(id,years,partByYr,cumPart){
+  const el=document.getElementById(id); if(!el||!years.length) return;
+  const W=chartWidth(el), H=260, m={top:12,right:20,bottom:30,left:50};
+  const w=W-m.left-m.right, h=H-m.top-m.bottom;
+  const svg=d3.select('#'+id).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
+  const maxV=Math.min(100,Math.max(...years.map(y=>partByYr[y]||0))*1.15)||100;
+  const x=d3.scaleBand().domain(years.map(String)).range([0,w]).padding(0.25);
+  const y=d3.scaleLinear().domain([0,maxV]).range([h,0]);
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('').ticks(5)).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d+'%')).select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
+  years.forEach(yr=>{
+    const val=partByYr[yr]||0;
+    g.append('rect').attr('x',x(String(yr))).attr('y',y(val)).attr('width',x.bandwidth())
+      .attr('height',Math.max(1,h-y(val))).attr('fill','#178785').attr('rx',2)
+      .on('mouseover',ev=>showTooltip(ev,`<strong>${yr}</strong><br>Part PU : ${val.toFixed(1)}%`))
+      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+    if(h-y(val)>16) g.append('text').attr('x',x(String(yr))+x.bandwidth()/2).attr('y',y(val)-4)
+      .attr('text-anchor','middle').attr('font-size','10px').attr('fill','#1a1a1a').text(val.toFixed(1)+'%');
+  });
+  // Cumulative mean line
+  if(cumPart!=null){
+    const yc=y(cumPart);
+    g.append('line').attr('x1',0).attr('x2',w).attr('y1',yc).attr('y2',yc)
+      .attr('stroke','#e8a048').attr('stroke-width',2).attr('stroke-dasharray','6,4');
+    g.append('text').attr('x',w+4).attr('y',yc+4).attr('font-size','10px').attr('fill','#e8a048')
+      .text(cumPart.toFixed(1)+'%');
+  }
+}
+
+// ── IND 3 CHART: Line chart of density ───────────────────────────────────────
+function drawInd3Den(id,years,denByYr,denMRC_fi){
+  const el=document.getElementById(id); if(!el||!years.length) return;
+  const W=chartWidth(el), H=260, m={top:12,right:60,bottom:30,left:55};
+  const w=W-m.left-m.right, h=H-m.top-m.bottom;
+  const svg=d3.select('#'+id).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
+  const g=svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
+  const vals=years.map(y=>denByYr[y]?.den||0);
+  const maxV=Math.max(...vals)*1.15||20;
+  const x=d3.scalePoint().domain(years.map(String)).range([0,w]);
+  const y=d3.scaleLinear().domain([0,maxV]).range([h,0]);
+  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('').ticks(5)).select('.domain').remove();
+  g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
+  g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
+
+  if(currentMRC){
+    // Single MRC line
+    const pts=years.map(y=>({y,den:denByYr[y]?.den||0}));
+    const line=d3.line().x(d=>x(String(d.y))).y(d=>y(d.den));
+    g.append('path').datum(pts).attr('fill','none').attr('stroke','#1a4e4b').attr('stroke-width',2.5).attr('d',line);
+    g.selectAll('.dp').data(pts).join('circle').attr('cx',d=>x(String(d.y))).attr('cy',d=>y(d.den)).attr('r',4).attr('fill','#1a4e4b')
+      .on('mouseover',(ev,d)=>showTooltip(ev,`<strong>${currentMRC}</strong><br>${d.y} : ${d.den.toFixed(2)} log/ha`))
+      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+  } else {
+    // One line per MRC
+    const palette=['#0b5d5e','#178785','#4fa7a5','#5a6fa0','#c49a6c','#8a5d5d','#7b8f47','#6dbfb8','#e07b39'];
+    const byCDNAME=d3.group(denMRC_fi,d=>d.CDNAME);
+    let ci=0;
+    byCDNAME.forEach((rows,cdname)=>{
+      const color=palette[ci%palette.length];
+      const pts=years.map(y=>{
+        const row=rows.find(r=>Math.round(r.Annee_construction)===y);
+        return {y,den:row?.densite_nette_PU||null};
+      }).filter(d=>d.den!=null);
+      if(!pts.length){ci++;return;}
+      const line=d3.line().x(d=>x(String(d.y))).y(d=>y(d.den));
+      g.append('path').datum(pts).attr('fill','none').attr('stroke',color).attr('stroke-width',2).attr('d',line);
+      g.selectAll(`.dp${ci}`).data(pts).join('circle').attr('cx',d=>x(String(d.y))).attr('cy',d=>y(d.den)).attr('r',3).attr('fill',color)
+        .on('mouseover',(ev,d)=>showTooltip(ev,`<strong>${cdname}</strong><br>${d.y} : ${d.den.toFixed(2)} log/ha`))
+        .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+      // Label at end
+      const last=pts[pts.length-1];
+      if(last) g.append('text').attr('x',x(String(last.y))+6).attr('y',y(last.den)+4).attr('font-size','10px').attr('fill',color).text(cdname.length>18?cdname.slice(0,16)+'…':cdname);
+      ci++;
+    });
+  }
+}
+
+
+
+// ─── CUBF BUTTONS + TOOLTIP ──────────────────────────────────────────────────
+(function(){
+  const tip=document.getElementById('cubf-tooltip');
+  let hideTimer;
+  document.querySelectorAll('.cubf-btn').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      document.querySelectorAll('.cubf-btn').forEach(b=>b.classList.remove('active'));
+      this.classList.add('active');
+      currentCubf=this.dataset.cubf;
+      populateYearSelect();
+      drawMap();
+      render();
+    });
+    btn.addEventListener('mouseenter',function(e){
+      clearTimeout(hideTimer);
+      tip.textContent=this.getAttribute('title');
+      tip.classList.add('visible');
+      positionTip(e);
+    });
+    btn.addEventListener('mousemove',positionTip);
+    btn.addEventListener('mouseleave',function(){
+      hideTimer=setTimeout(()=>tip.classList.remove('visible'),100);
+    });
+  });
+  function positionTip(e){
+    const m=8;
+    let x=e.clientX+m, y=e.clientY-tip.offsetHeight-m;
+    if(x+tip.offsetWidth>window.innerWidth) x=e.clientX-tip.offsetWidth-m;
+    if(y<0) y=e.clientY+m;
+    tip.style.left=x+'px'; tip.style.top=y+'px';
+  }
+})();
+</script>
+<div class="cubf-tooltip" id="cubf-tooltip"></div>
+</body>
+</html>
