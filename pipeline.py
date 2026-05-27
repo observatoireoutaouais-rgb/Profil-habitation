@@ -2,8 +2,7 @@
 Rôle d'évaluation foncière – Pipeline de données
 ================================================
 Sources selon l'année :
-  • 2023 et plus  : GPKG/FGDB provincial (ROLE{YYYY}_GPKG.zip, .gpkg ou .gdb)
-                    → si absent, repli sur API MAMH (index CSV + XML par municipalité)
+  • 2023 et plus  : API MAMH (index CSV + XML par municipalité)
   • 2012 à 2022   : SHP provincial (ROLE{YYYY}_SHP.zip)
   • Indicateurs PU: Role_{YYYY}_PU.zip
     Correction plan complémentaire : dissolution par bâtiment (mat18[:15]),
@@ -27,14 +26,6 @@ PU_ZIPS = {}
 for _p in Path(".").glob("Role_*_PU.zip"):
     _m = re.search(r"(\d{4})", _p.name)
     if _m: PU_ZIPS[int(_m.group(1))] = _p
-# GPKG/FGDB sources for 2023+ (zip containing .gpkg takes precedence over bare .gpkg / .gdb)
-GPKG_SOURCES = {}
-for _p in list(Path(".").glob("ROLE*.gpkg")) + list(Path(".").glob("ROLE*.gdb")):
-    _m = re.search(r"(\d{4})", _p.name)
-    if _m: GPKG_SOURCES[int(_m.group(1))] = _p
-for _p in Path(".").glob("ROLE*_GPKG.zip"):
-    _m = re.search(r"(\d{4})", _p.name)
-    if _m: GPKG_SOURCES[int(_m.group(1))] = _p  # zip overrides bare file
 MATCH_PATH  = "MATCH.csv"
 PF_MUN_PATH = "pf-mun-2023-2023.csv"
 DATA_DIR    = Path("web/data")
@@ -96,19 +87,20 @@ def fetch_index(annee):
         or next((c for c in cols if "munic" in c.lower()),cols[1] if len(cols)>1 else cols[0]))
     col_url=next((c for c in cols if "url" in c.lower() or "lien" in c.lower()),cols[-1])
     print(f"{len(rows)} muns")
-    return {row[col_nom].strip():row[col_url].strip() for row in rows if row.get(col_nom) and row.get(col_url)}
+    return [(row[col_nom].strip(), row[col_url].strip()) for row in rows if row.get(col_nom) and row.get(col_url)]
 def build_role_df_api(match_df,pause=0.1):
     mun_to_mrc=match_df.set_index("_mun_key")[["CDNAME","Region"]].to_dict("index")
     muns_voulus=set(mun_to_mrc.keys()); all_rows,errors=[],[]
-    for annee in [a for a in ANNEES if a>=2023 and a not in SHP_ZIPS and a not in GPKG_SOURCES]:
+    for annee in [a for a in ANNEES if a>=2023 and a not in SHP_ZIPS]:
         print(f"\n══ Année {annee} (API) ══")
         index=fetch_index(annee)
         if not index: continue
-        print(f"  {len([n for n in index if n in muns_voulus])}/{len(muns_voulus)} muns trouvées")
-        for nom_mun,url_xml in index.items():
+        noms_trouves={nom for nom,_ in index if nom in muns_voulus}
+        print(f"  {len(noms_trouves)}/{len(muns_voulus)} muns trouvées")
+        for nom_mun,url_xml in index:
             if nom_mun not in muns_voulus: continue
             meta=mun_to_mrc[nom_mun]
-            print(f"  [{annee}] {nom_mun}…",end=" ",flush=True)
+            print(f"  [{annee}] {nom_mun} ({url_xml.split('/')[-1]})…",end=" ",flush=True)
             try:
                 r=requests.get(url_xml,timeout=60); r.raise_for_status()
                 rows=parse_xml(r.content,annee,nom_mun,meta["CDNAME"],meta["Region"])
@@ -182,69 +174,6 @@ def build_role_df_shp(pf_lookup,match_df):
         except Exception as e:
             print(f"  ERR SHP {annee}: {e}"); errors.append({"annee":annee,"mun":"SHP","erreur":str(e)})
     return all_rows,errors
-def _fiona_open(src_path):
-    """Return (fiona_path, layer_name) for a .gpkg, .gdb, or zip containing a .gpkg."""
-    import fiona
-    p = Path(src_path)
-    if p.suffix.lower() == ".zip":
-        with zipfile.ZipFile(p) as zf:
-            inner = next((n for n in zf.namelist() if n.lower().endswith(".gpkg")), None)
-            if not inner:
-                raise FileNotFoundError(f"Aucun .gpkg dans {p.name}")
-        fpath = f"/vsizip/{p.absolute()}/{inner}"
-    else:
-        fpath = str(p.absolute())
-    layers = fiona.listlayers(fpath)
-    layer = next(
-        (l for l in layers if "UNITE_EVALN" in l.upper() and "ADR" not in l.upper()),
-        next((l for l in layers if "UNITE" in l.upper()), layers[0]),
-    )
-    return fpath, layer
-def build_role_df_gpkg(pf_lookup, match_df):
-    """Read 2023+ role data from local GPKG or FGDB files (fallback: API XML)."""
-    import fiona
-    if not pf_lookup or not GPKG_SOURCES: return [], []
-    region_map = match_df.drop_duplicates("CDNAME").set_index("CDNAME")["Region"].to_dict()
-    all_rows, errors = [], []
-    our_codes = set(pf_lookup.keys())
-    for annee, src_path in sorted(GPKG_SOURCES.items()):
-        print(f"\n══ Année {annee} (GPKG/FGDB : {src_path.name}) ══")
-        try:
-            fpath, layer = _fiona_open(src_path)
-            print(f"  Couche : {layer}", flush=True)
-            rows_year = 0
-            with fiona.open(fpath, layer=layer) as src:
-                # Normalize field names to lowercase for robust matching
-                fields = {k.lower(): k for k in src.schema["properties"].keys()}
-                code_key = fields.get("code_mun") or fields.get("cd_mun")
-                if not code_key:
-                    raise KeyError(f"Champ code_mun introuvable – colonnes : {list(fields)[:15]}")
-                def gf(props, name, _f=fields):
-                    k = _f.get(name)
-                    v = props.get(k) if k else None
-                    return str(v).strip() if v is not None else None
-                for feat in src:
-                    props = feat["properties"]
-                    code = str(props.get(code_key) or "").strip().zfill(5)
-                    if code not in our_codes: continue
-                    nom_mun, cdname = pf_lookup[code]
-                    all_rows.append({"Annee": annee, "CSDNAME": nom_mun, "CDNAME": cdname,
-                        "Region": region_map.get(cdname),
-                        "rl0105a": gf(props,"rl0105a"), "rl0302a": gf(props,"rl0302a"),
-                        "rl0307a": gf(props,"rl0307a"), "rl0308a": gf(props,"rl0308a"),
-                        "rl0309a": gf(props,"rl0309a"), "rl0311a": gf(props,"rl0311a"),
-                        "rl0402a": gf(props,"rl0402a"), "rl0403a": gf(props,"rl0403a"),
-                        "rl0404a": gf(props,"rl0404a")})
-                    rows_year += 1
-            if rows_year < 200000:
-                print(f"  ⚠  {rows_year:,} UE – fichier suspect, ignoré.")
-                all_rows = [r for r in all_rows if r["Annee"] != annee]
-            else:
-                print(f"  ✓ {rows_year:,} UE retenues")
-        except Exception as e:
-            print(f"  ERR GPKG {annee}: {e}")
-            errors.append({"annee": annee, "mun": "GPKG", "erreur": str(e)})
-    return all_rows, errors
 def build_indicateurs_pu(pf_lookup):
     """
     Indicateurs stratégiques – Périmètres d'urbanisation.
@@ -437,13 +366,11 @@ def export_indicator_set(Role_brut, mode, suffix):
 def main():
     MATCH=load_match(); our_mrcs=set(MATCH["CDNAME"].unique())
     pf_lookup=load_pf_mun(our_mrcs)
-    print(f"\nSHP  zips    : {dict(sorted(SHP_ZIPS.items())) or 'aucun'}")
-    print(f"GPKG sources : {dict(sorted(GPKG_SOURCES.items())) or 'aucun'}")
-    print(f"PU   zips    : {dict(sorted(PU_ZIPS.items())) or 'aucun'}")
-    rows_gpkg,_=build_role_df_gpkg(pf_lookup,MATCH)
+    print(f"\nSHP zips : {dict(sorted(SHP_ZIPS.items())) or 'aucun'}")
+    print(f"PU  zips : {dict(sorted(PU_ZIPS.items())) or 'aucun'}")
     rows_api,_=build_role_df_api(MATCH)
     rows_shp,_=build_role_df_shp(pf_lookup,MATCH)
-    all_rows=rows_gpkg+rows_api+rows_shp
+    all_rows=rows_api+rows_shp
     if not all_rows: print("Aucune donnée."); return
     Role_brut=pd.DataFrame(all_rows)
     num_cols=["rl0302a","rl0307a","rl0308a","rl0309a","rl0311a","rl0402a","rl0403a","rl0404a"]
