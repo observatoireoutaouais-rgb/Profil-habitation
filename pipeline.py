@@ -86,19 +86,23 @@ def fetch_index(annee):
         or next((c for c in cols if "nom" in c.lower() and "munic" in c.lower()),None)
         or next((c for c in cols if "munic" in c.lower()),cols[1] if len(cols)>1 else cols[0]))
     col_url=next((c for c in cols if "url" in c.lower() or "lien" in c.lower()),cols[-1])
+    col_code=next((c for c in cols if "code" in c.lower()),None)
     print(f"{len(rows)} muns")
-    return [(row[col_nom].strip(), row[col_url].strip()) for row in rows if row.get(col_nom) and row.get(col_url)]
-def build_role_df_api(match_df,pause=0.1):
+    return [(row[col_code].strip() if col_code else "", row[col_nom].strip(), row[col_url].strip())
+            for row in rows if row.get(col_nom) and row.get(col_url)]
+def build_role_df_api(match_df,pf_lookup,pause=0.1):
     mun_to_mrc=match_df.set_index("_mun_key")[["CDNAME","Region"]].to_dict("index")
-    muns_voulus=set(mun_to_mrc.keys()); all_rows,errors=[],[]
+    muns_voulus=set(mun_to_mrc.keys()); our_codes=set(pf_lookup.keys()); all_rows,errors=[],[]
     for annee in [a for a in ANNEES if a>=2023 and a not in SHP_ZIPS]:
         print(f"\n══ Année {annee} (API) ══")
         index=fetch_index(annee)
         if not index: continue
-        noms_trouves={nom for nom,_ in index if nom in muns_voulus}
+        noms_trouves={nom for _,nom,_ in index if nom in muns_voulus}
         print(f"  {len(noms_trouves)}/{len(muns_voulus)} muns trouvées")
-        for nom_mun,url_xml in index:
+        for code,nom_mun,url_xml in index:
             if nom_mun not in muns_voulus: continue
+            # If code is a 5-digit numeric code not in our scope, skip (different municipality, same name)
+            if re.match(r'^\d{5}$', code) and code not in our_codes: continue
             meta=mun_to_mrc[nom_mun]
             print(f"  [{annee}] {nom_mun} ({url_xml.split('/')[-1]})…",end=" ",flush=True)
             try:
@@ -368,7 +372,7 @@ def main():
     pf_lookup=load_pf_mun(our_mrcs)
     print(f"\nSHP zips : {dict(sorted(SHP_ZIPS.items())) or 'aucun'}")
     print(f"PU  zips : {dict(sorted(PU_ZIPS.items())) or 'aucun'}")
-    rows_api,_=build_role_df_api(MATCH)
+    rows_api,_=build_role_df_api(MATCH,pf_lookup)
     rows_shp,_=build_role_df_shp(pf_lookup,MATCH)
     all_rows=rows_api+rows_shp
     if not all_rows: print("Aucune donnée."); return
