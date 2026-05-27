@@ -635,13 +635,6 @@ function downloadPNG(chartId, title){
   const card=document.getElementById(chartId);
   if(!card) return;
 
-  const actions=card.querySelector('.chart-actions');
-  const metaNote=card.querySelector('.chart-meta-note');
-  const metaSource=card.querySelector('.chart-meta-source');
-
-  // Hide UI chrome before capture
-  if(actions) actions.style.visibility='hidden';
-
   function doCapture(){
     const scale=2;
     html2canvas(card,{
@@ -663,7 +656,6 @@ function downloadPNG(chartId, title){
         doc.querySelectorAll('.chart-actions').forEach(el=>el.style.visibility='hidden');
       }
     }).then(canvas=>{
-      if(actions) actions.style.visibility='';
 
       const pad=24, s=scale;
       const out=document.createElement('canvas');
@@ -688,7 +680,6 @@ function downloadPNG(chartId, title){
       setTimeout(()=>document.body.removeChild(a), 100);
     }).catch(err=>{
       console.error('html2canvas error:', err);
-      if(actions) actions.style.visibility='';
     });
   }
 
@@ -698,7 +689,7 @@ function downloadPNG(chartId, title){
     const s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
     s.onload=doCapture;
-    s.onerror=()=>{ if(actions) actions.style.visibility=''; };
+    s.onerror=()=>{ console.error('html2canvas failed to load'); };
     document.head.appendChild(s);
   }
 }
