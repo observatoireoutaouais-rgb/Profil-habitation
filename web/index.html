@@ -1121,7 +1121,7 @@ function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMR
   const munData=filterYearMRC(DATA[dk('superficie_mun')]||[]);
   const allData=filterYearRangeMRC(DATA[dk('superficie_mrc')]||[]);
   const years=[...new Set(allData.map(d=>Number(d.Annee)).filter(Boolean))].sort((a,b)=>a-b);
-  const types=[...new Set(allData.map(d=>d.Types).filter(t=>t && !t.startsWith('Total')))];
+  const types=[...new Set(allData.map(d=>d.Types).filter(t=>t && !t.startsWith('Total') && t!=='Autres immeubles résidentiels'))];
   const terrainSeries=types.map(type=>({name:type,values:years.map(year=>{ const row=allData.find(d=>Number(d.Annee)===year&&d.Types===type); return {year, value:row?Number(row.superficie_terrain)||0:null}; })}));
   const aireSeries=types.map(type=>({name:type,values:years.map(year=>{ const row=allData.find(d=>Number(d.Annee)===year&&d.Types===type); return {year, value:row?Number(row.aire_etages)||0:null}; })}));
   const mrcRows=allData.map(d=>({Année:Number(d.Annee),Type:d.Types,'Superficie terrain (m²)':Math.round(d.superficie_terrain||0),"Aire d'étages (m²)":Math.round(d.aire_etages||0)}))
