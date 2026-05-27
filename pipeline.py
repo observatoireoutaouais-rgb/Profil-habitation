@@ -104,6 +104,13 @@ def build_role_df_api(match_df,pf_lookup,pause=0.1):
             # If code is a 5-digit numeric code not in our scope, skip (different municipality, same name)
             if re.match(r'^\d{5}$', code) and code not in our_codes: continue
             meta=mun_to_mrc[nom_mun]
+            # Proactively fix wrong index URL: if filename doesn't match expected RL{code}_{annee}.xml, correct it
+            if re.match(r'^\d{5}$',code):
+                base_url=url_xml.rsplit('/',1)[0]
+                expected=f"RL{code}_{annee}.xml"
+                if url_xml.rsplit('/',1)[-1]!=expected:
+                    print(f"  ⚠ URL index incorrecte ({url_xml.rsplit('/',1)[-1]}) → {expected}")
+                    url_xml=f"{base_url}/{expected}"
             print(f"  [{annee}] {nom_mun} ({url_xml.split('/')[-1]})…",end=" ",flush=True)
             try:
                 r=requests.get(url_xml,timeout=60); r.raise_for_status()
