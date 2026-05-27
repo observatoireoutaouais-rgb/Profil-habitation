@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas numpy requests
+          pip install pandas numpy requests fiona
 
       - name: Télécharger les SHP historiques (MAMH, 2012–2022)
         run: |
@@ -54,6 +54,21 @@ jobs:
               "${BASE_URL}/${ZIP}" \
             && echo "  ✓ $ZIP ($(du -sh $ZIP | cut -f1))" \
             || echo "  ⚠  $ZIP non disponible, ignoré."
+          done
+
+      - name: Télécharger les GPKG (MAMH, 2023+)
+        run: |
+          BASE_URL="https://donneesouvertes.affmunqc.net/role"
+          CURRENT_YEAR=$(date +%Y)
+          for ANNEE in $(seq 2023 $CURRENT_YEAR); do
+            ZIP="ROLE${ANNEE}_GPKG.zip"
+            echo "Téléchargement de $ZIP…"
+            curl -fsSL --retry 3 --retry-delay 5 \
+              -H "User-Agent: Mozilla/5.0" \
+              -o "$ZIP" \
+              "${BASE_URL}/${ZIP}" \
+            && echo "  ✓ $ZIP ($(du -sh $ZIP | cut -f1))" \
+            || { echo "  ⚠  $ZIP non disponible, ignoré."; rm -f "$ZIP"; }
           done
 
       - name: Run pipeline
