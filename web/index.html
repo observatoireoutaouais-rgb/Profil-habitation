@@ -798,6 +798,7 @@ function makeSortableTable(containerId, columns, rows, opts={}){
   }
 
   function render(){
+    const hadFocus=document.activeElement?.id===`search-${containerId}`;
     const filtered=sortedRows();
     const totalPages=Math.max(1, Math.ceil(filtered.length/rowsPerPage));
     if(page>totalPages) page=totalPages;
@@ -829,7 +830,9 @@ function makeSortableTable(containerId, columns, rows, opts={}){
       html+=`<div class="table-pagination"><span class="table-page-info">Page ${page} sur ${totalPages}</span><button class="chart-btn" id="prev-${containerId}" ${page===1?'disabled':''}>← Précédent</button><button class="chart-btn" id="next-${containerId}" ${page===totalPages?'disabled':''}>Suivant →</button></div>`;
     }
     container.innerHTML=html;
-    document.getElementById(`search-${containerId}`)?.addEventListener('input',function(){ filterText=this.value; page=1; render(); });
+    const searchEl=document.getElementById(`search-${containerId}`);
+    searchEl?.addEventListener('input',function(){ filterText=this.value; page=1; render(); });
+    if(hadFocus){ searchEl?.focus(); searchEl&&(searchEl.selectionStart=searchEl.selectionEnd=searchEl.value.length); }
     container.querySelectorAll('th[data-key]').forEach(th=>{
       th.addEventListener('click',()=>{
         const k=th.dataset.key;
