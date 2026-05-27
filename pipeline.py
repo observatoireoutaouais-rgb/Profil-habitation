@@ -110,7 +110,18 @@ def build_role_df_api(match_df,pf_lookup,pause=0.1):
                 rows=parse_xml(r.content,annee,nom_mun,meta["CDNAME"],meta["Region"])
                 all_rows.extend(rows); print(f"{len(rows):,} UE")
             except Exception as e:
-                print(f"ERR: {e}"); errors.append({"annee":annee,"mun":nom_mun,"erreur":str(e)})
+                if re.match(r'^\d{5}$',code):
+                    base_url=url_xml.rsplit('/',1)[0]
+                    url_fallback=f"{base_url}/RL{code}_{annee}.xml"
+                    print(f"↻ fallback RL{code}…",end=" ",flush=True)
+                    try:
+                        r=requests.get(url_fallback,timeout=60); r.raise_for_status()
+                        rows=parse_xml(r.content,annee,nom_mun,meta["CDNAME"],meta["Region"])
+                        all_rows.extend(rows); print(f"{len(rows):,} UE")
+                    except Exception as e2:
+                        print(f"ERR: {e2}"); errors.append({"annee":annee,"mun":nom_mun,"erreur":str(e2)})
+                else:
+                    print(f"ERR: {e}"); errors.append({"annee":annee,"mun":nom_mun,"erreur":str(e)})
             time.sleep(pause)
     return all_rows,errors
 def _read_dbf_layout(f):
