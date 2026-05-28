@@ -458,7 +458,7 @@ function dk(base){const s=['mrc_list','nouveaux_logements_mrc','nouveaux_logemen
 async function loadAll(){
   const files=['mrc_list',
     'nouveaux_logements_mrc','nouveaux_logements_mun','densite_pu_mrc','densite_pu_mun','types_nouveaux_mrc',
-    'population_mrc','projections_pop_mrc','menages_proj_mrc'];
+    'population_mrc','projections_pop_mrc','menages_proj_mrc','taux_inoccupation_schl'];
   const variantFiles=['logements_types_mrc','logements_types_mun','valeur_mrc','valeur_mun','age_mrc','age_mun','periode_mrc','periode_mun','superficie_mrc','superficie_mun'];
   const suffixes=['mamh_strict','mamh_optional','mamh_plus_others'];
   variantFiles.forEach(f=>suffixes.forEach(s=>files.push(f+'_'+s)));
@@ -1412,6 +1412,21 @@ let ciblesParams={
 };
 
 function renderCibles(content,mrcLabel){
+  // ── SCHL vacancy data ──────────────────────────────────────────────────
+  const schlData=DATA.taux_inoccupation_schl||{};
+  const schlMRCRates=currentMRC?(schlData[currentMRC]||null):null;
+  const hasSCHLData=Boolean(schlMRCRates&&Object.keys(schlMRCRates).length>0);
+  // Use SCHL most-recent year rate (in %, divide by 100)
+  let tauxSCHL=null, tauxSCHLYear=null;
+  if(hasSCHLData){
+    tauxSCHLYear=Math.max(...Object.keys(schlMRCRates).map(Number));
+    tauxSCHL=schlMRCRates[String(tauxSCHLYear)]/100;
+  }
+  // Auto-fallback to ratio methods when no SCHL data
+  if(!hasSCHLData){
+    if(ciblesParams.methodeA1==='inoccupation') ciblesParams.methodeA1='ratio';
+    if(ciblesParams.methodeA3==='inoccupation') ciblesParams.methodeA3='ratio';
+  }
   const {methodeA1,methodeA3,ratioPreset,ratioEquilibre,tauxInoccupation,ratioMisesEnChantier,scenario,horizonAn}=ciblesParams;
 
   // ── DATA ──────────────────────────────────────────────────────────────
@@ -1439,6 +1454,16 @@ function renderCibles(content,mrcLabel){
   Object.keys(popByYear).map(Number).filter(y=>y<calibYear&&popByYear[y]>0).forEach(y=>{
     if(!menByYear[y]) menByYear[y]=Math.round(popByYear[y]/tailleMenage);
   });
+
+  // Detect last ISQ estimated year (all 3 scenarios identical = not yet projected)
+  const menByYearRef={}, menByYearFort={};
+  filt(menProj).filter(d=>d.Scenario==='reference').forEach(r=>{menByYearRef[r.Annee]=(menByYearRef[r.Annee]||0)+r.Menages;});
+  filt(menProj).filter(d=>d.Scenario==='fort').forEach(r=>{menByYearFort[r.Annee]=(menByYearFort[r.Annee]||0)+r.Menages;});
+  const isqDetectYears=Object.keys(menByYearRef).map(Number).sort((a,b)=>a-b);
+  let lastISQEstYear=calibYear;
+  for(const y of isqDetectYears){
+    if(menByYearRef[y]===menByYearFort[y]) lastISQEstYear=y; else break;
+  }
 
   const menYears=Object.keys(menByYear).map(Number).sort((a,b)=>a-b);
   const menEstYears=menYears.filter(y=>y<=latestLogYear+1);
@@ -1468,8 +1493,8 @@ function renderCibles(content,mrcLabel){
   const tauxNonOccup=Lactuel>0?(Lactuel-Mactuel)/Lactuel:0;
   const tauxNonOccupRegional=LRegional>0?(LRegional-MRegional)/LRegional:0;
 
-  // Période de référence : années où logements ET ménages ISQ estimés sont disponibles
-  const refYearsAvail=menYears.filter(y=>y<=latestLogYear&&logByYear[y]&&menByYear[y]);
+  // Période de référence : années où logements ET ménages ISQ estimés (non projetés) sont disponibles
+  const refYearsAvail=menYears.filter(y=>y<=Math.min(latestLogYear,lastISQEstYear)&&logByYear[y]&&menByYear[y]);
   const refRatioByYear={};
   refYearsAvail.forEach(y=>{if(menByYear[y]>0) refRatioByYear[y]=+(logByYear[y]/menByYear[y]).toFixed(3);});
   // Auto-init période si null
@@ -1588,7 +1613,7 @@ function renderCibles(content,mrcLabel){
       <label>Méthode – Étape A.1</label>
       <select id="cp-methode-a1">
         <option value="ratio"${methodeA1==='ratio'?' selected':''}>A.1.1 – Ratio log./ménage</option>
-        <option value="inoccupation"${methodeA1==='inoccupation'?' selected':''}>A.1.2 – Taux d'inoccupation</option>
+        <option value="inoccupation"${methodeA1==='inoccupation'?' selected':''}${!hasSCHLData?' disabled':''}>A.1.2 – Taux d'inoccupation${!hasSCHLData?' (données SCHL non disponibles)':''}</option>
       </select>
     </div>
     <div class="cibles-param">
@@ -1596,7 +1621,7 @@ function renderCibles(content,mrcLabel){
       <select id="cp-methode-a3">
         <option value="ratio"${methodeA3==='ratio'?' selected':''}>A.3.1 – Ratio log./ménage</option>
         <option value="mises_chantier"${methodeA3==='mises_chantier'?' selected':''}>A.3.2 – Ratio mises en chantier</option>
-        <option value="inoccupation"${methodeA3==='inoccupation'?' selected':''}>A.3.3 – Taux d'inoccupation</option>
+        <option value="inoccupation"${methodeA3==='inoccupation'?' selected':''}${!hasSCHLData?' disabled':''}>A.3.3 – Taux d'inoccupation${!hasSCHLData?' (données SCHL non disponibles)':''}</option>
       </select>
     </div>
     ${showRatio?`<div class="cibles-param">
@@ -1636,7 +1661,7 @@ function renderCibles(content,mrcLabel){
     ${showTaux?`<div class="cibles-param">
       <label>Taux d'inoccupation équilibré (%)</label>
       <input type="number" id="cp-taux" value="${(tauxInoccupation*100).toFixed(1)}" step="0.1" min="0" max="50">
-      <small style="font-size:.7rem;color:var(--text-light);">Observé – ${mrcLabel} : ${fmtPct(tauxNonOccup)} · Outaouais : ${fmtPct(tauxNonOccupRegional)}</small>
+      <small style="font-size:.7rem;color:var(--text-light);">${hasSCHLData?`SCHL ${tauxSCHLYear} – ${mrcLabel} : ${fmtPct(tauxSCHL)} (locatif)`:`Dérivé – ${mrcLabel} : ${fmtPct(tauxNonOccup)}`} · Outaouais : ${fmtPct(tauxNonOccupRegional)}</small>
     </div>`:''}
     ${showRatioMC?`<div class="cibles-param">
       <label>Ratio mises en chantier/ménage</label>
@@ -1679,9 +1704,14 @@ function renderCibles(content,mrcLabel){
       <div class="metric-sub">Cible (${ratioSourceLabel}) : ${cibleRatio.toFixed(3)}</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Taux de non-occupation actuel</div>
-      <div class="metric-value">${fmtPct(tauxNonOccup)}</div>
-      <div class="metric-sub">Log. sans ménage principal · Outaouais : ${fmtPct(tauxNonOccupRegional)}</div>
+      ${hasSCHLData
+        ?`<div class="metric-label">Taux d'inoccupation locatif (${tauxSCHLYear})</div>
+           <div class="metric-value">${fmtPct(tauxSCHL)}</div>
+           <div class="metric-sub">SCHL – Enquête sur les logements locatifs · Dérivé : ${fmtPct(tauxNonOccup)}</div>`
+        :`<div class="metric-label">Taux de non-occupation actuel</div>
+           <div class="metric-value">${fmtPct(tauxNonOccup)}</div>
+           <div class="metric-sub">Log. sans ménage principal · Outaouais : ${fmtPct(tauxNonOccupRegional)}</div>`
+      }
     </div>
     <div class="metric-card">
       <div class="metric-label">Ménages projetés (${horizonAn})</div>
@@ -1733,9 +1763,9 @@ function renderCibles(content,mrcLabel){
       </div>
       <div class="cibles-note">
         <strong>Méthodologie MAMH (2025) :</strong> Estimation selon l'Orientation gouvernementale en aménagement du territoire no 4 (OGAT 4). ${noteRatio}${noteTaux}${noteMC}
-        <br>Le taux de non-occupation (${fmtPct(tauxNonOccup)}) inclut logements vacants, résidences secondaires et saisonnières.
+        <br>${hasSCHLData?`Taux d'inoccupation locatif SCHL ${tauxSCHLYear} : ${fmtPct(tauxSCHL)} · `:''}Taux de non-occupation dérivé (${fmtPct(tauxNonOccup)}) : logements sans ménage principal.
         <br>⚠ La combinaison de certaines approches peut entraîner une double comptabilisation des besoins.
-        <br><em>Sources : ISQ, Projections de ménages privés – MRC du Québec, édition 2025 · MAMH, Rôle d'évaluation foncière des municipalités.</em>
+        <br><em>Sources : ISQ, Projections de ménages privés – MRC du Québec, édition 2025 · MAMH, Rôle d'évaluation foncière des municipalités${hasSCHLData?' · SCHL, Enquête sur les logements locatifs 2010–2023':''}.</em>
       </div>
     </div>
   </div>`;
