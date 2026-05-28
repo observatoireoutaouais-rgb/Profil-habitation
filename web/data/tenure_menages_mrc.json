@@ -1,0 +1,110 @@
+{
+  "Acton": {
+    "total": 6845,
+    "proprio": 4805,
+    "locataire": 2035,
+    "pct_locataire": 29.7
+  },
+  "Antoine-Labelle": {
+    "total": 17840,
+    "proprio": 12965,
+    "locataire": 4875,
+    "pct_locataire": 27.3
+  },
+  "Argenteuil": {
+    "total": 16225,
+    "proprio": 11165,
+    "locataire": 5055,
+    "pct_locataire": 31.2
+  },
+  "Beauharnois-Salaberry": {
+    "total": 31245,
+    "proprio": 18600,
+    "locataire": 12645,
+    "pct_locataire": 40.5
+  },
+  "Gatineau": {
+    "total": 126475,
+    "proprio": 76090,
+    "locataire": 50390,
+    "pct_locataire": 39.8
+  },
+  "La Rivière-du-Nord": {
+    "total": 61425,
+    "proprio": 39165,
+    "locataire": 22265,
+    "pct_locataire": 36.2
+  },
+  "La Vallée-de-la-Gatineau": {
+    "total": 9985,
+    "proprio": 7565,
+    "locataire": 2315,
+    "pct_locataire": 23.2
+  },
+  "Le Haut-Richelieu": {
+    "total": 52725,
+    "proprio": 33975,
+    "locataire": 18750,
+    "pct_locataire": 35.6
+  },
+  "Le Haut-Saint-Laurent": {
+    "total": 9895,
+    "proprio": 7450,
+    "locataire": 2445,
+    "pct_locataire": 24.7
+  },
+  "Les Collines-de-l'Outaouais": {
+    "total": 21105,
+    "proprio": 18815,
+    "locataire": 2285,
+    "pct_locataire": 10.8
+  },
+  "Les Jardins-de-Napierville": {
+    "total": 11860,
+    "proprio": 8870,
+    "locataire": 2985,
+    "pct_locataire": 25.2
+  },
+  "Les Laurentides": {
+    "total": 24960,
+    "proprio": 17590,
+    "locataire": 7365,
+    "pct_locataire": 29.5
+  },
+  "Les Maskoutains": {
+    "total": 39930,
+    "proprio": 23170,
+    "locataire": 16765,
+    "pct_locataire": 42.0
+  },
+  "Les Pays-d'en-Haut": {
+    "total": 23530,
+    "proprio": 17790,
+    "locataire": 5740,
+    "pct_locataire": 24.4
+  },
+  "Papineau": {
+    "total": 11505,
+    "proprio": 8895,
+    "locataire": 2610,
+    "pct_locataire": 22.7
+  },
+  "Pierre-De Saurel": {
+    "total": 24725,
+    "proprio": 16135,
+    "locataire": 8590,
+    "pct_locataire": 34.7
+  },
+  "Pontiac": {
+    "total": 6665,
+    "proprio": 5250,
+    "locataire": 1415,
+    "pct_locataire": 21.2
+  },
+  "Rouville": {
+    "total": 15755,
+    "proprio": 10930,
+    "locataire": 4825,
+    "pct_locataire": 30.6
+  }
+}

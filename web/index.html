@@ -458,7 +458,7 @@ function dk(base){const s=['mrc_list','nouveaux_logements_mrc','nouveaux_logemen
 async function loadAll(){
   const files=['mrc_list',
     'nouveaux_logements_mrc','nouveaux_logements_mun','densite_pu_mrc','densite_pu_mun','types_nouveaux_mrc',
-    'population_mrc','projections_pop_mrc','menages_proj_mrc','taux_inoccupation_schl'];
+    'population_mrc','projections_pop_mrc','menages_proj_mrc','taux_inoccupation_schl','tenure_menages_mrc'];
   const variantFiles=['logements_types_mrc','logements_types_mun','valeur_mrc','valeur_mun','age_mrc','age_mun','periode_mrc','periode_mun','superficie_mrc','superficie_mun'];
   const suffixes=['mamh_strict','mamh_optional','mamh_plus_others'];
   variantFiles.forEach(f=>suffixes.forEach(s=>files.push(f+'_'+s)));
@@ -1412,6 +1412,7 @@ let ciblesParams={
   scenario:'reference',
   horizonAn:2046
 };
+let _lastTauxLocMRC=null;
 
 function renderCibles(content,mrcLabel){
   // ── SCHL vacancy data ──────────────────────────────────────────────────
@@ -1428,6 +1429,17 @@ function renderCibles(content,mrcLabel){
   if(!hasSCHLData){
     if(ciblesParams.methodeA1==='inoccupation') ciblesParams.methodeA1='ratio';
     if(ciblesParams.methodeA3==='inoccupation') ciblesParams.methodeA3='ratio';
+  }
+  // Auto-populate tauxLocataires from Census 2021 when MRC changes
+  if(currentMRC!==_lastTauxLocMRC){
+    const tenureData=DATA.tenure_menages_mrc||{};
+    const mrcTenure=currentMRC?tenureData[currentMRC]:null;
+    if(mrcTenure&&mrcTenure.pct_locataire!=null){
+      ciblesParams.tauxLocataires=+(mrcTenure.pct_locataire/100).toFixed(4);
+    } else {
+      ciblesParams.tauxLocataires=0.30;
+    }
+    _lastTauxLocMRC=currentMRC;
   }
   const {methodeA1,methodeA3,ratioPreset,ratioEquilibre,tauxInoccupation,ratioMCPreset,tauxLocataires,scenario,horizonAn}=ciblesParams;
   let {ratioMisesEnChantier}=ciblesParams;
