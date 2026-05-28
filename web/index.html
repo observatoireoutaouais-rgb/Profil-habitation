@@ -1643,7 +1643,7 @@ function renderCibles(content,mrcLabel){
   // ── Source du ratio label ─────────────────────────────────────────────
   const ratioSourceLabel={
     mamh:'MAMH Québec 2014–2019',
-    local:`${mrcLabel} – observé`,
+    local:`${mrcLabel} – ${latestLogYear}`,
     periode:`Période de référence ${periodeDebut}–${periodeFin}`,
     custom:'Personnalisé'
   }[ratioPreset]||'Personnalisé';
@@ -1680,7 +1680,7 @@ function renderCibles(content,mrcLabel){
       <label>Source du ratio équilibré</label>
       <select id="cp-ratio-preset">
         <option value="mamh"${ratioPreset==='mamh'?' selected':''}>MAMH – Québec 2014–2019 (1.123)</option>
-        ${currentMRC?`<option value="local"${ratioPreset==='local'?' selected':''}>${mrcLabel} – observé (${ratioActuel.toFixed(3)})</option>`:''}
+        ${currentMRC?`<option value="local"${ratioPreset==='local'?' selected':''}>${mrcLabel} – ${latestLogYear} (${ratioActuel.toFixed(3)})</option>`:''}
         <option value="periode"${ratioPreset==='periode'?' selected':''}>Période de référence (${periodeDebut}–${periodeFin} → ${ratioPeriode.toFixed(3)})</option>
         <option value="custom"${ratioPreset==='custom'?' selected':''}>Personnalisé</option>
       </select>
