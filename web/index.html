@@ -1401,8 +1401,10 @@ document.getElementById('iframe-modal').addEventListener('click',function(e){ if
 let ciblesParams={
   methodeA1:'ratio',          // 'ratio' | 'inoccupation'
   methodeA3:'ratio',          // 'ratio' | 'mises_chantier' | 'inoccupation'
-  ratioPreset:'mamh',         // 'mamh' | 'regional' | 'local' | 'custom'
+  ratioPreset:'mamh',         // 'mamh' | 'regional' | 'local' | 'periode' | 'custom'
   ratioEquilibre:1.123,       // used only when ratioPreset === 'custom'
+  periodeDebut:null,          // auto-initialized to earliest available year
+  periodeFin:null,            // auto-initialized to latest available year
   tauxInoccupation:0.03,
   ratioMisesEnChantier:1.1,
   scenario:'reference',
@@ -1446,11 +1448,25 @@ function renderCibles(content,mrcLabel){
   const tauxNonOccup=Lactuel>0?(Lactuel-Mactuel)/Lactuel:0;
   const tauxNonOccupRegional=LRegional>0?(LRegional-MRegional)/LRegional:0;
 
+  // Période de référence : années où logements ET ménages ISQ estimés sont disponibles
+  const refYearsAvail=menYears.filter(y=>y<=latestLogYear&&logByYear[y]&&menByYear[y]);
+  const refRatioByYear={};
+  refYearsAvail.forEach(y=>{if(menByYear[y]>0) refRatioByYear[y]=+(logByYear[y]/menByYear[y]).toFixed(3);});
+  // Auto-init période si null
+  if(ciblesParams.periodeDebut===null) ciblesParams.periodeDebut=refYearsAvail[0]||latestLogYear;
+  if(ciblesParams.periodeFin===null)   ciblesParams.periodeFin=refYearsAvail[refYearsAvail.length-1]||latestLogYear;
+  const {periodeDebut,periodeFin}=ciblesParams;
+  const periodeYrs=refYearsAvail.filter(y=>y>=periodeDebut&&y<=periodeFin);
+  const ratioPeriode=periodeYrs.length>0
+    ?+(periodeYrs.reduce((s,y)=>s+refRatioByYear[y],0)/periodeYrs.length).toFixed(3)
+    :ratioActuel;
+
   // Effective ratio (depends on preset)
   let effectiveRatio;
   if(ratioPreset==='mamh')          effectiveRatio=1.123;
   else if(ratioPreset==='regional') effectiveRatio=ratioRegional;
   else if(ratioPreset==='local')    effectiveRatio=ratioActuel;
+  else if(ratioPreset==='periode')  effectiveRatio=ratioPeriode;
   else                              effectiveRatio=ratioEquilibre;
   effectiveRatio=+effectiveRatio.toFixed(3);
 
@@ -1527,7 +1543,13 @@ function renderCibles(content,mrcLabel){
     :`<div class="step-row"><span class="step-label">÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`;
 
   // ── Source du ratio label ─────────────────────────────────────────────
-  const ratioSourceLabel={mamh:'MAMH Québec 2014–2019',regional:'Outaouais – observé',local:`${mrcLabel} – observé`,custom:'Personnalisé'}[ratioPreset];
+  const ratioSourceLabel={
+    mamh:'MAMH Québec 2014–2019',
+    regional:'Outaouais – observé',
+    local:`${mrcLabel} – observé`,
+    periode:`Période de référence ${periodeDebut}–${periodeFin}`,
+    custom:'Personnalisé'
+  }[ratioPreset]||'Personnalisé';
 
   // ── Notes ─────────────────────────────────────────────────────────────
   const noteRatio=showRatio?`Ratio équilibré : ${effectiveRatio} log./ménage (${ratioSourceLabel}).`:'';
@@ -1563,9 +1585,30 @@ function renderCibles(content,mrcLabel){
         <option value="mamh"${ratioPreset==='mamh'?' selected':''}>MAMH – Québec 2014–2019 (1.123)</option>
         <option value="regional"${ratioPreset==='regional'?' selected':''}>Outaouais – observé (${ratioRegional.toFixed(3)})</option>
         ${currentMRC?`<option value="local"${ratioPreset==='local'?' selected':''}>${mrcLabel} – observé (${ratioActuel.toFixed(3)})</option>`:''}
+        <option value="periode"${ratioPreset==='periode'?' selected':''}>Période de référence (${periodeDebut}–${periodeFin} → ${ratioPeriode.toFixed(3)})</option>
         <option value="custom"${ratioPreset==='custom'?' selected':''}>Personnalisé</option>
       </select>
     </div>
+    ${ratioPreset==='periode'?`<div class="cibles-param">
+      <label>Début de la période</label>
+      <select id="cp-periode-debut">
+        ${refYearsAvail.map(y=>`<option value="${y}"${periodeDebut===y?' selected':''}>${y} (ratio: ${refRatioByYear[y]?.toFixed(3)||'–'})</option>`).join('')}
+      </select>
+    </div>
+    <div class="cibles-param">
+      <label>Fin de la période</label>
+      <select id="cp-periode-fin">
+        ${refYearsAvail.map(y=>`<option value="${y}"${periodeFin===y?' selected':''}>${y} (ratio: ${refRatioByYear[y]?.toFixed(3)||'–'})</option>`).join('')}
+      </select>
+    </div>
+    <div class="cibles-param" style="min-width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+      <div style="font-size:.7rem;color:var(--text-light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Ratio par année (${mrcLabel||'Outaouais'})</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        ${refYearsAvail.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.85rem;font-weight:600;color:${y>=periodeDebut&&y<=periodeFin?'var(--teal-dark)':'var(--text-light)'};">${refRatioByYear[y]?.toFixed(3)||'–'}</div></div>`).join('')}
+        ${periodeYrs.length>1?`<div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">Moy. ${periodeDebut}–${periodeFin}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioPeriode.toFixed(3)}</div></div>`:''}
+      </div>
+      ${refYearsAvail.length<3?`<div style="font-size:.68rem;color:var(--text-light);margin-top:6px;">⚠ Période limitée aux données ISQ estimées disponibles (${refYearsAvail[0]||'–'}+). Pour étendre à 2012–2020, fournir le fichier ISQ d'estimations historiques de ménages.</div>`:''}
+    </div>`:''}
     <div class="cibles-param">
       <label>Ratio équilibré (log./ménage)</label>
       <input type="number" id="cp-ratio" value="${effectiveRatio}" step="0.001" min="1.0" max="2.0"${!isCustomRatio?' readonly style="opacity:.65;cursor:not-allowed"':''}>
@@ -1711,15 +1754,16 @@ function renderCibles(content,mrcLabel){
     .attr('fill','none').attr('stroke','#2d6e6a').attr('stroke-width',2.5);
 
   // ── WIRE PARAMS ───────────────────────────────────────────────────────
-  ['cp-methode-a1','cp-methode-a3','cp-ratio-preset','cp-ratio','cp-taux','cp-ratio-mc','cp-scenario','cp-horizon'].forEach(id=>{
+  ['cp-methode-a1','cp-methode-a3','cp-ratio-preset','cp-periode-debut','cp-periode-fin','cp-ratio','cp-taux','cp-ratio-mc','cp-scenario','cp-horizon'].forEach(id=>{
     document.getElementById(id)?.addEventListener('change',function(){
       if(id==='cp-methode-a1')         ciblesParams.methodeA1=this.value;
       else if(id==='cp-methode-a3')    ciblesParams.methodeA3=this.value;
       else if(id==='cp-ratio-preset'){
         ciblesParams.ratioPreset=this.value;
-        // Seed custom value from current effective ratio so user can adjust from there
         if(this.value==='custom') ciblesParams.ratioEquilibre=effectiveRatio;
       }
+      else if(id==='cp-periode-debut') ciblesParams.periodeDebut=parseInt(this.value);
+      else if(id==='cp-periode-fin')   ciblesParams.periodeFin=parseInt(this.value);
       else if(id==='cp-ratio')         ciblesParams.ratioEquilibre=parseFloat(this.value)||1.123;
       else if(id==='cp-taux')          ciblesParams.tauxInoccupation=(parseFloat(this.value)||3)/100;
       else if(id==='cp-ratio-mc')      ciblesParams.ratioMisesEnChantier=parseFloat(this.value)||1.1;
