@@ -1408,6 +1408,8 @@ let ciblesParams={
   tauxInoccupation:0.03,
   ratioMisesEnChantier:1.1,
   ratioMCPreset:'calcule',    // 'calcule' | 'custom'
+  mcPeriodeDebut:null,
+  mcPeriodeFin:null,
   tauxLocataires:0.30,        // proportion of ménages who are renters (Census 2021)
   scenario:'reference',
   horizonAn:2046
@@ -1439,8 +1441,12 @@ function renderCibles(content,mrcLabel){
     } else {
       ciblesParams.tauxLocataires=0.30;
     }
+    ciblesParams.mcPeriodeDebut=null;
+    ciblesParams.mcPeriodeFin=null;
     _lastTauxLocMRC=currentMRC;
   }
+  // Fallback if 'regional' preset was previously selected (option removed)
+  if(ciblesParams.ratioPreset==='regional') ciblesParams.ratioPreset='mamh';
   const {methodeA1,methodeA3,ratioPreset,ratioEquilibre,tauxInoccupation,ratioMCPreset,tauxLocataires,scenario,horizonAn}=ciblesParams;
   let {ratioMisesEnChantier}=ciblesParams;
 
@@ -1535,7 +1541,10 @@ function renderCibles(content,mrcLabel){
   const startsByYear={};
   filt(startsData).forEach(r=>{const y=Number(r.Annee_construction);if(y) startsByYear[y]=(startsByYear[y]||0)+Number(r.logements_PU||0);});
   const startsYrsAvail=Object.keys(startsByYear).map(Number).sort((a,b)=>a-b);
-  const periodeStartsYrs=startsYrsAvail.filter(y=>y>=periodeDebut&&y<=periodeFin);
+  if(ciblesParams.mcPeriodeDebut===null) ciblesParams.mcPeriodeDebut=startsYrsAvail[0]||periodeDebut;
+  if(ciblesParams.mcPeriodeFin===null)   ciblesParams.mcPeriodeFin=startsYrsAvail[startsYrsAvail.length-1]||periodeFin;
+  const {mcPeriodeDebut,mcPeriodeFin}=ciblesParams;
+  const periodeStartsYrs=startsYrsAvail.filter(y=>y>=mcPeriodeDebut&&y<=mcPeriodeFin);
   // Ratio année = starts_y / ΔMénages_y (yearly)
   const ratioMCByYear={};
   periodeStartsYrs.forEach(y=>{
@@ -1624,7 +1633,7 @@ function renderCibles(content,mrcLabel){
       <div class="step-row"><span class="step-label">Taux actuel SCHL (${tauxSCHLYear}) : ${fmtPct(tauxSCHL)}</span><span class="step-val"></span></div>`;
 
   // ── Décomposition A.3 ─────────────────────────────────────────────────
-  const mcSourceLabel=ratioMCPreset==='calcule'?`calculé période ${periodeDebut}–${periodeFin}`:'personnalisé';
+  const mcSourceLabel=ratioMCPreset==='calcule'?`calculé période ${mcPeriodeDebut}–${mcPeriodeFin}`:'personnalisé';
   const stepA3Middle=methodeA3==='ratio'
     ?`<div class="step-row"><span class="step-label">× ratio équilibré (${effectiveRatio})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`
     :methodeA3==='mises_chantier'
@@ -1634,7 +1643,6 @@ function renderCibles(content,mrcLabel){
   // ── Source du ratio label ─────────────────────────────────────────────
   const ratioSourceLabel={
     mamh:'MAMH Québec 2014–2019',
-    regional:'Outaouais – observé',
     local:`${mrcLabel} – observé`,
     periode:`Période de référence ${periodeDebut}–${periodeFin}`,
     custom:'Personnalisé'
@@ -1672,7 +1680,6 @@ function renderCibles(content,mrcLabel){
       <label>Source du ratio équilibré</label>
       <select id="cp-ratio-preset">
         <option value="mamh"${ratioPreset==='mamh'?' selected':''}>MAMH – Québec 2014–2019 (1.123)</option>
-        <option value="regional"${ratioPreset==='regional'?' selected':''}>Outaouais – observé (${ratioRegional.toFixed(3)})</option>
         ${currentMRC?`<option value="local"${ratioPreset==='local'?' selected':''}>${mrcLabel} – observé (${ratioActuel.toFixed(3)})</option>`:''}
         <option value="periode"${ratioPreset==='periode'?' selected':''}>Période de référence (${periodeDebut}–${periodeFin} → ${ratioPeriode.toFixed(3)})</option>
         <option value="custom"${ratioPreset==='custom'?' selected':''}>Personnalisé</option>
@@ -1715,10 +1722,22 @@ function renderCibles(content,mrcLabel){
     ${showRatioMC?`<div class="cibles-param">
       <label>Source ratio mises en chantier</label>
       <select id="cp-ratio-mc-preset">
-        <option value="calcule"${ratioMCPreset==='calcule'?' selected':''}>Calculé – période ${periodeDebut}–${periodeFin} (${ratioMCCalc.toFixed(3)})</option>
+        <option value="calcule"${ratioMCPreset==='calcule'?' selected':''}>Calculé – période ${mcPeriodeDebut}–${mcPeriodeFin} (${ratioMCCalc.toFixed(3)})</option>
         <option value="custom"${ratioMCPreset==='custom'?' selected':''}>Personnalisé</option>
       </select>
     </div>
+    ${ratioMCPreset==='calcule'?`<div class="cibles-param">
+      <label>Début de la période</label>
+      <select id="cp-mc-periode-debut">
+        ${startsYrsAvail.map(y=>`<option value="${y}"${mcPeriodeDebut===y?' selected':''}>${y}${startsByYear[y]?` (${startsByYear[y]} log.)`:''}</option>`).join('')}
+      </select>
+    </div>
+    <div class="cibles-param">
+      <label>Fin de la période</label>
+      <select id="cp-mc-periode-fin">
+        ${startsYrsAvail.map(y=>`<option value="${y}"${mcPeriodeFin===y?' selected':''}>${y}${startsByYear[y]?` (${startsByYear[y]} log.)`:''}</option>`).join('')}
+      </select>
+    </div>`:''}
     <div class="cibles-param">
       <label>Ratio mises en chantier/ménage</label>
       <input type="number" id="cp-ratio-mc" value="${ratioMisesEnChantier.toFixed(3)}" step="0.01" min="0.1" max="5.0"${ratioMCPreset==='calcule'?' readonly style="opacity:.65;cursor:not-allowed"':''}>
@@ -1726,7 +1745,7 @@ function renderCibles(content,mrcLabel){
     ${ratioMCPreset==='calcule'&&ratioMCCalcYrs.length>0?`<div class="cibles-param" style="min-width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
       <div style="font-size:.7rem;color:var(--text-light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Ratio mises en chantier / nouveau ménage par année</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;">
-        ${ratioMCCalcYrs.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.85rem;font-weight:600;color:${y>=periodeDebut&&y<=periodeFin?'var(--teal-dark)':'var(--text-light)'};">${ratioMCByYear[y]?.toFixed(2)||'–'}</div></div>`).join('')}
+        ${ratioMCCalcYrs.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.85rem;font-weight:600;color:${y>=mcPeriodeDebut&&y<=mcPeriodeFin?'var(--teal-dark)':'var(--text-light)'};">${ratioMCByYear[y]?.toFixed(2)||'–'}</div></div>`).join('')}
         <div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">Moy.</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioMCCalc.toFixed(3)}</div></div>
       </div>
     </div>`:''}
@@ -1863,7 +1882,7 @@ function renderCibles(content,mrcLabel){
     .attr('fill','none').attr('stroke','#2d6e6a').attr('stroke-width',2.5);
 
   // ── WIRE PARAMS ───────────────────────────────────────────────────────
-  ['cp-methode-a1','cp-methode-a3','cp-ratio-preset','cp-periode-debut','cp-periode-fin','cp-ratio','cp-taux','cp-taux-loc','cp-ratio-mc-preset','cp-ratio-mc','cp-scenario','cp-horizon'].forEach(id=>{
+  ['cp-methode-a1','cp-methode-a3','cp-ratio-preset','cp-periode-debut','cp-periode-fin','cp-ratio','cp-taux','cp-taux-loc','cp-ratio-mc-preset','cp-mc-periode-debut','cp-mc-periode-fin','cp-ratio-mc','cp-scenario','cp-horizon'].forEach(id=>{
     document.getElementById(id)?.addEventListener('change',function(){
       if(id==='cp-methode-a1')         ciblesParams.methodeA1=this.value;
       else if(id==='cp-methode-a3')    ciblesParams.methodeA3=this.value;
@@ -1877,6 +1896,8 @@ function renderCibles(content,mrcLabel){
       else if(id==='cp-taux')          ciblesParams.tauxInoccupation=(parseFloat(this.value)||3)/100;
       else if(id==='cp-taux-loc')      ciblesParams.tauxLocataires=(parseFloat(this.value)||30)/100;
       else if(id==='cp-ratio-mc-preset'){ ciblesParams.ratioMCPreset=this.value; }
+      else if(id==='cp-mc-periode-debut') ciblesParams.mcPeriodeDebut=parseInt(this.value);
+      else if(id==='cp-mc-periode-fin')   ciblesParams.mcPeriodeFin=parseInt(this.value);
       else if(id==='cp-ratio-mc')      ciblesParams.ratioMisesEnChantier=parseFloat(this.value)||1.1;
       else if(id==='cp-scenario')      ciblesParams.scenario=this.value;
       else if(id==='cp-horizon')       ciblesParams.horizonAn=parseInt(this.value)||2046;
