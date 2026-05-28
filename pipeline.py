@@ -13,6 +13,8 @@ import io, time, csv, json, os, zipfile, re, struct
 import numpy as np
 from datetime import date
 from pathlib import Path
+POP_HIST_PATH  = "pop-hist-mrc.xlsx"
+POP_PROJ_PATH  = "pop-proj-mrc.xlsx"
 ANNEE_MIN = 2012
 ANNEE_MAX = date.today().year + 4
 ANNEES    = list(range(ANNEE_MIN, ANNEE_MAX + 1))
@@ -385,6 +387,48 @@ def export_indicator_set(Role_brut, mode, suffix):
     mun_sup=Role_UE.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean")).reset_index()
     tot_sup_mun=Role_UE.groupby(["Annee","CDNAME","CSDNAME"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean")).reset_index(); tot_sup_mun["Types"]="Total des unités d'évaluation résidentielles"
     save_json(pd.concat([mun_sup,tot_sup_mun],ignore_index=True).round(1),f"superficie_mun_{suffix}.json")
+def build_population_data(match_df):
+    our_mrcs=set(match_df["CDNAME"].unique())
+    hist_path=Path(POP_HIST_PATH); proj_path=Path(POP_PROJ_PATH)
+    if not hist_path.exists() or not proj_path.exists():
+        print(f"  ⚠  {POP_HIST_PATH} ou {POP_PROJ_PATH} introuvable – données pop ignorées"); return
+    try: import openpyxl
+    except ImportError: print("  ⚠  openpyxl manquant (pip install openpyxl)"); return
+    print("\n══ Population historique (pop-hist-mrc.xlsx) ══")
+    wb=openpyxl.load_workbook(hist_path,read_only=True); ws=wb.active
+    rows=list(ws.iter_rows(values_only=True))
+    year_row=[str(v).replace('r','').replace('p','') for v in rows[2][3:]]
+    year_ints=[int(y) for y in year_row if y.isdigit()]
+    hist_out=[]
+    for r in rows[4:]:
+        mrc_name=str(r[2]).strip() if r[2] else None
+        if not mrc_name or mrc_name not in our_mrcs: continue
+        for i,yr in enumerate(year_ints):
+            if yr<2012: continue
+            val=r[3+i]
+            try: pop=int(val)
+            except (TypeError,ValueError): continue
+            hist_out.append({"CDNAME":mrc_name,"Annee":yr,"Population":pop})
+    save_json(pd.DataFrame(hist_out),"population_mrc.json")
+    print(f"  ✓ {len(hist_out)} lignes historiques")
+    print("\n══ Projections de population (pop-proj-mrc.xlsx) ══")
+    wb2=openpyxl.load_workbook(proj_path,read_only=True); ws2=wb2.active
+    rows2=list(ws2.iter_rows(values_only=True))
+    proj_years=[v for v in rows2[5][3:] if isinstance(v,int)]
+    SCENARIO_MAP={"Référence (A2025)":"reference","Fort (E2025)":"fort","Faible (D2025)":"faible"}
+    proj_out=[]
+    for r in rows2[7:]:
+        if not r[0] or not r[2]: continue
+        scenario_raw=str(r[0]).strip(); mrc_name=str(r[2]).strip()
+        scenario=SCENARIO_MAP.get(scenario_raw)
+        if not scenario or mrc_name not in our_mrcs: continue
+        for i,yr in enumerate(proj_years):
+            val=r[3+i]
+            try: pop=int(val)
+            except (TypeError,ValueError): continue
+            proj_out.append({"CDNAME":mrc_name,"Annee":yr,"Scenario":scenario,"Population":pop})
+    save_json(pd.DataFrame(proj_out),"projections_pop_mrc.json")
+    print(f"  ✓ {len(proj_out)} lignes projetées")
 def main():
     MATCH=load_match(); our_mrcs=set(MATCH["CDNAME"].unique())
     pf_lookup=load_pf_mun(our_mrcs)
@@ -408,6 +452,7 @@ def main():
     region_map=MATCH.drop_duplicates("CDNAME").set_index("CDNAME")["Region"].to_dict(); mrc_list["Region"]=mrc_list["CDNAME"].map(region_map)
     save_json(mrc_list,"mrc_list.json")
     build_indicateurs_pu(pf_lookup)
+    build_population_data(MATCH)
     print("\n🎉 Pipeline terminé.")
 if __name__=="__main__":
     main()
