@@ -1407,6 +1407,8 @@ let ciblesParams={
   periodeFin:null,            // auto-initialized to latest available year
   tauxInoccupation:0.03,
   ratioMisesEnChantier:1.1,
+  ratioMCPreset:'calcule',    // 'calcule' | 'custom'
+  tauxLocataires:0.30,        // proportion of ménages who are renters (Census 2021)
   scenario:'reference',
   horizonAn:2046
 };
@@ -1427,7 +1429,8 @@ function renderCibles(content,mrcLabel){
     if(ciblesParams.methodeA1==='inoccupation') ciblesParams.methodeA1='ratio';
     if(ciblesParams.methodeA3==='inoccupation') ciblesParams.methodeA3='ratio';
   }
-  const {methodeA1,methodeA3,ratioPreset,ratioEquilibre,tauxInoccupation,ratioMisesEnChantier,scenario,horizonAn}=ciblesParams;
+  const {methodeA1,methodeA3,ratioPreset,ratioEquilibre,tauxInoccupation,ratioMCPreset,tauxLocataires,scenario,horizonAn}=ciblesParams;
+  let {ratioMisesEnChantier}=ciblesParams;
 
   // ── DATA ──────────────────────────────────────────────────────────────
   const menProj=DATA.menages_proj_mrc||[];
@@ -1515,6 +1518,24 @@ function renderCibles(content,mrcLabel){
   else                              effectiveRatio=ratioEquilibre;
   effectiveRatio=+effectiveRatio.toFixed(3);
 
+  // ── MISES EN CHANTIER – ratio auto-calculé ────────────────────────────
+  const startsData=DATA.nouveaux_logements_mrc||[];
+  const startsByYear={};
+  filt(startsData).forEach(r=>{const y=Number(r.Annee_construction);if(y) startsByYear[y]=(startsByYear[y]||0)+Number(r.logements_PU||0);});
+  const startsYrsAvail=Object.keys(startsByYear).map(Number).sort((a,b)=>a-b);
+  const periodeStartsYrs=startsYrsAvail.filter(y=>y>=periodeDebut&&y<=periodeFin);
+  // Ratio année = starts_y / ΔMénages_y (yearly)
+  const ratioMCByYear={};
+  periodeStartsYrs.forEach(y=>{
+    const deltaY=(menByYear[y+1]||0)-(menByYear[y]||0);
+    if(deltaY>0) ratioMCByYear[y]=+(startsByYear[y]/deltaY).toFixed(3);
+  });
+  const ratioMCCalcYrs=Object.keys(ratioMCByYear).map(Number).sort((a,b)=>a-b);
+  const ratioMCCalc=ratioMCCalcYrs.length>0
+    ?+(ratioMCCalcYrs.reduce((s,y)=>s+ratioMCByYear[y],0)/ratioMCCalcYrs.length).toFixed(3)
+    :ratioMisesEnChantier;
+  if(ratioMCPreset==='calcule') ratioMisesEnChantier=ratioMCCalc;
+
   const Mhorizon=menByYear[horizonAn]||0;
   const deltaM=Mhorizon-Mactuel;
   const anneesDiff=horizonAn-latestMenYear;
@@ -1524,9 +1545,15 @@ function renderCibles(content,mrcLabel){
   if(methodeA1==='ratio'){
     logements_requis_A1=Mactuel*effectiveRatio;
   } else {
-    logements_requis_A1=Mactuel/(1-tauxInoccupation);
+    // A.1.2 : parc locatif requis = M_locataires / (1 − taux_équilibré)
+    // déficit = parc_requis × (taux_équilibré − taux_actuel) / (1 − taux_équilibré)
+    const Mlocataires=Mactuel*tauxLocataires;
+    const tauxActuelSCHL=hasSCHLData?tauxSCHL:tauxNonOccup;
+    const parcLocatif=Mlocataires/(1-tauxInoccupation);
+    const facteurDeficit=(tauxInoccupation-tauxActuelSCHL)/(1-tauxInoccupation);
+    logements_requis_A1=parcLocatif*facteurDeficit; // déficit only (can be negative = surplus)
   }
-  const deficit_A1=Math.round(logements_requis_A1-Lactuel);
+  const deficit_A1=Math.round(methodeA1==='inoccupation'?logements_requis_A1:logements_requis_A1-Lactuel);
 
   let besoin_A3;
   if(methodeA3==='ratio'){
@@ -1534,7 +1561,9 @@ function renderCibles(content,mrcLabel){
   } else if(methodeA3==='mises_chantier'){
     besoin_A3=Math.round(deltaM*ratioMisesEnChantier);
   } else {
-    besoin_A3=Math.round(deltaM/(1-tauxInoccupation));
+    // A.3.3 : besoins locatifs = ΔMlocataires / (1 − taux)
+    const deltaMloc=deltaM*tauxLocataires;
+    besoin_A3=Math.round(deltaMloc/(1-tauxInoccupation));
   }
 
   const total=deficit_A1+besoin_A3;
@@ -1574,18 +1603,21 @@ function renderCibles(content,mrcLabel){
   const cibleRatio=methodeA1==='ratio'?effectiveRatio:1/(1-tauxInoccupation);
 
   // ── Décomposition A.1 ─────────────────────────────────────────────────
+  const mlocStr=`${fmt(Mactuel*tauxLocataires)} ménages locataires (${(tauxLocataires*100).toFixed(0)} % de ${fmt(Mactuel)})`;
   const stepA1Rows=methodeA1==='ratio'
     ?`<div class="step-row"><span class="step-label">Ménages (${latestMenYear}) × ${effectiveRatio}</span><span class="step-val">${fmt(logements_requis_A1)}</span></div>
       <div class="step-row"><span class="step-label">Logements actuels (${latestLogYear})</span><span class="step-val">${fmt(Lactuel)}</span></div>`
-    :`<div class="step-row"><span class="step-label">Ménages (${latestMenYear}) ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(logements_requis_A1)}</span></div>
-      <div class="step-row"><span class="step-label">Logements actuels (${latestLogYear})</span><span class="step-val">${fmt(Lactuel)}</span></div>`;
+    :`<div class="step-row"><span class="step-label">${mlocStr}</span><span class="step-val"></span></div>
+      <div class="step-row"><span class="step-label">Parc locatif requis ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(Mactuel*tauxLocataires/(1-tauxInoccupation))}</span></div>
+      <div class="step-row"><span class="step-label">Taux actuel SCHL${hasSCHLData?` (${tauxSCHLYear})`:'(dérivé)'} : ${fmtPct(hasSCHLData?tauxSCHL:tauxNonOccup)}</span><span class="step-val"></span></div>`;
 
   // ── Décomposition A.3 ─────────────────────────────────────────────────
+  const mcSourceLabel=ratioMCPreset==='calcule'?`calculé période ${periodeDebut}–${periodeFin}`:'personnalisé';
   const stepA3Middle=methodeA3==='ratio'
     ?`<div class="step-row"><span class="step-label">× ratio équilibré (${effectiveRatio})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`
     :methodeA3==='mises_chantier'
-    ?`<div class="step-row"><span class="step-label">× ratio mises en chantier (${ratioMisesEnChantier})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`
-    :`<div class="step-row"><span class="step-label">÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`;
+    ?`<div class="step-row"><span class="step-label">× ratio mises en chantier (${ratioMisesEnChantier.toFixed(3)} – ${mcSourceLabel})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`
+    :`<div class="step-row"><span class="step-label">ΔMénages locataires (${(tauxLocataires*100).toFixed(0)} %) ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`;
 
   // ── Source du ratio label ─────────────────────────────────────────────
   const ratioSourceLabel={
@@ -1599,7 +1631,7 @@ function renderCibles(content,mrcLabel){
   // ── Notes ─────────────────────────────────────────────────────────────
   const noteRatio=showRatio?`Ratio équilibré : ${effectiveRatio} log./ménage (${ratioSourceLabel}).`:'';
   const noteTaux=showTaux?` Taux d'inoccupation équilibré retenu : ${fmtPct(tauxInoccupation)}.`:'';
-  const noteMC=showRatioMC?` Ratio de mises en chantier : ${ratioMisesEnChantier} log./ménage.`:'';
+  const noteMC=showRatioMC?` Ratio de mises en chantier : ${ratioMisesEnChantier.toFixed(3)} (${mcSourceLabel}).`:'';
 
   // ── RENDER HTML ───────────────────────────────────────────────────────
   content.innerHTML=`
@@ -1662,11 +1694,31 @@ function renderCibles(content,mrcLabel){
       <label>Taux d'inoccupation équilibré (%)</label>
       <input type="number" id="cp-taux" value="${(tauxInoccupation*100).toFixed(1)}" step="0.1" min="0" max="50">
       <small style="font-size:.7rem;color:var(--text-light);">${hasSCHLData?`SCHL ${tauxSCHLYear} – ${mrcLabel} : ${fmtPct(tauxSCHL)} (locatif)`:`Dérivé – ${mrcLabel} : ${fmtPct(tauxNonOccup)}`} · Outaouais : ${fmtPct(tauxNonOccupRegional)}</small>
+    </div>
+    <div class="cibles-param">
+      <label>Ménages locataires (% des ménages totaux)</label>
+      <input type="number" id="cp-taux-loc" value="${(tauxLocataires*100).toFixed(0)}" step="1" min="1" max="99">
+      <small style="font-size:.7rem;color:var(--text-light);">Recensement 2021 – saisir la valeur pour ${mrcLabel} (source : profil StatCan)</small>
     </div>`:''}
     ${showRatioMC?`<div class="cibles-param">
+      <label>Source ratio mises en chantier</label>
+      <select id="cp-ratio-mc-preset">
+        <option value="calcule"${ratioMCPreset==='calcule'?' selected':''}>Calculé – période ${periodeDebut}–${periodeFin} (${ratioMCCalc.toFixed(3)})</option>
+        <option value="custom"${ratioMCPreset==='custom'?' selected':''}>Personnalisé</option>
+      </select>
+    </div>
+    <div class="cibles-param">
       <label>Ratio mises en chantier/ménage</label>
-      <input type="number" id="cp-ratio-mc" value="${ratioMisesEnChantier}" step="0.01" min="0.5" max="3.0">
+      <input type="number" id="cp-ratio-mc" value="${ratioMisesEnChantier.toFixed(3)}" step="0.01" min="0.1" max="5.0"${ratioMCPreset==='calcule'?' readonly style="opacity:.65;cursor:not-allowed"':''}>
+    </div>
+    ${ratioMCPreset==='calcule'&&ratioMCCalcYrs.length>0?`<div class="cibles-param" style="min-width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+      <div style="font-size:.7rem;color:var(--text-light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Ratio mises en chantier / nouveau ménage par année</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        ${ratioMCCalcYrs.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.85rem;font-weight:600;color:${y>=periodeDebut&&y<=periodeFin?'var(--teal-dark)':'var(--text-light)'};">${ratioMCByYear[y]?.toFixed(2)||'–'}</div></div>`).join('')}
+        <div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">Moy.</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioMCCalc.toFixed(3)}</div></div>
+      </div>
     </div>`:''}
+    `:''}
     <div class="cibles-param">
       <label>Scénario ISQ</label>
       <select id="cp-scenario">
@@ -1804,7 +1856,7 @@ function renderCibles(content,mrcLabel){
     .attr('fill','none').attr('stroke','#2d6e6a').attr('stroke-width',2.5);
 
   // ── WIRE PARAMS ───────────────────────────────────────────────────────
-  ['cp-methode-a1','cp-methode-a3','cp-ratio-preset','cp-periode-debut','cp-periode-fin','cp-ratio','cp-taux','cp-ratio-mc','cp-scenario','cp-horizon'].forEach(id=>{
+  ['cp-methode-a1','cp-methode-a3','cp-ratio-preset','cp-periode-debut','cp-periode-fin','cp-ratio','cp-taux','cp-taux-loc','cp-ratio-mc-preset','cp-ratio-mc','cp-scenario','cp-horizon'].forEach(id=>{
     document.getElementById(id)?.addEventListener('change',function(){
       if(id==='cp-methode-a1')         ciblesParams.methodeA1=this.value;
       else if(id==='cp-methode-a3')    ciblesParams.methodeA3=this.value;
@@ -1816,6 +1868,8 @@ function renderCibles(content,mrcLabel){
       else if(id==='cp-periode-fin')   ciblesParams.periodeFin=parseInt(this.value);
       else if(id==='cp-ratio')         ciblesParams.ratioEquilibre=parseFloat(this.value)||1.123;
       else if(id==='cp-taux')          ciblesParams.tauxInoccupation=(parseFloat(this.value)||3)/100;
+      else if(id==='cp-taux-loc')      ciblesParams.tauxLocataires=(parseFloat(this.value)||30)/100;
+      else if(id==='cp-ratio-mc-preset'){ ciblesParams.ratioMCPreset=this.value; }
       else if(id==='cp-ratio-mc')      ciblesParams.ratioMisesEnChantier=parseFloat(this.value)||1.1;
       else if(id==='cp-scenario')      ciblesParams.scenario=this.value;
       else if(id==='cp-horizon')       ciblesParams.horizonAn=parseInt(this.value)||2046;
