@@ -13,8 +13,9 @@ import io, time, csv, json, os, zipfile, re, struct
 import numpy as np
 from datetime import date
 from pathlib import Path
-POP_HIST_PATH  = "pop-hist-mrc.xlsx"
-POP_PROJ_PATH  = "pop-proj-mrc.xlsx"
+POP_HIST_PATH     = "pop-hist-mrc.xlsx"
+POP_PROJ_PATH     = "pop-proj-mrc.xlsx"
+MENAGES_PROJ_PATH = "menages-proj-mrc.xlsx"
 ANNEE_MIN = 2012
 ANNEE_MAX = date.today().year + 4
 ANNEES    = list(range(ANNEE_MIN, ANNEE_MAX + 1))
@@ -429,6 +430,24 @@ def build_population_data(match_df):
             proj_out.append({"CDNAME":mrc_name,"Annee":yr,"Scenario":scenario,"Population":pop})
     save_json(pd.DataFrame(proj_out),"projections_pop_mrc.json")
     print(f"  ✓ {len(proj_out)} lignes projetées")
+    men_path=Path(MENAGES_PROJ_PATH)
+    if not men_path.exists(): print(f"  ⚠  {MENAGES_PROJ_PATH} introuvable – ménages ignorés"); return
+    print("\n══ Projections de ménages (menages-proj-mrc.xlsx) ══")
+    wb3=openpyxl.load_workbook(men_path,read_only=True); ws3=wb3.active
+    rows3=list(ws3.iter_rows(values_only=True))
+    men_years=[v for v in rows3[5][3:] if isinstance(v,int)]
+    men_out=[]
+    for r in rows3[7:]:
+        if not r[0] or not r[2]: continue
+        scenario=SCENARIO_MAP.get(str(r[0]).strip()); mrc_name=str(r[2]).strip()
+        if not scenario or mrc_name not in our_mrcs: continue
+        for i,yr in enumerate(men_years):
+            val=r[3+i]
+            try: men=int(val)
+            except (TypeError,ValueError): continue
+            men_out.append({"CDNAME":mrc_name,"Annee":yr,"Scenario":scenario,"Menages":men})
+    save_json(pd.DataFrame(men_out),"menages_proj_mrc.json")
+    print(f"  ✓ {len(men_out)} lignes ménages")
 def main():
     MATCH=load_match(); our_mrcs=set(MATCH["CDNAME"].unique())
     pf_lookup=load_pf_mun(our_mrcs)
