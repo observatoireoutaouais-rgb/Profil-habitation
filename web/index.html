@@ -1428,6 +1428,18 @@ function renderCibles(content,mrcLabel){
 
   const menByYear={};
   filt(menProj).filter(d=>d.Scenario===scenario).forEach(r=>{menByYear[r.Annee]=(menByYear[r.Annee]||0)+r.Menages;});
+
+  // Étendre les ménages vers le passé via population ÷ taille_ménage calibrée à l'année ISQ la plus ancienne
+  const popData=DATA.population_mrc||[];
+  const popByYear={};
+  filt(popData).forEach(r=>{const y=Number(r.Annee);popByYear[y]=(popByYear[y]||0)+Number(r.Population||0);});
+  const menISQYears=Object.keys(menByYear).map(Number).sort((a,b)=>a-b);
+  const calibYear=menISQYears[0]||2021;
+  const tailleMenage=(menByYear[calibYear]&&popByYear[calibYear])?(popByYear[calibYear]/menByYear[calibYear]):2.4;
+  Object.keys(popByYear).map(Number).filter(y=>y<calibYear&&popByYear[y]>0).forEach(y=>{
+    if(!menByYear[y]) menByYear[y]=Math.round(popByYear[y]/tailleMenage);
+  });
+
   const menYears=Object.keys(menByYear).map(Number).sort((a,b)=>a-b);
   const menEstYears=menYears.filter(y=>y<=latestLogYear+1);
   const latestMenYear=menEstYears.length?menEstYears[menEstYears.length-1]:menYears[0];
@@ -1440,6 +1452,14 @@ function renderCibles(content,mrcLabel){
   const LRegional=logByYearAll[latestLogYear]||0;
   const menByYearAll={};
   menProj.filter(d=>d.Scenario===scenario).forEach(r=>{menByYearAll[r.Annee]=(menByYearAll[r.Annee]||0)+r.Menages;});
+  // Extend regional ménages historically too
+  const popByYearAll={};
+  popData.forEach(r=>{const y=Number(r.Annee);popByYearAll[y]=(popByYearAll[y]||0)+Number(r.Population||0);});
+  const calibYearAll=Object.keys(menByYearAll).map(Number).sort((a,b)=>a-b)[0]||2021;
+  const tailleMenageAll=(menByYearAll[calibYearAll]&&popByYearAll[calibYearAll])?(popByYearAll[calibYearAll]/menByYearAll[calibYearAll]):2.4;
+  Object.keys(popByYearAll).map(Number).filter(y=>y<calibYearAll&&popByYearAll[y]>0).forEach(y=>{
+    if(!menByYearAll[y]) menByYearAll[y]=Math.round(popByYearAll[y]/tailleMenageAll);
+  });
   const menEstYearsAll=Object.keys(menByYearAll).map(Number).sort((a,b)=>a-b).filter(y=>y<=latestLogYear+1);
   const MRegional=menEstYearsAll.length?menByYearAll[menEstYearsAll[menEstYearsAll.length-1]]||0:0;
   const ratioRegional=MRegional>0?+(LRegional/MRegional).toFixed(3):1.123;
@@ -1607,7 +1627,7 @@ function renderCibles(content,mrcLabel){
         ${refYearsAvail.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.85rem;font-weight:600;color:${y>=periodeDebut&&y<=periodeFin?'var(--teal-dark)':'var(--text-light)'};">${refRatioByYear[y]?.toFixed(3)||'–'}</div></div>`).join('')}
         ${periodeYrs.length>1?`<div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">Moy. ${periodeDebut}–${periodeFin}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioPeriode.toFixed(3)}</div></div>`:''}
       </div>
-      ${refYearsAvail.length<3?`<div style="font-size:.68rem;color:var(--text-light);margin-top:6px;">⚠ Période limitée aux données ISQ estimées disponibles (${refYearsAvail[0]||'–'}+). Pour étendre à 2012–2020, fournir le fichier ISQ d'estimations historiques de ménages.</div>`:''}
+      <div style="font-size:.68rem;color:var(--text-light);margin-top:6px;">2021+ : ménages ISQ (estimations réelles) · avant 2021 : estimation via population ÷ taille des ménages (calibrée à ${calibYear}).</div>
     </div>`:''}
     <div class="cibles-param">
       <label>Ratio équilibré (log./ménage)</label>
