@@ -1621,7 +1621,7 @@ function renderCibles(content,mrcLabel){
       <div class="step-row"><span class="step-label">Logements actuels (${latestLogYear})</span><span class="step-val">${fmt(Lactuel)}</span></div>`
     :`<div class="step-row"><span class="step-label">${mlocStr}</span><span class="step-val"></span></div>
       <div class="step-row"><span class="step-label">Parc locatif requis ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(Mactuel*tauxLocataires/(1-tauxInoccupation))}</span></div>
-      <div class="step-row"><span class="step-label">Taux actuel SCHL${hasSCHLData?` (${tauxSCHLYear})`:'(dérivé)'} : ${fmtPct(hasSCHLData?tauxSCHL:tauxNonOccup)}</span><span class="step-val"></span></div>`;
+      <div class="step-row"><span class="step-label">Taux actuel SCHL (${tauxSCHLYear}) : ${fmtPct(tauxSCHL)}</span><span class="step-val"></span></div>`;
 
   // ── Décomposition A.3 ─────────────────────────────────────────────────
   const mcSourceLabel=ratioMCPreset==='calcule'?`calculé période ${periodeDebut}–${periodeFin}`:'personnalisé';
@@ -1705,7 +1705,7 @@ function renderCibles(content,mrcLabel){
     ${showTaux?`<div class="cibles-param">
       <label>Taux d'inoccupation équilibré (%)</label>
       <input type="number" id="cp-taux" value="${(tauxInoccupation*100).toFixed(1)}" step="0.1" min="0" max="50">
-      <small style="font-size:.7rem;color:var(--text-light);">${hasSCHLData?`SCHL ${tauxSCHLYear} – ${mrcLabel} : ${fmtPct(tauxSCHL)} (locatif)`:`Dérivé – ${mrcLabel} : ${fmtPct(tauxNonOccup)}`} · Outaouais : ${fmtPct(tauxNonOccupRegional)}</small>
+      <small style="font-size:.7rem;color:var(--text-light);">SCHL ${tauxSCHLYear} – ${mrcLabel} : ${fmtPct(tauxSCHL)} (locatif)</small>
     </div>
     <div class="cibles-param">
       <label>Ménages locataires (% des ménages totaux)</label>
@@ -1767,16 +1767,11 @@ function renderCibles(content,mrcLabel){
       <div class="metric-value ${ratioActuel>=cibleRatio?'positive':'negative'}">${ratioActuel.toFixed(3)}</div>
       <div class="metric-sub">Cible (${ratioSourceLabel}) : ${cibleRatio.toFixed(3)}</div>
     </div>
-    <div class="metric-card">
-      ${hasSCHLData
-        ?`<div class="metric-label">Taux d'inoccupation locatif (${tauxSCHLYear})</div>
-           <div class="metric-value">${fmtPct(tauxSCHL)}</div>
-           <div class="metric-sub">SCHL – Enquête sur les logements locatifs · Dérivé : ${fmtPct(tauxNonOccup)}</div>`
-        :`<div class="metric-label">Taux de non-occupation actuel</div>
-           <div class="metric-value">${fmtPct(tauxNonOccup)}</div>
-           <div class="metric-sub">Log. sans ménage principal · Outaouais : ${fmtPct(tauxNonOccupRegional)}</div>`
-      }
-    </div>
+    ${hasSCHLData?`<div class="metric-card">
+      <div class="metric-label">Taux d'inoccupation locatif (${tauxSCHLYear})</div>
+      <div class="metric-value">${fmtPct(tauxSCHL)}</div>
+      <div class="metric-sub">SCHL – Enquête sur les logements locatifs</div>
+    </div>`:''}
     <div class="metric-card">
       <div class="metric-label">Ménages projetés (${horizonAn})</div>
       <div class="metric-value">${fmt(Mhorizon)}</div>
@@ -1827,7 +1822,7 @@ function renderCibles(content,mrcLabel){
       </div>
       <div class="cibles-note">
         <strong>Méthodologie MAMH (2025) :</strong> Estimation selon l'Orientation gouvernementale en aménagement du territoire no 4 (OGAT 4). ${noteRatio}${noteTaux}${noteMC}
-        <br>${hasSCHLData?`Taux d'inoccupation locatif SCHL ${tauxSCHLYear} : ${fmtPct(tauxSCHL)} · `:''}Taux de non-occupation dérivé (${fmtPct(tauxNonOccup)}) : logements sans ménage principal.
+        <br>${hasSCHLData?`Taux d'inoccupation locatif SCHL ${tauxSCHLYear} : ${fmtPct(tauxSCHL)}.`:''}
         <br>⚠ La combinaison de certaines approches peut entraîner une double comptabilisation des besoins.
         <br><em>Sources : ISQ, Projections de ménages privés – MRC du Québec, édition 2025 · MAMH, Rôle d'évaluation foncière des municipalités${hasSCHLData?' · SCHL, Enquête sur les logements locatifs 2010–2023':''}.</em>
       </div>
