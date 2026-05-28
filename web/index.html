@@ -1401,7 +1401,8 @@ document.getElementById('iframe-modal').addEventListener('click',function(e){ if
 let ciblesParams={
   methodeA1:'ratio',          // 'ratio' | 'inoccupation'
   methodeA3:'ratio',          // 'ratio' | 'mises_chantier' | 'inoccupation'
-  ratioEquilibre:1.123,
+  ratioPreset:'mamh',         // 'mamh' | 'regional' | 'local' | 'custom'
+  ratioEquilibre:1.123,       // used only when ratioPreset === 'custom'
   tauxInoccupation:0.03,
   ratioMisesEnChantier:1.1,
   scenario:'reference',
@@ -1409,13 +1410,14 @@ let ciblesParams={
 };
 
 function renderCibles(content,mrcLabel){
-  const {methodeA1,methodeA3,ratioEquilibre,tauxInoccupation,ratioMisesEnChantier,scenario,horizonAn}=ciblesParams;
+  const {methodeA1,methodeA3,ratioPreset,ratioEquilibre,tauxInoccupation,ratioMisesEnChantier,scenario,horizonAn}=ciblesParams;
 
   // ── DATA ──────────────────────────────────────────────────────────────
   const menProj=DATA.menages_proj_mrc||[];
   const logData=DATA[dk('logements_types_mrc')]||[];
   const filt=arr=>currentMRC?arr.filter(d=>d.CDNAME===currentMRC):arr;
 
+  // MRC (or all-Outaouais) series
   const logByYear={};
   filt(logData).forEach(r=>{const y=Number(r.Annee);logByYear[y]=(logByYear[y]||0)+Number(r.Total||0);});
   const logYears=Object.keys(logByYear).map(Number).sort((a,b)=>a-b);
@@ -1428,26 +1430,46 @@ function renderCibles(content,mrcLabel){
   const menEstYears=menYears.filter(y=>y<=latestLogYear+1);
   const latestMenYear=menEstYears.length?menEstYears[menEstYears.length-1]:menYears[0];
   const Mactuel=menByYear[latestMenYear]||0;
-  const ratioActuel=Mactuel>0?Lactuel/Mactuel:0;
+  const ratioActuel=Mactuel>0?+(Lactuel/Mactuel).toFixed(3):0;
+
+  // Région Outaouais totals (no MRC filter) for reference values
+  const logByYearAll={};
+  logData.forEach(r=>{const y=Number(r.Annee);logByYearAll[y]=(logByYearAll[y]||0)+Number(r.Total||0);});
+  const LRegional=logByYearAll[latestLogYear]||0;
+  const menByYearAll={};
+  menProj.filter(d=>d.Scenario===scenario).forEach(r=>{menByYearAll[r.Annee]=(menByYearAll[r.Annee]||0)+r.Menages;});
+  const menEstYearsAll=Object.keys(menByYearAll).map(Number).sort((a,b)=>a-b).filter(y=>y<=latestLogYear+1);
+  const MRegional=menEstYearsAll.length?menByYearAll[menEstYearsAll[menEstYearsAll.length-1]]||0:0;
+  const ratioRegional=MRegional>0?+(LRegional/MRegional).toFixed(3):1.123;
+
+  // Taux de non-occupation implicite (log. sans ménage principal : vacants + saisonniers + autres)
+  const tauxNonOccup=Lactuel>0?(Lactuel-Mactuel)/Lactuel:0;
+  const tauxNonOccupRegional=LRegional>0?(LRegional-MRegional)/LRegional:0;
+
+  // Effective ratio (depends on preset)
+  let effectiveRatio;
+  if(ratioPreset==='mamh')          effectiveRatio=1.123;
+  else if(ratioPreset==='regional') effectiveRatio=ratioRegional;
+  else if(ratioPreset==='local')    effectiveRatio=ratioActuel;
+  else                              effectiveRatio=ratioEquilibre;
+  effectiveRatio=+effectiveRatio.toFixed(3);
 
   const Mhorizon=menByYear[horizonAn]||0;
   const deltaM=Mhorizon-Mactuel;
   const anneesDiff=horizonAn-latestMenYear;
 
   // ── MAMH CALCULATIONS ─────────────────────────────────────────────────
-  // Étape A.1 : écart entre parc actuel et besoins actuels
   let logements_requis_A1;
   if(methodeA1==='ratio'){
-    logements_requis_A1=Mactuel*ratioEquilibre;
+    logements_requis_A1=Mactuel*effectiveRatio;
   } else {
     logements_requis_A1=Mactuel/(1-tauxInoccupation);
   }
   const deficit_A1=Math.round(logements_requis_A1-Lactuel);
 
-  // Étape A.3 : besoins liés à la croissance anticipée
   let besoin_A3;
   if(methodeA3==='ratio'){
-    besoin_A3=Math.round(deltaM*ratioEquilibre);
+    besoin_A3=Math.round(deltaM*effectiveRatio);
   } else if(methodeA3==='mises_chantier'){
     besoin_A3=Math.round(deltaM*ratioMisesEnChantier);
   } else {
@@ -1457,10 +1479,10 @@ function renderCibles(content,mrcLabel){
   const total=deficit_A1+besoin_A3;
   const fmt=n=>Math.round(n).toLocaleString('fr-CA');
   const fmtSigne=n=>(n>=0?'+':'')+Math.round(n).toLocaleString('fr-CA');
+  const fmtPct=v=>(v*100).toFixed(1)+' %';
   const scenLabels={reference:'Référence (A2025)',fort:'Fort (E2025)',faible:'Faible (D2025)'};
 
-  // Facteur A.3 pour le graphique (requis en continu)
-  const a3Factor=methodeA3==='ratio'?ratioEquilibre:methodeA3==='mises_chantier'?ratioMisesEnChantier:1/(1-tauxInoccupation);
+  const a3Factor=methodeA3==='ratio'?effectiveRatio:methodeA3==='mises_chantier'?ratioMisesEnChantier:1/(1-tauxInoccupation);
 
   // ── CHART DATA ────────────────────────────────────────────────────────
   const chartYears=[];
@@ -1470,10 +1492,8 @@ function renderCibles(content,mrcLabel){
     const m=menByYear[y];
     if(!m) return null;
     if(methodeA3==='mises_chantier'){
-      // A.3.2 : base fixe + croissance nette × ratio MC (pas de décroissance comptabilisée)
       return Math.round(logements_requis_A1+Math.max(0,m-Mactuel)*ratioMisesEnChantier);
     }
-    // A.3.1 / A.3.3 : formule continue M(y) × facteur (simplifie base + croissance)
     return Math.round(logements_requis_A1+(m-Mactuel)*a3Factor);
   });
   const logementsActuelsSeries=chartYears.map(y=>logByYear[y]||null);
@@ -1487,28 +1507,32 @@ function renderCibles(content,mrcLabel){
   const showRatio=methodeA1==='ratio'||methodeA3==='ratio';
   const showTaux=methodeA1==='inoccupation'||methodeA3==='inoccupation';
   const showRatioMC=methodeA3==='mises_chantier';
+  const isCustomRatio=ratioPreset==='custom';
 
   // ── Cible pour carte "Ratio actuel" ───────────────────────────────────
-  const cibleRatio=methodeA1==='ratio'?ratioEquilibre:1/(1-tauxInoccupation);
+  const cibleRatio=methodeA1==='ratio'?effectiveRatio:1/(1-tauxInoccupation);
 
   // ── Décomposition A.1 ─────────────────────────────────────────────────
   const stepA1Rows=methodeA1==='ratio'
-    ?`<div class="step-row"><span class="step-label">Ménages (${latestMenYear}) × ${ratioEquilibre}</span><span class="step-val">${fmt(logements_requis_A1)}</span></div>
+    ?`<div class="step-row"><span class="step-label">Ménages (${latestMenYear}) × ${effectiveRatio}</span><span class="step-val">${fmt(logements_requis_A1)}</span></div>
       <div class="step-row"><span class="step-label">Logements actuels (${latestLogYear})</span><span class="step-val">${fmt(Lactuel)}</span></div>`
-    :`<div class="step-row"><span class="step-label">Ménages (${latestMenYear}) ÷ (1 − ${(tauxInoccupation*100).toFixed(1)} %)</span><span class="step-val">${fmt(logements_requis_A1)}</span></div>
+    :`<div class="step-row"><span class="step-label">Ménages (${latestMenYear}) ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(logements_requis_A1)}</span></div>
       <div class="step-row"><span class="step-label">Logements actuels (${latestLogYear})</span><span class="step-val">${fmt(Lactuel)}</span></div>`;
 
   // ── Décomposition A.3 ─────────────────────────────────────────────────
   const stepA3Middle=methodeA3==='ratio'
-    ?`<div class="step-row"><span class="step-label">× ratio équilibré (${ratioEquilibre})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`
+    ?`<div class="step-row"><span class="step-label">× ratio équilibré (${effectiveRatio})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`
     :methodeA3==='mises_chantier'
     ?`<div class="step-row"><span class="step-label">× ratio mises en chantier (${ratioMisesEnChantier})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`
-    :`<div class="step-row"><span class="step-label">÷ (1 − ${(tauxInoccupation*100).toFixed(1)} %)</span><span class="step-val">${fmt(besoin_A3)}</span></div>`;
+    :`<div class="step-row"><span class="step-label">÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(besoin_A3)}</span></div>`;
 
-  // ── Note de bas de page ───────────────────────────────────────────────
-  const noteRatio=showRatio?`Le ratio équilibré de ${ratioEquilibre} log./ménage correspond à la période de référence 2014–2019 (Stratégie québécoise en habitation).`:'';
-  const noteTaux=showTaux?` Taux d'inoccupation équilibré retenu : ${(tauxInoccupation*100).toFixed(1)} % (seuil SCHL).`:'';
-  const noteMC=showRatioMC?` Ratio de mises en chantier par nouveau ménage : ${ratioMisesEnChantier}.`:'';
+  // ── Source du ratio label ─────────────────────────────────────────────
+  const ratioSourceLabel={mamh:'MAMH Québec 2014–2019',regional:'Outaouais – observé',local:`${mrcLabel} – observé`,custom:'Personnalisé'}[ratioPreset];
+
+  // ── Notes ─────────────────────────────────────────────────────────────
+  const noteRatio=showRatio?`Ratio équilibré : ${effectiveRatio} log./ménage (${ratioSourceLabel}).`:'';
+  const noteTaux=showTaux?` Taux d'inoccupation équilibré retenu : ${fmtPct(tauxInoccupation)}.`:'';
+  const noteMC=showRatioMC?` Ratio de mises en chantier : ${ratioMisesEnChantier} log./ménage.`:'';
 
   // ── RENDER HTML ───────────────────────────────────────────────────────
   content.innerHTML=`
@@ -1534,12 +1558,22 @@ function renderCibles(content,mrcLabel){
       </select>
     </div>
     ${showRatio?`<div class="cibles-param">
+      <label>Source du ratio équilibré</label>
+      <select id="cp-ratio-preset">
+        <option value="mamh"${ratioPreset==='mamh'?' selected':''}>MAMH – Québec 2014–2019 (1.123)</option>
+        <option value="regional"${ratioPreset==='regional'?' selected':''}>Outaouais – observé (${ratioRegional.toFixed(3)})</option>
+        ${currentMRC?`<option value="local"${ratioPreset==='local'?' selected':''}>${mrcLabel} – observé (${ratioActuel.toFixed(3)})</option>`:''}
+        <option value="custom"${ratioPreset==='custom'?' selected':''}>Personnalisé</option>
+      </select>
+    </div>
+    <div class="cibles-param">
       <label>Ratio équilibré (log./ménage)</label>
-      <input type="number" id="cp-ratio" value="${ratioEquilibre}" step="0.001" min="1.0" max="1.5">
+      <input type="number" id="cp-ratio" value="${effectiveRatio}" step="0.001" min="1.0" max="2.0"${!isCustomRatio?' readonly style="opacity:.65;cursor:not-allowed"':''}>
     </div>`:''}
     ${showTaux?`<div class="cibles-param">
       <label>Taux d'inoccupation équilibré (%)</label>
-      <input type="number" id="cp-taux" value="${(tauxInoccupation*100).toFixed(1)}" step="0.1" min="0" max="20">
+      <input type="number" id="cp-taux" value="${(tauxInoccupation*100).toFixed(1)}" step="0.1" min="0" max="50">
+      <small style="font-size:.7rem;color:var(--text-light);">Observé – ${mrcLabel} : ${fmtPct(tauxNonOccup)} · Outaouais : ${fmtPct(tauxNonOccupRegional)}</small>
     </div>`:''}
     ${showRatioMC?`<div class="cibles-param">
       <label>Ratio mises en chantier/ménage</label>
@@ -1577,9 +1611,14 @@ function renderCibles(content,mrcLabel){
       <div class="metric-sub">ISQ – Projections de ménages</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Ratio actuel (log./ménage)</div>
+      <div class="metric-label">Ratio log./ménage actuel</div>
       <div class="metric-value ${ratioActuel>=cibleRatio?'positive':'negative'}">${ratioActuel.toFixed(3)}</div>
-      <div class="metric-sub">Cible : ${cibleRatio.toFixed(3)}</div>
+      <div class="metric-sub">Cible (${ratioSourceLabel}) : ${cibleRatio.toFixed(3)}</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Taux de non-occupation actuel</div>
+      <div class="metric-value">${fmtPct(tauxNonOccup)}</div>
+      <div class="metric-sub">Log. sans ménage principal · Outaouais : ${fmtPct(tauxNonOccupRegional)}</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Ménages projetés (${horizonAn})</div>
@@ -1631,6 +1670,7 @@ function renderCibles(content,mrcLabel){
       </div>
       <div class="cibles-note">
         <strong>Méthodologie MAMH (2025) :</strong> Estimation selon l'Orientation gouvernementale en aménagement du territoire no 4 (OGAT 4). ${noteRatio}${noteTaux}${noteMC}
+        <br>Le taux de non-occupation (${fmtPct(tauxNonOccup)}) inclut logements vacants, résidences secondaires et saisonnières.
         <br>⚠ La combinaison de certaines approches peut entraîner une double comptabilisation des besoins.
         <br><em>Sources : ISQ, Projections de ménages privés – MRC du Québec, édition 2025 · MAMH, Rôle d'évaluation foncière des municipalités.</em>
       </div>
@@ -1671,15 +1711,20 @@ function renderCibles(content,mrcLabel){
     .attr('fill','none').attr('stroke','#2d6e6a').attr('stroke-width',2.5);
 
   // ── WIRE PARAMS ───────────────────────────────────────────────────────
-  ['cp-methode-a1','cp-methode-a3','cp-ratio','cp-taux','cp-ratio-mc','cp-scenario','cp-horizon'].forEach(id=>{
+  ['cp-methode-a1','cp-methode-a3','cp-ratio-preset','cp-ratio','cp-taux','cp-ratio-mc','cp-scenario','cp-horizon'].forEach(id=>{
     document.getElementById(id)?.addEventListener('change',function(){
-      if(id==='cp-methode-a1')      ciblesParams.methodeA1=this.value;
-      else if(id==='cp-methode-a3') ciblesParams.methodeA3=this.value;
-      else if(id==='cp-ratio')      ciblesParams.ratioEquilibre=parseFloat(this.value)||1.123;
-      else if(id==='cp-taux')       ciblesParams.tauxInoccupation=(parseFloat(this.value)||3)/100;
-      else if(id==='cp-ratio-mc')   ciblesParams.ratioMisesEnChantier=parseFloat(this.value)||1.1;
-      else if(id==='cp-scenario')   ciblesParams.scenario=this.value;
-      else if(id==='cp-horizon')    ciblesParams.horizonAn=parseInt(this.value)||2046;
+      if(id==='cp-methode-a1')         ciblesParams.methodeA1=this.value;
+      else if(id==='cp-methode-a3')    ciblesParams.methodeA3=this.value;
+      else if(id==='cp-ratio-preset'){
+        ciblesParams.ratioPreset=this.value;
+        // Seed custom value from current effective ratio so user can adjust from there
+        if(this.value==='custom') ciblesParams.ratioEquilibre=effectiveRatio;
+      }
+      else if(id==='cp-ratio')         ciblesParams.ratioEquilibre=parseFloat(this.value)||1.123;
+      else if(id==='cp-taux')          ciblesParams.tauxInoccupation=(parseFloat(this.value)||3)/100;
+      else if(id==='cp-ratio-mc')      ciblesParams.ratioMisesEnChantier=parseFloat(this.value)||1.1;
+      else if(id==='cp-scenario')      ciblesParams.scenario=this.value;
+      else if(id==='cp-horizon')       ciblesParams.horizonAn=parseInt(this.value)||2046;
       renderCibles(content,mrcLabel);
     });
   });
