@@ -253,6 +253,7 @@ body.embed-mode{overflow-y:auto;height:auto;}
 </div>
 
 <div class="tooltip" id="tooltip"></div>
+<div class="cubf-tooltip" id="cubf-tooltip"></div>
 <!-- METHODOLOGY MODAL -->
 <div class="modal-overlay" id="method-modal">
   <div class="modal-box" style="max-width:720px;max-height:85vh;overflow-y:auto;">
@@ -462,9 +463,6 @@ async function loadAll(){
   const variantFiles=['logements_types_mrc','logements_types_mun','valeur_mrc','valeur_mun','age_mrc','age_mun','periode_mrc','periode_mun','superficie_mrc','superficie_mun'];
   const suffixes=['mamh_strict','mamh_optional','mamh_plus_others'];
   variantFiles.forEach(f=>suffixes.forEach(s=>files.push(f+'_'+s)));
-  const _dummy=[
-    'nouveaux_logements_mrc','nouveaux_logements_mun','densite_pu_mrc','densite_pu_mun',
-    'types_nouveaux_mrc','types_nouveaux_mun'];
   await Promise.all(files.map(async f=>{
     try{ const r=await fetch(`./data/${f}.json`); DATA[f]=await r.json(); }
     catch(e){ DATA[f]=[]; console.warn(`Missing: ${f}.json`); }
@@ -991,13 +989,22 @@ function renderLogements(content,mrcLabel,annee,filterMRC,filterYear,filterYearM
 function renderValeur(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
   const mrcData=filterYearMRC(DATA[dk('valeur_mrc')]||[]);
   const munData=filterYearMRC(DATA[dk('valeur_mun')]||[]);
+  // Moyenne pondérée par nombre d'UE (n_ue) sur toutes les MRC filtrées ; poids 1 si n_ue absent
   const byType={};
-  mrcData.forEach(d=>{ byType[d.Types]={terrain:Number(d.terrain)||0,batiment:Number(d.batiment)||0,immeuble:Number(d.immeuble)||0}; });
+  mrcData.forEach(d=>{
+    if(!byType[d.Types]) byType[d.Types]={terrain:0,batiment:0,immeuble:0,w:0};
+    const w=Number(d.n_ue)>0?Number(d.n_ue):1;
+    byType[d.Types].terrain +=(Number(d.terrain)||0)*w;
+    byType[d.Types].batiment+=(Number(d.batiment)||0)*w;
+    byType[d.Types].immeuble+=(Number(d.immeuble)||0)*w;
+    byType[d.Types].w+=w;
+  });
+  Object.values(byType).forEach(b=>{ b.terrain/=b.w||1; b.batiment/=b.w||1; b.immeuble/=b.w||1; });
   const orderedTypes=Object.keys(byType).sort((a,b)=>(byType[a]?.immeuble||0)-(byType[b]?.immeuble||0));
 
   const allData=filterYearRangeMRC(DATA[dk('valeur_mrc')]||[]);
-  const mrcRows=allData.map(d=>({Année:Number(d.Annee),Type:d.Types,Terrain:Math.round(d.terrain||0),Bâtiment:Math.round(d.batiment||0),Immeuble:Math.round(d.immeuble||0)}))
-    .sort((a,b)=>a.Année-b.Année||a.Type.localeCompare(b.Type,'fr'));
+  const mrcRows=allData.map(d=>({Année:Number(d.Annee),MRC:d.CDNAME,Type:d.Types,Terrain:Math.round(d.terrain||0),Bâtiment:Math.round(d.batiment||0),Immeuble:Math.round(d.immeuble||0)}))
+    .sort((a,b)=>a.Année-b.Année||a.MRC.localeCompare(b.MRC,'fr')||a.Type.localeCompare(b.Type,'fr'));
 
   content.innerHTML=`
   <div class="section-header">
@@ -1032,6 +1039,7 @@ function renderValeur(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
   drawValeurChart('chart-val-types',orderedTypes,byType);
   makeSortableTable('table-val-mrc',[
     {key:'Année',label:'Année',numeric:true},
+    {key:'MRC',label:'MRC'},
     {key:'Type',label:'Type'},
     {key:'Terrain',label:'Terrain ($)',numeric:true,suffix:' $'},
     {key:'Bâtiment',label:'Bâtiment ($)',numeric:true,suffix:' $'},
@@ -1056,8 +1064,9 @@ function renderValeur(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
 function renderAge(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
   const mrcData=filterYearMRC(DATA[dk('age_mrc')]||[]);
   const munData=filterYearMRC(DATA[dk('age_mun')]||[]);
+  // Moyenne pondérée par n_ue sur toutes les MRC filtrées (poids 1 si n_ue absent)
   const byType={};
-  mrcData.forEach(d=>{ if(!byType[d.Types]) byType[d.Types]={age:0,n:0}; byType[d.Types].age+=d.age_moyen||0; byType[d.Types].n++; });
+  mrcData.forEach(d=>{ if(!byType[d.Types]) byType[d.Types]={age:0,n:0}; const w=Number(d.n_ue)>0?Number(d.n_ue):1; byType[d.Types].age+=(d.age_moyen||0)*w; byType[d.Types].n+=w; });
   Object.keys(byType).forEach(t=>{ byType[t].age/=byType[t].n||1; });
   const sortedTypes=Object.entries(byType).filter(([t])=>!t.startsWith('Total')).sort(([,a],[,b])=>a.age-b.age);
   const total=byType["Total des unités d'évaluation résidentielles"];
@@ -1149,10 +1158,22 @@ function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMR
   const allData=filterYearRangeMRC(DATA[dk('superficie_mrc')]||[]);
   const years=[...new Set(allData.map(d=>Number(d.Annee)).filter(Boolean))].sort((a,b)=>a-b);
   const types=[...new Set(allData.map(d=>d.Types).filter(t=>t && !t.startsWith('Total') && t!=='Autres immeubles résidentiels'))];
-  const terrainSeries=types.map(type=>({name:type,values:years.map(year=>{ const row=allData.find(d=>Number(d.Annee)===year&&d.Types===type); return {year, value:row?Number(row.superficie_terrain)||0:null}; })}));
-  const aireSeries=types.map(type=>({name:type,values:years.map(year=>{ const row=allData.find(d=>Number(d.Annee)===year&&d.Types===type); return {year, value:row?Number(row.aire_etages)||0:null}; })}));
-  const mrcRows=allData.map(d=>({Année:Number(d.Annee),Type:d.Types,'Superficie terrain (m²)':Math.round(d.superficie_terrain||0),"Aire d'étages (m²)":Math.round(d.aire_etages||0)}))
-    .sort((a,b)=>a.Année-b.Année||a.Type.localeCompare(b.Type,'fr'));
+  // Moyenne pondérée par n_ue sur toutes les MRC filtrées (poids 1 si n_ue absent)
+  const supAgg=(year,type,field)=>{
+    let s=0,w=0;
+    allData.forEach(d=>{
+      if(Number(d.Annee)!==year||d.Types!==type) return;
+      const v=Number(d[field]);
+      if(!Number.isFinite(v)) return;
+      const wi=Number(d.n_ue)>0?Number(d.n_ue):1;
+      s+=v*wi; w+=wi;
+    });
+    return w>0?s/w:null;
+  };
+  const terrainSeries=types.map(type=>({name:type,values:years.map(year=>({year, value:supAgg(year,type,'superficie_terrain')}))}));
+  const aireSeries=types.map(type=>({name:type,values:years.map(year=>({year, value:supAgg(year,type,'aire_etages')}))}));
+  const mrcRows=allData.map(d=>({Année:Number(d.Annee),MRC:d.CDNAME,Type:d.Types,'Superficie terrain (m²)':Math.round(d.superficie_terrain||0),"Aire d'étages (m²)":Math.round(d.aire_etages||0)}))
+    .sort((a,b)=>a.Année-b.Année||a.MRC.localeCompare(b.MRC,'fr')||a.Type.localeCompare(b.Type,'fr'));
 
   content.innerHTML=`
   <div class="section-header">
@@ -1190,6 +1211,7 @@ function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMR
   drawMultiLineChart('chart-sup-aire', years, aireSeries, 'm²');
   makeSortableTable('table-sup-mrc',[
     {key:'Année',label:'Année',numeric:true},
+    {key:'MRC',label:'MRC'},
     {key:'Type',label:'Type de construction'},
     {key:'Superficie terrain (m²)',label:'Superficie terrain (m²)',numeric:true},
     {key:"Aire d'étages (m²)",label:"Aire d'étages (m²)",numeric:true},
@@ -1486,8 +1508,9 @@ function renderCibles(content,mrcLabel){
     if(menByYearRef[y]===menByYearFort[y]) lastISQEstYear=y; else break;
   }
 
+  // Appariement même année : ratio actuel = L(a) / M(a) avec a = dernière année du rôle
   const menYears=Object.keys(menByYear).map(Number).sort((a,b)=>a-b);
-  const menEstYears=menYears.filter(y=>y<=latestLogYear+1);
+  const menEstYears=menYears.filter(y=>y<=latestLogYear);
   const latestMenYear=menEstYears.length?menEstYears[menEstYears.length-1]:menYears[0];
   const Mactuel=menByYear[latestMenYear]||0;
   const ratioActuel=Mactuel>0?+(Lactuel/Mactuel).toFixed(3):0;
@@ -1506,7 +1529,7 @@ function renderCibles(content,mrcLabel){
   Object.keys(popByYearAll).map(Number).filter(y=>y<calibYearAll&&popByYearAll[y]>0).forEach(y=>{
     if(!menByYearAll[y]) menByYearAll[y]=Math.round(popByYearAll[y]/tailleMenageAll);
   });
-  const menEstYearsAll=Object.keys(menByYearAll).map(Number).sort((a,b)=>a-b).filter(y=>y<=latestLogYear+1);
+  const menEstYearsAll=Object.keys(menByYearAll).map(Number).sort((a,b)=>a-b).filter(y=>y<=latestLogYear);
   const MRegional=menEstYearsAll.length?menByYearAll[menEstYearsAll[menEstYearsAll.length-1]]||0:0;
   const ratioRegional=MRegional>0?+(LRegional/MRegional).toFixed(3):1.123;
 
@@ -1562,19 +1585,15 @@ function renderCibles(content,mrcLabel){
   const anneesDiff=horizonAn-latestMenYear;
 
   // ── MAMH CALCULATIONS ─────────────────────────────────────────────────
-  let logements_requis_A1;
-  if(methodeA1==='ratio'){
-    logements_requis_A1=Mactuel*effectiveRatio;
-  } else {
-    // A.1.2 : parc locatif requis = M_locataires / (1 − taux_équilibré)
-    // déficit = parc_requis × (taux_équilibré − taux_actuel) / (1 − taux_équilibré)
-    const Mlocataires=Mactuel*tauxLocataires;
-    const tauxActuelSCHL=hasSCHLData?tauxSCHL:tauxNonOccup;
-    const parcLocatif=Mlocataires/(1-tauxInoccupation);
-    const facteurDeficit=(tauxInoccupation-tauxActuelSCHL)/(1-tauxInoccupation);
-    logements_requis_A1=parcLocatif*facteurDeficit; // déficit only (can be negative = surplus)
-  }
-  const deficit_A1=Math.round(methodeA1==='inoccupation'?logements_requis_A1:logements_requis_A1-Lactuel);
+  // A.1.2 : parc actuel = M_loc/(1−taux_actuel), parc requis = M_loc/(1−taux_équilibré), déficit = requis − actuel
+  const Mlocataires=Mactuel*tauxLocataires;
+  const tauxActuelSCHL=hasSCHLData?tauxSCHL:tauxNonOccup;
+  const parcLocatifActuel=tauxActuelSCHL<1?Mlocataires/(1-tauxActuelSCHL):0;
+  const parcLocatifRequis=tauxInoccupation<1?Mlocataires/(1-tauxInoccupation):0;
+  const logements_requis_A1=Mactuel*effectiveRatio;
+  const deficit_A1=Math.round(methodeA1==='inoccupation'
+    ?parcLocatifRequis-parcLocatifActuel   // can be negative = surplus
+    :logements_requis_A1-Lactuel);
 
   let besoin_A3;
   if(methodeA3==='ratio'){
@@ -1593,19 +1612,21 @@ function renderCibles(content,mrcLabel){
   const fmtPct=v=>(v*100).toFixed(1)+' %';
   const scenLabels={reference:'Référence (A2025)',fort:'Fort (E2025)',faible:'Faible (D2025)'};
 
-  const a3Factor=methodeA3==='ratio'?effectiveRatio:methodeA3==='mises_chantier'?ratioMisesEnChantier:1/(1-tauxInoccupation);
+  const a3Factor=methodeA3==='ratio'?effectiveRatio:methodeA3==='mises_chantier'?ratioMisesEnChantier:tauxLocataires/(1-tauxInoccupation);
 
   // ── CHART DATA ────────────────────────────────────────────────────────
   const chartYears=[];
   for(let y=Math.min(...logYears,menYears[0]||2021);y<=horizonAn;y++) chartYears.push(y);
 
+  // Niveau de stock requis : stock actuel + déficit A.1 + besoins de croissance (cohérent quel que soit le mode A.1)
+  const requiredBase=Lactuel+deficit_A1;
   const logementsRequisSeries=chartYears.map(y=>{
     const m=menByYear[y];
     if(!m) return null;
     if(methodeA3==='mises_chantier'){
-      return Math.round(logements_requis_A1+Math.max(0,m-Mactuel)*ratioMisesEnChantier);
+      return Math.round(requiredBase+Math.max(0,m-Mactuel)*ratioMisesEnChantier);
     }
-    return Math.round(logements_requis_A1+(m-Mactuel)*a3Factor);
+    return Math.round(requiredBase+(m-Mactuel)*a3Factor);
   });
   const logementsActuelsSeries=chartYears.map(y=>logByYear[y]||null);
 
@@ -1629,8 +1650,8 @@ function renderCibles(content,mrcLabel){
     ?`<div class="step-row"><span class="step-label">Ménages (${latestMenYear}) × ${effectiveRatio}</span><span class="step-val">${fmt(logements_requis_A1)}</span></div>
       <div class="step-row"><span class="step-label">Logements actuels (${latestLogYear})</span><span class="step-val">${fmt(Lactuel)}</span></div>`
     :`<div class="step-row"><span class="step-label">${mlocStr}</span><span class="step-val"></span></div>
-      <div class="step-row"><span class="step-label">Parc locatif requis ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(Mactuel*tauxLocataires/(1-tauxInoccupation))}</span></div>
-      <div class="step-row"><span class="step-label">Taux actuel SCHL (${tauxSCHLYear}) : ${fmtPct(tauxSCHL)}</span><span class="step-val"></span></div>`;
+      <div class="step-row"><span class="step-label">Parc locatif requis : ménages loc. ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(parcLocatifRequis)}</span></div>
+      <div class="step-row"><span class="step-label">Parc locatif actuel : ménages loc. ÷ (1 − ${fmtPct(tauxActuelSCHL)}, SCHL ${tauxSCHLYear})</span><span class="step-val">${fmt(parcLocatifActuel)}</span></div>`;
 
   // ── Décomposition A.3 ─────────────────────────────────────────────────
   const mcSourceLabel=ratioMCPreset==='calcule'?`calculé période ${mcPeriodeDebut}–${mcPeriodeFin}`:'personnalisé';
@@ -1654,11 +1675,18 @@ function renderCibles(content,mrcLabel){
   const noteMC=showRatioMC?` Ratio de mises en chantier : ${ratioMisesEnChantier.toFixed(3)} (${mcSourceLabel}).`:'';
 
   // ── RENDER HTML ───────────────────────────────────────────────────────
+  const cubfNames={mamh_strict:'Strict',mamh_optional:'Élargi',mamh_plus_others:'Complet'};
+  const cubfWarn=currentCubf!=='mamh_strict'
+    ?`<div style="background:#fdf3e3;border:1px solid #e8a048;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.8rem;color:#7a5410;line-height:1.5;">
+        ⚠ <strong>Filtre CUBF « ${cubfNames[currentCubf]} » actif.</strong> Le stock de logements utilisé ici inclut des catégories ${currentCubf==='mamh_plus_others'?'comme les chalets et maisons mobiles ':''}absentes de l'univers de référence du MAMH. Le ratio équilibré de référence (1.123) est défini sur le filtre <strong>Strict</strong> : les résultats ne sont pas directement comparables à cette cible.
+      </div>`
+    :'';
   content.innerHTML=`
   <div class="section-header">
     <h2>Cibles en habitation – Méthodologie MAMH</h2>
-    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Besoins projetés · ${latestMenYear}–${horizonAn}</div>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Besoins projetés · ${latestMenYear}–${horizonAn} · Filtre CUBF : ${cubfNames[currentCubf]||''}</div>
   </div>
+  ${cubfWarn}
 
   <div class="cibles-params">
     <div class="cibles-param">
@@ -1774,12 +1802,12 @@ function renderCibles(content,mrcLabel){
     <div class="metric-card">
       <div class="metric-label">Logements actuels (${latestLogYear})</div>
       <div class="metric-value">${fmt(Lactuel)}</div>
-      <div class="metric-sub">Rôle d'évaluation foncière</div>
+      <div class="metric-sub">Rôle d'évaluation foncière · Filtre ${cubfNames[currentCubf]||''}</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Ménages privés (${latestMenYear})</div>
       <div class="metric-value">${fmt(Mactuel)}</div>
-      <div class="metric-sub">ISQ – Projections de ménages</div>
+      <div class="metric-sub">ISQ – ${latestMenYear>lastISQEstYear?`Projection (scénario ${scenLabels[scenario]})`:'Estimation'}</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Ratio log./ménage actuel</div>
@@ -1892,13 +1920,13 @@ function renderCibles(content,mrcLabel){
       }
       else if(id==='cp-periode-debut') ciblesParams.periodeDebut=parseInt(this.value);
       else if(id==='cp-periode-fin')   ciblesParams.periodeFin=parseInt(this.value);
-      else if(id==='cp-ratio')         ciblesParams.ratioEquilibre=parseFloat(this.value)||1.123;
-      else if(id==='cp-taux')          ciblesParams.tauxInoccupation=(parseFloat(this.value)||3)/100;
-      else if(id==='cp-taux-loc')      ciblesParams.tauxLocataires=(parseFloat(this.value)||30)/100;
+      else if(id==='cp-ratio'){        const v=parseFloat(this.value); ciblesParams.ratioEquilibre=Number.isFinite(v)?v:1.123; }
+      else if(id==='cp-taux'){         const v=parseFloat(this.value); ciblesParams.tauxInoccupation=Number.isFinite(v)?v/100:0.03; }
+      else if(id==='cp-taux-loc'){     const v=parseFloat(this.value); ciblesParams.tauxLocataires=Number.isFinite(v)&&v>0?v/100:0.30; }
       else if(id==='cp-ratio-mc-preset'){ ciblesParams.ratioMCPreset=this.value; }
       else if(id==='cp-mc-periode-debut') ciblesParams.mcPeriodeDebut=parseInt(this.value);
       else if(id==='cp-mc-periode-fin')   ciblesParams.mcPeriodeFin=parseInt(this.value);
-      else if(id==='cp-ratio-mc')      ciblesParams.ratioMisesEnChantier=parseFloat(this.value)||1.1;
+      else if(id==='cp-ratio-mc'){     const v=parseFloat(this.value); ciblesParams.ratioMisesEnChantier=Number.isFinite(v)&&v>0?v:1.1; }
       else if(id==='cp-scenario')      ciblesParams.scenario=this.value;
       else if(id==='cp-horizon')       ciblesParams.horizonAn=parseInt(this.value)||2046;
       renderCibles(content,mrcLabel);
@@ -1964,8 +1992,9 @@ function renderIndicateurs(content, mrcLabel, annee) {
   });
   const partYrs = Object.keys(puByYr).map(Number).sort((a,b)=>a-b)
     .filter(y=>y>=2015&&deltaByYr[y]!==undefined&&deltaByYr[y]>0);
+  // Non plafonné : une part > 100 % signale une incohérence (voir note méthodologique)
   const partByYr = {};
-  partYrs.forEach(y=>{ partByYr[y]=Math.min(100,(puByYr[y]/deltaByYr[y])*100); });
+  partYrs.forEach(y=>{ partByYr[y]=(puByYr[y]/deltaByYr[y])*100; });
   const cumPU   = partYrs.reduce((s,y)=>s+(puByYr[y]||0),0);
   const cumTot  = partYrs.reduce((s,y)=>s+(deltaByYr[y]||0),0);
   const cumPart = cumTot>0?(cumPU/cumTot*100):null;
@@ -2046,7 +2075,7 @@ function renderIndicateurs(content, mrcLabel, annee) {
       </div>
       <div style="flex:1;min-width:220px;background:var(--bg2);border-radius:8px;padding:16px 18px;font-size:.76rem;color:var(--text-light);line-height:1.65;">
         <strong style="color:var(--text);display:block;margin-bottom:6px;">Note méthodologique</strong>
-        Le numérateur (logements dans les PU) provient du fichier <code>nouveaux_logements_mrc</code> basé sur l'année de construction. Le dénominateur (total nouveaux logements sur le territoire) est estimé par la variation annuelle nette du stock total inscrit au rôle d'évaluation foncière. Seules les années consécutives au rôle sont retenues. L'indicateur officiel du MAMH requiert un SIG pour identifier précisément les logements à l'intérieur des PU.
+        Le numérateur (logements dans les PU) provient du fichier <code>nouveaux_logements_mrc</code> basé sur l'année de construction. Le dénominateur (total nouveaux logements sur le territoire) est estimé par la variation annuelle nette du stock total inscrit au rôle d'évaluation foncière. Seules les années consécutives au rôle sont retenues. Une part supérieure à 100 % signale une incohérence entre les deux sources (décalage entre l'année de construction et l'inscription au rôle, ou pertes nettes hors PU) et doit être interprétée avec prudence. L'indicateur officiel du MAMH requiert un SIG pour identifier précisément les logements à l'intérieur des PU.
       </div>
     </div>
     <div class="charts-grid">
@@ -2212,7 +2241,8 @@ function drawInd2Part(id,years,partByYr,cumPart){
   const w=W-m.left-m.right, h=H-m.top-m.bottom;
   const svg=d3.select('#'+id).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
   const g=svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
-  const maxV=Math.min(100,Math.max(...years.map(y=>partByYr[y]||0))*1.15)||100;
+  const peakV=Math.max(...years.map(y=>partByYr[y]||0));
+  const maxV=(peakV>100?peakV*1.1:Math.min(100,peakV*1.15))||100;
   const x=d3.scaleBand().domain(years.map(String)).range([0,w]).padding(0.25);
   const y=d3.scaleLinear().domain([0,maxV]).range([h,0]);
   g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('').ticks(5)).select('.domain').remove();
@@ -2227,6 +2257,13 @@ function drawInd2Part(id,years,partByYr,cumPart){
     if(h-y(val)>16) g.append('text').attr('x',x(String(yr))+x.bandwidth()/2).attr('y',y(val)-4)
       .attr('text-anchor','middle').attr('font-size','10px').attr('fill','#1a1a1a').text(val.toFixed(1)+'%');
   });
+  // Repère 100 % lorsque des valeurs le dépassent (incohérence rôle/PU)
+  if(peakV>100){
+    g.append('line').attr('x1',0).attr('x2',w).attr('y1',y(100)).attr('y2',y(100))
+      .attr('stroke','#c0392b').attr('stroke-width',1).attr('stroke-dasharray','3,3');
+    g.append('text').attr('x',w-2).attr('y',y(100)-4).attr('text-anchor','end')
+      .attr('font-size','9px').attr('fill','#c0392b').text('100 %');
+  }
   // Cumulative mean line
   if(cumPart!=null){
     const yc=y(cumPart);
@@ -2320,6 +2357,5 @@ function drawInd3Den(id,years,denByYr,denMRC_fi){
   }
 })();
 </script>
-<div class="cubf-tooltip" id="cubf-tooltip"></div>
 </body>
 </html>

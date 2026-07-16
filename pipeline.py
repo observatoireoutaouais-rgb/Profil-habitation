@@ -29,6 +29,7 @@ PU_ZIPS = {}
 for _p in Path(".").glob("Role_*_PU.zip"):
     _m = re.search(r"(\d{4})", _p.name)
     if _m: PU_ZIPS[int(_m.group(1))] = _p
+QA_DROPPED_YEARS = []
 MATCH_PATH  = "MATCH.csv"
 PF_MUN_PATH = "pf-mun-2023-2023.csv"
 DATA_DIR    = Path("web/data")
@@ -194,6 +195,7 @@ def build_role_df_shp(pf_lookup,match_df):
             if rows_year<200000:
                 print(f"  ⚠  {rows_year:,} UE – zip suspect, ignoré.")
                 all_rows=[r for r in all_rows if r["Annee"]!=annee]
+                QA_DROPPED_YEARS.append({"annee":annee,"raison":f"SHP suspect ({rows_year:,} UE < 200 000)"})
             else:
                 print(f"  ✓ {rows_year:,} UE retenues ({len(found_codes)} municipalités)")
         except Exception as e:
@@ -261,14 +263,14 @@ def build_indicateurs_pu(pf_lookup):
             save_json(df_new.groupby(["CDNAME","CSDNAME","rl0307a","Types"]).agg(logements=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"types_nouveaux_mun.json")
             df_den=df_res[df_res["rl0309a"].notna()&(df_res["rl0309a"]!=0)].copy()
             df_den["terrain_ha"]=df_den["rl0302a"]/10000
-            den_mrc=df_den.groupby(["CDNAME","rl0307a"]).agg(area_ha=("terrain_ha","sum"),units=("rl0309a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"})
+            den_mrc=df_den.groupby(["CDNAME","rl0307a"]).agg(area_ha=("terrain_ha","sum"),units=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"})
             den_mrc=den_mrc.sort_values(["CDNAME","Annee_construction"])
             den_mrc["cum_area"]=den_mrc.groupby("CDNAME")["area_ha"].cumsum()
             den_mrc["cum_units"]=den_mrc.groupby("CDNAME")["units"].cumsum()
             den_mrc["densite_nette_PU"]=np.where(den_mrc["cum_area"]>0,(den_mrc["cum_units"]/den_mrc["cum_area"]).round(3),np.nan)
             den_mrc=den_mrc[(den_mrc["Annee_construction"]>=2012)&(den_mrc["Annee_construction"]<=annee_pu)]
             save_json(den_mrc.round(3),"densite_pu_mrc.json")
-            den_mun=df_den.groupby(["CDNAME","CSDNAME","rl0307a"]).agg(area_ha=("terrain_ha","sum"),units=("rl0309a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"})
+            den_mun=df_den.groupby(["CDNAME","CSDNAME","rl0307a"]).agg(area_ha=("terrain_ha","sum"),units=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"})
             den_mun=den_mun.sort_values(["CDNAME","CSDNAME","Annee_construction"])
             den_mun["cum_area"]=den_mun.groupby(["CDNAME","CSDNAME"])["area_ha"].cumsum()
             den_mun["cum_units"]=den_mun.groupby(["CDNAME","CSDNAME"])["units"].cumsum()
@@ -367,12 +369,12 @@ def export_indicator_set(Role_brut, mode, suffix):
         mrc_types[f"{col}_pct"]=np.where(mrc_types["Total"]>0,(mrc_types[col]/mrc_types["Total"]*100).round(2),np.nan)
     save_json(mrc_types,f"logements_types_mrc_{suffix}.json")
     save_json(Role_exp.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(N=("Annee","count")).reset_index().rename(columns={"Types":"Types de construction résidentielle","N":"Nombre de logements"}),f"logements_types_mun_{suffix}.json")
-    mrc_val=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean")).reset_index()
-    tot=Role_UE.groupby(["Annee","CDNAME"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean")).reset_index(); tot["Types"]="Total des unités d'évaluation résidentielles"
+    mrc_val=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index()
+    tot=Role_UE.groupby(["Annee","CDNAME"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index(); tot["Types"]="Total des unités d'évaluation résidentielles"
     save_json(pd.concat([mrc_val,tot],ignore_index=True).round(0),f"valeur_mrc_{suffix}.json")
-    save_json(Role_UE.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean")).reset_index().round(0),f"valeur_mun_{suffix}.json")
-    mrc_age=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(annee_moy=("rl0307a","mean")).reset_index()
-    tot_age=Role_UE.groupby(["Annee","CDNAME"]).agg(annee_moy=("rl0307a","mean")).reset_index(); tot_age["Types"]="Total des unités d'évaluation résidentielles"
+    save_json(Role_UE.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index().round(0),f"valeur_mun_{suffix}.json")
+    mrc_age=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(annee_moy=("rl0307a","mean"),n_ue=("Annee","size")).reset_index()
+    tot_age=Role_UE.groupby(["Annee","CDNAME"]).agg(annee_moy=("rl0307a","mean"),n_ue=("Annee","size")).reset_index(); tot_age["Types"]="Total des unités d'évaluation résidentielles"
     mrc_age=pd.concat([mrc_age,tot_age],ignore_index=True); mrc_age["age_moyen"]=(mrc_age["Annee"]-mrc_age["annee_moy"]).round(1)
     save_json(mrc_age,f"age_mrc_{suffix}.json")
     mun_age=Role_UE.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(annee_moy=("rl0307a","mean")).reset_index()
@@ -382,12 +384,16 @@ def export_indicator_set(Role_brut, mode, suffix):
     Role_UE_per=Role_UE.copy(); Role_UE_per["Période"]=Role_UE_per["rl0307a"].apply(categorize_periode)
     save_json(Role_UE_per.dropna(subset=["Période"]).groupby(["Annee","CDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index(),f"periode_mrc_{suffix}.json")
     save_json(Role_UE_per.dropna(subset=["Période"]).groupby(["Annee","CDNAME","CSDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index(),f"periode_mun_{suffix}.json")
-    mrc_sup=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean")).reset_index()
-    tot_sup=Role_UE.groupby(["Annee","CDNAME"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean")).reset_index(); tot_sup["Types"]="Total des unités d'évaluation résidentielles"
+    mrc_sup=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean"),n_ue=("Annee","size")).reset_index()
+    tot_sup=Role_UE.groupby(["Annee","CDNAME"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean"),n_ue=("Annee","size")).reset_index(); tot_sup["Types"]="Total des unités d'évaluation résidentielles"
     save_json(pd.concat([mrc_sup,tot_sup],ignore_index=True).round(1),f"superficie_mrc_{suffix}.json")
     mun_sup=Role_UE.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean")).reset_index()
     tot_sup_mun=Role_UE.groupby(["Annee","CDNAME","CSDNAME"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean")).reset_index(); tot_sup_mun["Types"]="Total des unités d'évaluation résidentielles"
     save_json(pd.concat([mun_sup,tot_sup_mun],ignore_index=True).round(1),f"superficie_mun_{suffix}.json")
+def clean_isq_name(val):
+    # ISQ appends footnote markers to some names (ex.: "Papineau2") → strip trailing digits
+    if val is None: return None
+    return re.sub(r"\d+$","",str(val).strip()).strip() or None
 def build_population_data(match_df):
     our_mrcs=set(match_df["CDNAME"].unique())
     hist_path=Path(POP_HIST_PATH); proj_path=Path(POP_PROJ_PATH)
@@ -402,7 +408,7 @@ def build_population_data(match_df):
     year_ints=[int(y) for y in year_row if y.isdigit()]
     hist_out=[]
     for r in rows[4:]:
-        mrc_name=str(r[2]).strip() if r[2] else None
+        mrc_name=clean_isq_name(r[2])
         if not mrc_name or mrc_name not in our_mrcs: continue
         for i,yr in enumerate(year_ints):
             if yr<2012: continue
@@ -420,7 +426,7 @@ def build_population_data(match_df):
     proj_out=[]
     for r in rows2[7:]:
         if not r[0] or not r[2]: continue
-        scenario_raw=str(r[0]).strip(); mrc_name=str(r[2]).strip()
+        scenario_raw=str(r[0]).strip(); mrc_name=clean_isq_name(r[2])
         scenario=SCENARIO_MAP.get(scenario_raw)
         if not scenario or mrc_name not in our_mrcs: continue
         for i,yr in enumerate(proj_years):
@@ -439,7 +445,7 @@ def build_population_data(match_df):
     men_out=[]
     for r in rows3[7:]:
         if not r[0] or not r[2]: continue
-        scenario=SCENARIO_MAP.get(str(r[0]).strip()); mrc_name=str(r[2]).strip()
+        scenario=SCENARIO_MAP.get(str(r[0]).strip()); mrc_name=clean_isq_name(r[2])
         if not scenario or mrc_name not in our_mrcs: continue
         for i,yr in enumerate(men_years):
             val=r[3+i]
@@ -463,6 +469,22 @@ def main():
     Role_brut["rl0105a"]=Role_brut["rl0105a"].fillna("").astype(str)
     annees=sorted(Role_brut["Annee"].unique())
     print(f"\n✓ Brut : {len(Role_brut):,} UE sur {len(annees)} années ({annees})")
+    # QA couverture : nb de municipalités et d'UE par année (années absentes incluses)
+    n_attendu=len(MATCH)
+    qa_grp=Role_brut.groupby("Annee").agg(n_mun=("CSDNAME","nunique"),n_ue=("Annee","size"))
+    dropped_by_year={d["annee"]:d["raison"] for d in QA_DROPPED_YEARS}
+    qa_rows=[]
+    for a in range(ANNEE_MIN,max(annees)+1):
+        if a in qa_grp.index:
+            n_mun=int(qa_grp.loc[a,"n_mun"]); n_ue=int(qa_grp.loc[a,"n_ue"])
+            note=None if n_mun>=n_attendu else f"{n_attendu-n_mun} municipalité(s) manquante(s)"
+        else:
+            n_mun=0; n_ue=0
+            note=dropped_by_year.get(a,"année absente des sources")
+        qa_rows.append({"Annee":a,"n_mun":n_mun,"n_mun_attendu":n_attendu,"n_ue":n_ue,
+                        "complet":n_mun>=n_attendu,"note":note})
+        if note: print(f"  ⚠  QA {a} : {note} ({n_mun}/{n_attendu} mun)")
+    save_json(pd.DataFrame(qa_rows),"qa_couverture.json")
     print("\nExport des indicateurs par mode de catégorisation...")
     export_indicator_set(Role_brut,mode="mamh_strict",suffix="mamh_strict")
     export_indicator_set(Role_brut,mode="mamh_optional",suffix="mamh_optional")
