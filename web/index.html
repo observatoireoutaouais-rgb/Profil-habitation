@@ -221,7 +221,7 @@ body.embed-mode{overflow-y:auto;height:auto;}
   <div class="tabs">
     <button class="tab-btn active" data-tab="logements">Logements</button>
     <button class="tab-btn" data-tab="valeur">Valeur foncière</button>
-    <button class="tab-btn" data-tab="age">Âge des bâtiments</button>
+    <button class="tab-btn" data-tab="age">Âge des unités d'évaluation</button>
     <button class="tab-btn" data-tab="periode">Période de construction</button>
     <button class="tab-btn" data-tab="superficie">Superficie</button>
     <button class="tab-btn" data-tab="indicateurs">Indicateurs stratégiques</button>
@@ -1112,22 +1112,22 @@ function renderAge(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
 
   content.innerHTML=`
   <div class="section-header">
-    <h2>L'âge moyen des bâtiments selon les types de construction, ${annee}</h2>
+    <h2>L'âge moyen des unités d'évaluation résidentielles selon les types de construction, ${annee}</h2>
     <div class="meta"><span class="mrc-tag">${mrcLabel}</span> En années · Rôle d'évaluation foncière ${annee}</div>
   </div>
   <div class="charts-grid wide" style="margin-bottom:24px">
     <div class="chart-card" id="card-age-chart">
-      <h3>Âge moyen des bâtiments par type de construction résidentielle · ${mrcLabel}</h3>
-      <div class="chart-subtitle">${annee} · Total des unités : ${total?Math.round(total.age)+' ans':'N/D'}</div>
+      <h3>Âge moyen des unités d'évaluation résidentielles par type de construction · ${mrcLabel}</h3>
+      <div class="chart-subtitle">${annee} · Total des unités d'évaluation : ${total?Math.round(total.age)+' ans':'N/D'}</div>
       <div class="chart-area" id="chart-age"></div>
-      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-age-chart',singleYear:true,title:`Age_batiments_${annee}_${mrcLabel}`})}
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-age-chart',singleYear:true,title:`Age_unites_evaluation_${annee}_${mrcLabel}`})}
     </div>
   </div>
   <div class="charts-grid wide">
     <div class="chart-card" id="card-age-mun" style="overflow-x:auto">
-      <h3>Âge moyen des bâtiments par type de construction résidentielle par municipalité, ${annee} · ${mrcLabel}</h3>
+      <h3>Âge moyen des unités d'évaluation résidentielles par type de construction par municipalité, ${annee} · ${mrcLabel}</h3>
       <div id="table-age-mun"></div>
-      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-age-mun',singleYear:true,title:`Age_batiments_municipalites_${annee}_${mrcLabel}`})}
+      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-age-mun',singleYear:true,title:`Age_unites_evaluation_municipalites_${annee}_${mrcLabel}`})}
     </div>
   </div>`;
 
@@ -1156,7 +1156,7 @@ function renderPeriode(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
 
   content.innerHTML=`
   <div class="section-header">
-    <h2>Unité d'évaluation résidentielle selon la période de construction, ${annee}</h2>
+    <h2>Les unités d'évaluation résidentielles selon la période de construction, ${annee}</h2>
     <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Rôle d'évaluation foncière ${annee}</div>
   </div>
   <div class="charts-grid wide" style="margin-bottom:24px">

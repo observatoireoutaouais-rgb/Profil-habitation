@@ -78,7 +78,7 @@ le contrôle de qualité).
 |---|---|
 | `logements_types_{mrc,mun}_{filtre}.json` | Nb logements par type, par MRC/municipalité et année |
 | `valeur_{mrc,mun}_{filtre}.json` | Valeur foncière moyenne par type (+ `n_ue` pour pondération) |
-| `age_{mrc,mun}_{filtre}.json` | Âge moyen des bâtiments (+ `n_ue` au niveau MRC) |
+| `age_{mrc,mun}_{filtre}.json` | Âge moyen des unités d'évaluation résidentielles (+ `n_ue` au niveau MRC) |
 | `periode_{mrc,mun}_{filtre}.json` | Unités par période de construction |
 | `superficie_{mrc,mun}_{filtre}.json` | Superficie terrain et aire d'étages moyennes (+ `n_ue` au niveau MRC) |
 | `nouveaux_logements_{mrc,mun}.json` | Logements construits dans les PU (nécessite `Role_*_PU.zip`) |
