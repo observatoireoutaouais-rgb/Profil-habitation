@@ -1345,7 +1345,7 @@ function drawHorizBar(id,types,agg,total){
       .on('mouseover',event=>showTooltip(event,`${t}<br><strong>${(agg[t]||0).toLocaleString('fr-CA')}</strong> logements`))
       .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
     g.append('text').attr('class','bar-label').attr('x',x(agg[t]||0)+6).attr('y',y(t)+y.bandwidth()/2+4).attr('font-size','11px').attr('fill','#1a1a1a').text((agg[t]||0).toLocaleString('fr-CA'));
-    g.append('text').attr('x',-8).attr('y',y(t)+y.bandwidth()/2+4).attr('text-anchor','end').attr('font-size','11px').attr('fill','#5a5a5a').text(t.length>35?t.substring(0,33)+'…':t);
+    wrapAxisLabel(g.append('text').attr('x',-8).attr('y',y(t)+y.bandwidth()/2+4).attr('text-anchor','end').attr('font-size','11px').attr('fill','#5a5a5a'),t,36,12);
   });
 }
 
@@ -1365,7 +1365,7 @@ function drawValeurChart(id,types,byType){
     if((d.terrain||0)>maxVal*0.05) g.append('text').attr('x',x(d.terrain||0)-8).attr('y',y(t)+y.bandwidth()/2+4).attr('text-anchor','end').attr('fill','white').attr('font-weight','600').attr('font-size','11px').text(Math.round(d.terrain||0).toLocaleString('fr-CA')+' $');
     if((d.batiment||0)>maxVal*0.08) g.append('text').attr('x',x(d.terrain||0)+8).attr('y',y(t)+y.bandwidth()/2+4).attr('fill','white').attr('font-weight','600').attr('font-size','11px').text(Math.round(d.batiment||0).toLocaleString('fr-CA')+' $');
     g.append('text').attr('x',x(total)+10).attr('y',y(t)+y.bandwidth()/2+5).attr('fill','#1a1a1a').attr('font-weight','700').text(Math.round(total).toLocaleString('fr-CA')+' $');
-    g.append('text').attr('x',-12).attr('y',y(t)+y.bandwidth()/2+5).attr('text-anchor','end').attr('fill','#2a2a2a').attr('font-size','11px').text(t.length>38?t.slice(0,36)+'…':t);
+    wrapAxisLabel(g.append('text').attr('x',-12).attr('y',y(t)+y.bandwidth()/2+5).attr('text-anchor','end').attr('fill','#2a2a2a').attr('font-size','11px'),t,38);
   });
 }
 
