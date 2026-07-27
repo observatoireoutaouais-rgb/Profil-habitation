@@ -1369,6 +1369,19 @@ function drawValeurChart(id,types,byType){
   });
 }
 
+// Étiquettes d'axe sur plusieurs lignes : les noms de types longs sont repliés
+// plutôt que tronqués, pour rester lisibles en entier.
+function wrapAxisLabel(sel,label,maxChars,lineH=13){
+  const words=String(label).split(/\s+/), lines=[]; let cur='';
+  words.forEach(word=>{
+    const test=cur?cur+' '+word:word;
+    if(test.length>maxChars&&cur){ lines.push(cur); cur=word; } else cur=test;
+  });
+  if(cur) lines.push(cur);
+  const x=sel.attr('x'), offset=-(lines.length-1)*lineH/2;
+  lines.forEach((line,i)=>sel.append('tspan').attr('x',x).attr('dy',i===0?offset:lineH).text(line));
+}
+
 function drawAgeChart(id,sortedTypes,total){
   const el=document.getElementById(id); if(!el||!sortedTypes.length) return;
   const allTypes=[...sortedTypes,["Total des unités d'évaluation résidentielles",total||{age:0}]];
@@ -1386,7 +1399,8 @@ function drawAgeChart(id,sortedTypes,total){
     g.append('rect').attr('class','bar').attr('y',y(type)).attr('height',y.bandwidth()).attr('x',0).attr('width',x(age)).attr('fill',isTotal?'#3d8f8a':'#1a4e4b').attr('rx',3)
       .on('mouseover',event=>showTooltip(event,`${type}<br><strong>${age} ans</strong>`)).on('mousemove',moveTooltip).on('mouseout',hideTooltip);
     g.append('text').attr('class','bar-label').attr('x',x(age)+6).attr('y',y(type)+y.bandwidth()/2+4).attr('font-size','12px').attr('font-weight',isTotal?'600':'400').attr('fill','#1a1a1a').text(age);
-    g.append('text').attr('x',-8).attr('y',y(type)+y.bandwidth()/2+4).attr('text-anchor','end').attr('font-size','11px').attr('fill',isTotal?'#1a4e4b':'#5a5a5a').attr('font-weight',isTotal?'600':'400').text(type.length>33?type.substring(0,31)+'…':type);
+    const lbl=g.append('text').attr('x',-8).attr('y',y(type)+y.bandwidth()/2+4).attr('text-anchor','end').attr('font-size','11px').attr('fill',isTotal?'#1a4e4b':'#5a5a5a').attr('font-weight',isTotal?'600':'400');
+    wrapAxisLabel(lbl,type,36);
   });
 }
 
