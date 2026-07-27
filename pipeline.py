@@ -338,10 +338,20 @@ def build_role_universe(df,mode="mamh_strict"):
         return d.dropna(subset=["Types"]).copy()
     if mode=="mamh_plus_others":
         d=assign_mamh_types(d,include_optional=True,colname="Types")
-        mask_other=d["Types"].isna()
+        eligible=mamh_eligible_mask(d,include_optional=True)
+        # Le repli par préfixe CUBF ne vaut que pour les codes hors liste MAMH. Pour un code
+        # éligible, ce sont les règles MAMH qui font autorité : l'absence de type traduit un
+        # nombre de logements manquant au rôle, pas une autre famille de bâtiment. Sans cette
+        # restriction, une unité 1211 (immeuble multifamilial) sans nombre de logements tombait
+        # sur le préfixe « 12 » et était classée « Maison mobile et roulotte ».
+        mask_other=d["Types"].isna() & ~eligible
         if mask_other.any():
             d_other=assign_other_types_from_cubf(d.loc[mask_other].copy(),colname="Types")
             d.loc[mask_other,"Types"]=d_other["Types"]
+        # Unité éligible mais non typable : conservée dans le portrait exhaustif du filtre
+        # complet, sous la catégorie déjà employée pour les unités éligibles dont le lien
+        # physique n'est pas reconnu.
+        d.loc[d["Types"].isna()&eligible,"Types"]="Autres immeubles résidentiels"
         return d.dropna(subset=["Types"]).copy()
     raise ValueError(f"Mode inconnu: {mode}")
 def expand_logements(df):
