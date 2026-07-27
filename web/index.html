@@ -1412,14 +1412,13 @@ function drawPeriodeChart(id, totals){
   const svg=d3.select(`#${id}`).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
   const g=svg.append('g').attr('transform',`translate(${margin.left},${margin.top})`);
   const maxVal=d3.max(data,d=>d.value)||0;
-  const peak=d3.max(data,d=>d.value);
   const x=d3.scaleBand().domain(data.map(d=>d.label)).range([0,w]).padding(0.3);
   const y=d3.scaleLinear().domain([0,maxVal*1.1]).range([h,0]);
   g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('')).select('.domain').remove();
   g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
   g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x)).select('.domain').remove();
   data.forEach(d=>{
-    const color=d.value===peak?'#178785':'#55aba7';
+    const color='#178785';
     g.append('rect').attr('x',x(d.label)).attr('y',y(d.value)).attr('width',x.bandwidth()).attr('height',h-y(d.value)).attr('fill',color)
       .on('mouseover',event=>showTooltip(event,`<strong>${d.label}</strong><br>${d.value.toLocaleString('fr-CA')} unités`)).on('mousemove',moveTooltip).on('mouseout',hideTooltip);
     g.append('text').attr('x',x(d.label)+x.bandwidth()/2).attr('y',y(d.value)-10).attr('text-anchor','middle').attr('font-weight','700').text(d.value.toLocaleString('fr-CA'));
