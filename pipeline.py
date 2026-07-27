@@ -287,8 +287,10 @@ def prepare_cubf(df):
     d["rl0105_num"]=pd.to_numeric(d["rl0105_str"],errors="coerce")
     return d
 def mamh_base_mask(d):
+    # Fiche méthodologique OGAT (indicateur stratégique habitation), sources de données :
+    # utilisation prédominante « résidentielle » ou « commerciale » = 1000, 1010, 1211, 1702, 5000-5999.
     rl=d["rl0105_num"]
-    return rl.isin([1000,1010,1211])|((rl>=5000)&(rl<=5999))
+    return rl.isin([1000,1010,1211,1702])|((rl>=5000)&(rl<=5999))
 def mamh_optional_mask(d):
     rl=d["rl0105_num"]
     return rl.isin([1543,1549])|((rl>=8100)&(rl<=8199))
@@ -336,10 +338,20 @@ def build_role_universe(df,mode="mamh_strict"):
         return d.dropna(subset=["Types"]).copy()
     if mode=="mamh_plus_others":
         d=assign_mamh_types(d,include_optional=True,colname="Types")
-        mask_other=d["Types"].isna()
+        eligible=mamh_eligible_mask(d,include_optional=True)
+        # Le repli par préfixe CUBF ne vaut que pour les codes hors liste MAMH. Pour un code
+        # éligible, ce sont les règles MAMH qui font autorité : l'absence de type traduit un
+        # nombre de logements manquant au rôle, pas une autre famille de bâtiment. Sans cette
+        # restriction, une unité 1211 (immeuble multifamilial) sans nombre de logements tombait
+        # sur le préfixe « 12 » et était classée « Maison mobile et roulotte ».
+        mask_other=d["Types"].isna() & ~eligible
         if mask_other.any():
             d_other=assign_other_types_from_cubf(d.loc[mask_other].copy(),colname="Types")
             d.loc[mask_other,"Types"]=d_other["Types"]
+        # Unité éligible mais non typable : conservée dans le portrait exhaustif du filtre
+        # complet, sous la catégorie déjà employée pour les unités éligibles dont le lien
+        # physique n'est pas reconnu.
+        d.loc[d["Types"].isna()&eligible,"Types"]="Autres immeubles résidentiels"
         return d.dropna(subset=["Types"]).copy()
     raise ValueError(f"Mode inconnu: {mode}")
 def expand_logements(df):
@@ -355,6 +367,45 @@ def categorize_periode(val):
 def save_json(df,path):
     df.to_json(DATA_DIR/path,orient="records",force_ascii=False,indent=None)
     print(f"  ✓ {path} ({len(df):,} lignes)")
+def superficie_frame(Role_UE,keys):
+    """
+    Superficies de terrain et aires d'étages, par unité d'évaluation et par logement.
+
+    Les valeurs « par logement » sont un ratio des sommes (Σ superficie / Σ rl0311a) :
+    chaque logement pèse également, conformément à la comptabilisation prévue par la
+    fiche méthodologique OGAT. La division règle du même coup l'hétérogénéité de la
+    catégorie « Logements dans un immeuble en comportant deux et plus » : une unité de
+    condo porte déjà sa quote-part de terrain et l'aire de son seul logement (rl0311a=1,
+    division sans effet), tandis qu'un plex porte le terrain et l'aire de tout l'immeuble
+    (division par son nombre de logements). Pour les maisons détachées et jumelées,
+    rl0311a vaut 1 : les valeurs par logement sont identiques aux moyennes par unité.
+
+    Le dénominateur de chaque ratio est restreint aux unités dont le numérateur est
+    renseigné, afin que numérateur et dénominateur portent sur les mêmes unités. Les
+    unités sans nombre de logements exploitable (rl0311a nul ou absent, possible en
+    mode « complet ») sont écartées des ratios.
+
+    Les colonnes n_log_* sont les dénominateurs employés : repondérer les moyennes par
+    ces effectifs redonne exactement le ratio agrégé sur plusieurs territoires.
+    """
+    d=Role_UE.copy()
+    log=pd.to_numeric(d["rl0311a"],errors="coerce").where(lambda s:s>0)
+    d["_terr"]=d["rl0302a"].where(log.notna())
+    d["_aire"]=d["rl0308a"].where(log.notna())
+    d["_log_terr"]=log.where(d["rl0302a"].notna())
+    d["_log_aire"]=log.where(d["rl0308a"].notna())
+    g=d.groupby(keys).agg(
+        superficie_terrain=("rl0302a","mean"),
+        aire_etages=("rl0308a","mean"),
+        n_ue=("Annee","size"),
+        _terr=("_terr","sum"),_log_terr=("_log_terr","sum"),
+        _aire=("_aire","sum"),_log_aire=("_log_aire","sum"),
+    ).reset_index()
+    g["superficie_terrain_par_log"]=np.where(g["_log_terr"]>0,g["_terr"]/g["_log_terr"],np.nan)
+    g["aire_etages_par_log"]=np.where(g["_log_aire"]>0,g["_aire"]/g["_log_aire"],np.nan)
+    g["n_log_terrain"]=g["_log_terr"]
+    g["n_log_aire"]=g["_log_aire"]
+    return g.drop(columns=["_terr","_log_terr","_aire","_log_aire"])
 def export_indicator_set(Role_brut, mode, suffix):
     Role_UE=build_role_universe(Role_brut,mode=mode)
     Role_exp=expand_logements(Role_UE)
@@ -384,11 +435,11 @@ def export_indicator_set(Role_brut, mode, suffix):
     Role_UE_per=Role_UE.copy(); Role_UE_per["Période"]=Role_UE_per["rl0307a"].apply(categorize_periode)
     save_json(Role_UE_per.dropna(subset=["Période"]).groupby(["Annee","CDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index(),f"periode_mrc_{suffix}.json")
     save_json(Role_UE_per.dropna(subset=["Période"]).groupby(["Annee","CDNAME","CSDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index(),f"periode_mun_{suffix}.json")
-    mrc_sup=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean"),n_ue=("Annee","size")).reset_index()
-    tot_sup=Role_UE.groupby(["Annee","CDNAME"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean"),n_ue=("Annee","size")).reset_index(); tot_sup["Types"]="Total des unités d'évaluation résidentielles"
+    mrc_sup=superficie_frame(Role_UE,["Annee","CDNAME","Types"])
+    tot_sup=superficie_frame(Role_UE,["Annee","CDNAME"]); tot_sup["Types"]="Total des unités d'évaluation résidentielles"
     save_json(pd.concat([mrc_sup,tot_sup],ignore_index=True).round(1),f"superficie_mrc_{suffix}.json")
-    mun_sup=Role_UE.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean")).reset_index()
-    tot_sup_mun=Role_UE.groupby(["Annee","CDNAME","CSDNAME"]).agg(superficie_terrain=("rl0302a","mean"),aire_etages=("rl0308a","mean")).reset_index(); tot_sup_mun["Types"]="Total des unités d'évaluation résidentielles"
+    mun_sup=superficie_frame(Role_UE,["Annee","CDNAME","CSDNAME","Types"])
+    tot_sup_mun=superficie_frame(Role_UE,["Annee","CDNAME","CSDNAME"]); tot_sup_mun["Types"]="Total des unités d'évaluation résidentielles"
     save_json(pd.concat([mun_sup,tot_sup_mun],ignore_index=True).round(1),f"superficie_mun_{suffix}.json")
 def clean_isq_name(val):
     # ISQ appends footnote markers to some names (ex.: "Papineau2") → strip trailing digits
