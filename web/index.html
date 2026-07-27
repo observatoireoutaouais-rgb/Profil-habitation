@@ -1193,10 +1193,17 @@ function renderPeriode(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
 
 // ── TAB: SUPERFICIE ───────────────────────────────────────────────────────────
 function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
-  const munData=filterYearMRC(DATA[dk('superficie_mun')]||[]);
-  const allData=filterYearRangeMRC(DATA[dk('superficie_mrc')]||[]);
+  // « Autres immeubles résidentiels » regroupe les unités résidentielles sans lien physique
+  // reconnu au rôle : exploitations agricoles, hôtels et résidences provisoires, unités sans
+  // nombre de logements exploitable. Leur terrain se compte en dizaines d'hectares par logement
+  // et ne décrit aucune superficie d'habitation : la catégorie est écartée de tout l'onglet,
+  // graphiques comme tableaux. Le pipeline l'exclut déjà des fichiers ; ce filtre couvre les
+  // données générées avant ce changement.
+  const sansAutres=arr=>(arr||[]).filter(d=>d.Types!=='Autres immeubles résidentiels');
+  const munData=sansAutres(filterYearMRC(DATA[dk('superficie_mun')]||[]));
+  const allData=sansAutres(filterYearRangeMRC(DATA[dk('superficie_mrc')]||[]));
   const years=[...new Set(allData.map(d=>Number(d.Annee)).filter(Boolean))].sort((a,b)=>a-b);
-  const types=[...new Set(allData.map(d=>d.Types).filter(t=>t && !t.startsWith('Total') && t!=='Autres immeubles résidentiels'))];
+  const types=[...new Set(allData.map(d=>d.Types).filter(t=>t && !t.startsWith('Total')))];
   // Superficies par logement lorsque le pipeline les fournit, sinon repli sur les
   // moyennes par unité d'évaluation (données antérieures à cette méthode).
   const SUP_FIELDS={
@@ -1234,7 +1241,7 @@ function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMR
   };
   const terrainSeries=types.map(type=>({name:type,values:years.map(year=>({year, value:supAgg(year,type,'superficie_terrain')}))}));
   const aireSeries=types.map(type=>({name:type,values:years.map(year=>({year, value:supAgg(year,type,'aire_etages')}))}));
-  const SUP_NOTE=()=>FOOTNOTE_TYPES()+(parLogement?" Les superficies sont rapportées au logement : la superficie totale du groupe est divisée par le nombre total de logements (RL0311A). Une unité détenue en copropriété divise porte déjà sa quote-part de terrain et l'aire de son seul logement, tandis qu'un immeuble à logements multiples porte le terrain et l'aire de l'ensemble du bâtiment : la division rend les deux comparables. Pour les maisons détachées et jumelées, la valeur par logement est identique à la moyenne par unité d'évaluation. Les unités dont la superficie n'est pas relevée au rôle sont écartées des deux termes du ratio ; un groupe sans aucune mesure exploitable est affiché « — » plutôt que zéro.":'');
+  const SUP_NOTE=()=>FOOTNOTE_TYPES()+" Les autres immeubles résidentiels sont écartés de cet onglet : leur terrain, qui relève de la propriété foncière (exploitations agricoles, unités sans lien physique reconnu) plutôt que de l'habitation, ne se compare à aucune superficie résidentielle. Le total porte sur les seuls types présentés."+(parLogement?" Les superficies sont rapportées au logement : la superficie totale du groupe est divisée par le nombre total de logements (RL0311A). Une unité détenue en copropriété divise porte déjà sa quote-part de terrain et l'aire de son seul logement, tandis qu'un immeuble à logements multiples porte le terrain et l'aire de l'ensemble du bâtiment : la division rend les deux comparables. Pour les maisons détachées et jumelées, la valeur par logement est identique à la moyenne par unité d'évaluation. Les unités dont la superficie n'est pas relevée au rôle sont écartées des deux termes du ratio ; un groupe sans aucune mesure exploitable est affiché « — » plutôt que zéro.":'');
   const COL_TERR=`Superficie terrain${supLabel} (m²)`, COL_AIRE=`Aire d'étages${supLabel} (m²)`;
   const mrcRows=allData.map(d=>({Année:Number(d.Annee),MRC:d.CDNAME,Type:d.Types,[COL_TERR]:supVal(d,'superficie_terrain'),[COL_AIRE]:supVal(d,'aire_etages')}))
     .sort((a,b)=>a.Année-b.Année||a.MRC.localeCompare(b.MRC,'fr')||a.Type.localeCompare(b.Type,'fr'));

@@ -43,6 +43,9 @@ TYPE_COLS = [
     "Maison mobile et roulotte",
     "Autres immeubles résidentiels",
 ]
+# Type écarté de l'onglet Superficie (voir export_indicator_set) et libellé du total qui en découle.
+SUP_TYPE_EXCLU = "Autres immeubles résidentiels"
+SUP_TOTAL_LABEL = "Total des types de construction présentés"
 def load_match():
     df = pd.read_csv(MATCH_PATH)
     if len(df.columns)==2: df.columns=["Municipalité","CDNAME"]; df["Region"]=None
@@ -449,11 +452,18 @@ def export_indicator_set(Role_brut, mode, suffix):
     Role_UE_per=Role_UE.copy(); Role_UE_per["Période"]=Role_UE_per["rl0307a"].apply(categorize_periode)
     save_json(Role_UE_per.dropna(subset=["Période"]).groupby(["Annee","CDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index(),f"periode_mrc_{suffix}.json")
     save_json(Role_UE_per.dropna(subset=["Période"]).groupby(["Annee","CDNAME","CSDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index(),f"periode_mun_{suffix}.json")
-    mrc_sup=superficie_frame(Role_UE,["Annee","CDNAME","Types"])
-    tot_sup=superficie_frame(Role_UE,["Annee","CDNAME"]); tot_sup["Types"]="Total des unités d'évaluation résidentielles"
+    # « Autres immeubles résidentiels » regroupe les unités résidentielles dont le lien
+    # physique n'est pas reconnu au rôle : exploitations agricoles, hôtels et résidences
+    # provisoires, unités sans nombre de logements exploitable. Leur terrain se compte en
+    # dizaines d'hectares par logement — il décrit une propriété foncière, pas la superficie
+    # d'une habitation — et dominait le total de la MRC. La catégorie est écartée des
+    # superficies ; le total porte donc sur les seuls types présentés.
+    Role_sup=Role_UE[Role_UE["Types"]!=SUP_TYPE_EXCLU]
+    mrc_sup=superficie_frame(Role_sup,["Annee","CDNAME","Types"])
+    tot_sup=superficie_frame(Role_sup,["Annee","CDNAME"]); tot_sup["Types"]=SUP_TOTAL_LABEL
     save_json(pd.concat([mrc_sup,tot_sup],ignore_index=True).round(1),f"superficie_mrc_{suffix}.json")
-    mun_sup=superficie_frame(Role_UE,["Annee","CDNAME","CSDNAME","Types"])
-    tot_sup_mun=superficie_frame(Role_UE,["Annee","CDNAME","CSDNAME"]); tot_sup_mun["Types"]="Total des unités d'évaluation résidentielles"
+    mun_sup=superficie_frame(Role_sup,["Annee","CDNAME","CSDNAME","Types"])
+    tot_sup_mun=superficie_frame(Role_sup,["Annee","CDNAME","CSDNAME"]); tot_sup_mun["Types"]=SUP_TOTAL_LABEL
     save_json(pd.concat([mun_sup,tot_sup_mun],ignore_index=True).round(1),f"superficie_mun_{suffix}.json")
 def clean_isq_name(val):
     # ISQ appends footnote markers to some names (ex.: "Papineau2") → strip trailing digits
