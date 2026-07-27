@@ -413,7 +413,8 @@ body.embed-mode{overflow-y:auto;height:auto;}
     </div>
 
     <div style="font-size:.72rem;color:var(--text-light);margin-bottom:6px;">Code à intégrer</div>
-    <textarea id="iframe-code" readonly style="font-size:.72rem;"></textarea>
+    <textarea id="iframe-code" readonly style="font-size:.72rem;height:120px;"></textarea>
+    <div style="font-size:.7rem;color:var(--text-light);line-height:1.5;margin-top:6px;font-style:italic;">Collez le bloc complet (l'<code>&lt;iframe&gt;</code> <strong>et</strong> le <code>&lt;script&gt;</code>) : la hauteur s'ajuste automatiquement au graphique, sans barre de défilement.</div>
     <div class="modal-actions">
       <button class="modal-btn primary" onclick="copyIframe()">Copier le code</button>
       <button class="modal-btn secondary" onclick="closeModal()">Fermer</button>
@@ -602,7 +603,14 @@ function updateIframeCode(){
     url=buildIframeUrl(_iframeChartId, _iframeCubf, _iframeYmin, _iframeYmax, false);
   }
   const ta=document.getElementById('iframe-code');
-  if(ta) ta.value=`<iframe src="${url}" width="100%" height="560" frameborder="0" title="Profil de l'habitation"></iframe>`;
+  if(!ta) return;
+  // Unique id so the auto-resize script targets the right iframe even with several embeds on a page.
+  const fid='phembed'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);
+  // The iframe reports its real content height via postMessage; the small script resizes it to fit
+  // so the embedded graph never shows an internal scrollbar and is never cut off. If a host strips
+  // the <script>, the iframe keeps a sensible 560px height with normal scrolling as a fallback.
+  ta.value=`<iframe id="${fid}" src="${url}" title="Profil de l'habitation" style="width:100%;border:0;height:560px;"></iframe>
+<script>(function(){window.addEventListener("message",function(e){var f=document.getElementById("${fid}");if(f&&e.source===f.contentWindow&&e.data&&e.data.type==="ph-embed-size"&&e.data.height){f.style.height=e.data.height+"px";}});})();<\/script>`;
 }
 function buildIframeUrl(chartId, cubf, ymin, ymax, singleYear=false){
   const url=new URL(window.location.href.split('#')[0]);
@@ -776,6 +784,26 @@ function applyEmbedMode(){
     parent.classList.add('wide');
     parent.style.display='block';
   }
+  postEmbedHeight();
+}
+// Report the embedded page's real height to the host so it can resize the iframe to fit
+// (no internal scrollbar, nothing cut off). Paired with the listener in the embed snippet.
+function postEmbedHeight(){
+  if(!currentEmbedId||window.parent===window) return;
+  const h=Math.ceil(Math.max(
+    document.body?document.body.scrollHeight:0,
+    document.documentElement?document.documentElement.scrollHeight:0
+  ))+2;
+  if(h>0) window.parent.postMessage({type:'ph-embed-size',height:h},'*');
+}
+function setupEmbedAutoResize(){
+  if(!currentEmbedId||window.parent===window) return;
+  const fire=()=>postEmbedHeight();
+  window.addEventListener('resize',fire);
+  window.addEventListener('load',fire);
+  if(window.ResizeObserver){ try{ new ResizeObserver(fire).observe(document.body); }catch(e){} }
+  // A few delayed passes catch late layout shifts (web fonts, async SVG sizing).
+  [50,200,500,1000].forEach(t=>setTimeout(fire,t));
 }
 function applyStateFromUrl(){
   const params=new URLSearchParams(window.location.search);
@@ -1953,6 +1981,7 @@ function renderCibles(content,mrcLabel){
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===currentTab));
     if(currentEmbedId) applyEmbedMode();
     render();
+    if(currentEmbedId) setupEmbedAutoResize();
   }catch(e){
     document.getElementById('content').innerHTML=`<div class="loading">⚠ Erreur de chargement des données.<br><small>${e.message}</small></div>`;
     console.error(e);
