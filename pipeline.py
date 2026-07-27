@@ -287,11 +287,14 @@ def prepare_cubf(df):
     d["rl0105_num"]=pd.to_numeric(d["rl0105_str"],errors="coerce")
     return d
 def mamh_base_mask(d):
+    # Fiche méthodologique OGAT (indicateur stratégique habitation), sources de données :
+    # utilisation prédominante « résidentielle » ou « commerciale » = 1000, 1010, 1211, 1702, 5000-5999.
     rl=d["rl0105_num"]
-    return rl.isin([1000,1010,1211])|((rl>=5000)&(rl<=5999))
+    return rl.isin([1000,1010,1211,1702])|((rl>=5000)&(rl<=5999))
 def mamh_optional_mask(d):
+    # Fiche OGAT : « maison de retraite » ou « agriculture » = 1543, 1549, 8120-8199.
     rl=d["rl0105_num"]
-    return rl.isin([1543,1549])|((rl>=8100)&(rl<=8199))
+    return rl.isin([1543,1549])|((rl>=8120)&(rl<=8199))
 def mamh_eligible_mask(d,include_optional=False):
     m=mamh_base_mask(d)
     if include_optional:

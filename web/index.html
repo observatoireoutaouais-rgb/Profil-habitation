@@ -209,9 +209,9 @@ body.embed-mode{overflow-y:auto;height:auto;}
   <div class="control-group">
     <label>Filtre CUBF</label>
     <div class="cubf-group">
-      <button class="cubf-btn active" data-cubf="mamh_strict" title="CUBF : 1000, 1010, 1211, 5000 à 5999">Strict</button>
-      <button class="cubf-btn" data-cubf="mamh_optional" title="CUBF : 1000, 1010, 1211, 1543, 1549, 5000 à 5999, 8100 à 8199">Élargi</button>
-      <button class="cubf-btn" data-cubf="mamh_plus_others" title="CUBF : 1000 à 1999, 5000 à 5999, 8100 à 8199">Complet</button>
+      <button class="cubf-btn active" data-cubf="mamh_strict" title="CUBF : 1000, 1010, 1211, 1702, 5000 à 5999">Strict</button>
+      <button class="cubf-btn" data-cubf="mamh_optional" title="CUBF : 1000, 1010, 1211, 1702, 1543, 1549, 5000 à 5999, 8120 à 8199">Élargi</button>
+      <button class="cubf-btn" data-cubf="mamh_plus_others" title="CUBF : 1000 à 1999, 5000 à 5999, 8120 à 8199">Complet</button>
     </div>
   </div>
 <button onclick="document.getElementById('method-modal').classList.add('open')" style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1.5px solid var(--teal);border-radius:6px;background:transparent;font-family:inherit;font-size:.78rem;font-weight:500;color:var(--teal-dark);cursor:pointer;transition:all .15s;white-space:nowrap;" onmouseover="this.style.background='var(--teal-pale)'" onmouseout="this.style.background='transparent'">
@@ -296,16 +296,17 @@ body.embed-mode{overflow-y:auto;height:auto;}
       <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
         <div style="background:#1a4e4b;color:white;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;">
           <span style="font-weight:600;font-size:.85rem;">Filtre Strict</span>
-          <span style="font-size:.72rem;opacity:.8;font-family:monospace;">1000 · 1010 · 1211 · 5000–5999</span>
+          <span style="font-size:.72rem;opacity:.8;font-family:monospace;">1000 · 1010 · 1211 · 1702 · 5000–5999</span>
         </div>
         <div style="padding:12px 16px;font-size:.79rem;line-height:1.7;color:var(--text);">
           <p style="margin-bottom:8px;">Retient uniquement les unités à utilisation prédominante <strong>résidentielle</strong> et <strong>commerciale-résidentielle</strong> au sens strict du CUBF. Correspond aux codes retenus par le MAMH pour le calcul de l'indicateur stratégique de base.</p>
           <table style="width:100%;border-collapse:collapse;font-size:.76rem;">
             <thead><tr style="background:var(--bg2);"><th style="padding:4px 10px;text-align:left;font-weight:500;">CUBF</th><th style="padding:4px 10px;text-align:left;font-weight:500;">Utilisation prédominante</th><th style="padding:4px 10px;text-align:left;font-weight:500;">Types produits</th></tr></thead>
             <tbody>
-              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1000</td><td style="padding:4px 10px;">Résidentiel — unifamiliale détachée</td><td rowspan="4" style="padding:4px 10px;vertical-align:middle;color:var(--text-light);font-style:italic;">4 types<br>(excluant chalet, mobile, commun)</td></tr>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1000</td><td style="padding:4px 10px;">Résidentiel — unifamiliale détachée</td><td rowspan="5" style="padding:4px 10px;vertical-align:middle;color:var(--text-light);font-style:italic;">4 types<br>(excluant chalet, mobile, commun)</td></tr>
               <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1010</td><td style="padding:4px 10px;">Résidentiel — jumelée ou en rangée</td></tr>
               <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1211</td><td style="padding:4px 10px;">Résidentiel — immeuble multifamilial</td></tr>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1702</td><td style="padding:4px 10px;">Résidentiel — prévu à la fiche méthodologique OGAT</td></tr>
               <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">5000–5999</td><td style="padding:4px 10px;">Commercial avec logements</td></tr>
             </tbody>
           </table>
@@ -316,7 +317,7 @@ body.embed-mode{overflow-y:auto;height:auto;}
       <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
         <div style="background:#2d6e6a;color:white;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;">
           <span style="font-weight:600;font-size:.85rem;">Filtre Élargi</span>
-          <span style="font-size:.72rem;opacity:.8;font-family:monospace;">+ 1543 · 1549 · 8100–8199</span>
+          <span style="font-size:.72rem;opacity:.8;font-family:monospace;">+ 1543 · 1549 · 8120–8199</span>
         </div>
         <div style="padding:12px 16px;font-size:.79rem;line-height:1.7;color:var(--text);">
           <p style="margin-bottom:8px;">Ajoute les unités à utilisation prédominante <strong>maison de retraite</strong> et <strong>agriculture résidentielle</strong>, tel que prévu en option dans la méthode du MAMH lorsque la MRC dispose de données précises. Inclut notamment les résidences pour aînés (RPA légères) et certains logements agricoles.</p>
@@ -325,7 +326,7 @@ body.embed-mode{overflow-y:auto;height:auto;}
             <tbody>
               <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1543</td><td style="padding:4px 10px;">Maison de retraite avec services légers</td><td rowspan="3" style="padding:4px 10px;vertical-align:middle;color:var(--text-light);font-style:italic;">4 types<br>(même catégories que Strict)</td></tr>
               <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">1549</td><td style="padding:4px 10px;">Autre résidence supervisée</td></tr>
-              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">8100–8199</td><td style="padding:4px 10px;">Logements en milieu agricole ou institutionnel</td></tr>
+              <tr style="border-top:1px solid var(--bg2);"><td style="padding:4px 10px;font-family:monospace;">8120–8199</td><td style="padding:4px 10px;">Logements en milieu agricole ou institutionnel</td></tr>
             </tbody>
           </table>
           <p style="margin-top:8px;color:var(--text-light);font-style:italic;font-size:.75rem;">→ Recommandé lorsqu'on souhaite intégrer l'hébergement résidentiel supervisé. Produit les mêmes 4 types, mais avec un volume plus élevé.</p>
@@ -335,7 +336,7 @@ body.embed-mode{overflow-y:auto;height:auto;}
       <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
         <div style="background:#3d8f8a;color:white;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;">
           <span style="font-weight:600;font-size:.85rem;">Filtre Complet</span>
-          <span style="font-size:.72rem;opacity:.8;font-family:monospace;">1000–1999 · 5000–5999 · 8100–8199</span>
+          <span style="font-size:.72rem;opacity:.8;font-family:monospace;">1000–1999 · 5000–5999 · 8120–8199</span>
         </div>
         <div style="padding:12px 16px;font-size:.79rem;line-height:1.7;color:var(--text);">
           <p style="margin-bottom:8px;">Retient <strong>l'ensemble de la plage résidentielle 1000–1999</strong> du CUBF, incluant les chalets, maisons mobiles et habitations en commun. Offre le portrait le plus exhaustif du parc bâti. Lorsqu'il y a plusieurs bâtiments résidentiels sur un même lot (ex. : parc de maisons mobiles), toutes les unités d'évaluation sont comptabilisées.</p>
@@ -444,15 +445,15 @@ const TYPE_COLS_MAMH=["Maisons individuelles détachées","Maisons jumelées ou 
 const TYPE_COLS_FULL=["Maisons individuelles détachées","Maisons jumelées ou en rangée","Logements dans un immeuble comportant deux logements ou plus","Autres immeubles résidentiels","Chalet et maison de villégiature","Habitation en commun","Maison mobile et roulotte"];
 function getTypeCols(){return currentCubf==='mamh_plus_others'?TYPE_COLS_FULL:TYPE_COLS_MAMH;}
 const FOOTNOTE_TYPES_MAP={
-  mamh_strict:`Les types de logements sont classés selon leur utilisation prédominante, identifiée par le code d'utilisation des biens-fonds (CUBF : 1000, 1010, 1211, 5000-5999), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec. Les maisons individuelles détachées sont des bâtiments détachés comprenant un seul logement. Les maisons jumelées ou en rangée regroupent les bâtiments jumelés ou en rangée (1 côté ou plus) lorsqu'ils ne comptent qu'un seul logement. Les logements situés dans un immeuble comportant deux logements ou plus incluent les bâtiments intégrés avec un seul logement ainsi que les bâtiments ayant au moins deux logements. Enfin, les autres immeubles résidentiels regroupent les unités résidentielles n'ayant pas de lien physique au rôle d'évaluation foncière.`,
-  mamh_optional:`Les types de logements sont classés selon leur utilisation prédominante, identifiée par le code d'utilisation des biens-fonds (CUBF : 1000, 1010, 1211, 1543, 1549, 5000-5999, 8100-8199), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec. Les maisons individuelles détachées sont des bâtiments détachés comprenant un seul logement. Les maisons jumelées ou en rangée regroupent les bâtiments jumelés ou en rangée (1 côté ou plus) lorsqu'ils ne comptent qu'un seul logement. Les logements situés dans un immeuble comportant deux logements ou plus incluent les bâtiments intégrés avec un seul logement ainsi que les bâtiments ayant au moins deux logements. Enfin, les autres immeubles résidentiels regroupent les unités résidentielles n'ayant pas de lien physique au rôle d'évaluation foncière.`,
-  mamh_plus_others:`Les types de construction sont classés selon leur utilisation prédominante (CUBF : 1000–1999, 5000–5999, 8100–8199), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec. Les maisons individuelles détachées sont des bâtiments détachés comprenant un seul logement. Les maisons jumelées ou en rangée regroupent les bâtiments jumelés ou en rangée (1 côté ou plus) lorsqu'ils ne comptent qu'un seul logement. Les logements situés dans un immeuble comportant deux logements ou plus incluent les bâtiments intégrés avec un seul logement ainsi que les bâtiments ayant au moins deux logements. Les chalet et maison de villégiature (11), les maison mobile et roulotte (12), et les habitation en commun (15) sont identifiés. Enfin, les autres immeubles résidentiels regroupent les hôtels et motels résidentiels, les résidences provisoires et les unités résidentielles n'ayant pas de lien physique au rôle d'évaluation foncière.`,
+  mamh_strict:`Les types de logements sont classés selon leur utilisation prédominante, identifiée par le code d'utilisation des biens-fonds (CUBF : 1000, 1010, 1211, 1702, 5000-5999), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec. Les maisons individuelles détachées sont des bâtiments détachés comprenant un seul logement. Les maisons jumelées ou en rangée regroupent les bâtiments jumelés ou en rangée (1 côté ou plus) lorsqu'ils ne comptent qu'un seul logement. Les logements situés dans un immeuble comportant deux logements ou plus incluent les bâtiments intégrés avec un seul logement ainsi que les bâtiments ayant au moins deux logements. Enfin, les autres immeubles résidentiels regroupent les unités résidentielles n'ayant pas de lien physique au rôle d'évaluation foncière.`,
+  mamh_optional:`Les types de logements sont classés selon leur utilisation prédominante, identifiée par le code d'utilisation des biens-fonds (CUBF : 1000, 1010, 1211, 1702, 1543, 1549, 5000-5999, 8120-8199), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec. Les maisons individuelles détachées sont des bâtiments détachés comprenant un seul logement. Les maisons jumelées ou en rangée regroupent les bâtiments jumelés ou en rangée (1 côté ou plus) lorsqu'ils ne comptent qu'un seul logement. Les logements situés dans un immeuble comportant deux logements ou plus incluent les bâtiments intégrés avec un seul logement ainsi que les bâtiments ayant au moins deux logements. Enfin, les autres immeubles résidentiels regroupent les unités résidentielles n'ayant pas de lien physique au rôle d'évaluation foncière.`,
+  mamh_plus_others:`Les types de construction sont classés selon leur utilisation prédominante (CUBF : 1000–1999, 5000–5999, 8120–8199), leur lien physique et le nombre de logements inscrits au rôle d'évaluation foncière du Québec. Les maisons individuelles détachées sont des bâtiments détachés comprenant un seul logement. Les maisons jumelées ou en rangée regroupent les bâtiments jumelés ou en rangée (1 côté ou plus) lorsqu'ils ne comptent qu'un seul logement. Les logements situés dans un immeuble comportant deux logements ou plus incluent les bâtiments intégrés avec un seul logement ainsi que les bâtiments ayant au moins deux logements. Les chalet et maison de villégiature (11), les maison mobile et roulotte (12), et les habitation en commun (15) sont identifiés. Enfin, les autres immeubles résidentiels regroupent les hôtels et motels résidentiels, les résidences provisoires et les unités résidentielles n'ayant pas de lien physique au rôle d'évaluation foncière.`,
 };
 function FOOTNOTE_TYPES(){ return FOOTNOTE_TYPES_MAP[currentCubf] || FOOTNOTE_TYPES_MAP.mamh_strict; }
 const SOURCE=`Ministère des Affaires municipales et de l'Habitation (MAMH), rôle d'évaluation foncière des municipalités.`;
 
 let currentMRC=null,currentTab='logements',currentYear=null,currentYearMin=null,currentYearMax=null,currentCubf='mamh_strict';
-const CUBF_LABELS={mamh_strict:'Filtre CUBF strict — 1000, 1010, 1211, 5000–5999',mamh_optional:'Filtre CUBF élargi — 1000, 1010, 1211, 1543, 1549, 5000–5999, 8100–8199',mamh_plus_others:'Filtre CUBF complet — 1000–1999, 5000–5999, 8100–8199'};
+const CUBF_LABELS={mamh_strict:'Filtre CUBF strict — 1000, 1010, 1211, 1702, 5000–5999',mamh_optional:'Filtre CUBF élargi — 1000, 1010, 1211, 1702, 1543, 1549, 5000–5999, 8120–8199',mamh_plus_others:'Filtre CUBF complet — 1000–1999, 5000–5999, 8120–8199'};
 function getCubfLabel(){return CUBF_LABELS[currentCubf]||'';}
 function dk(base){const s=['mrc_list','nouveaux_logements_mrc','nouveaux_logements_mun','densite_pu_mrc','densite_pu_mun','types_nouveaux_mrc'];if(s.includes(base))return base;return base+'_'+currentCubf;}
 
