@@ -1181,9 +1181,7 @@ function renderPeriode(content,mrcLabel,annee,filterYearMRC,filterYearRangeMRC){
 
   const munRows=(munData||[]).map(d=>({Année:Number(d.Annee),Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,Période:d.Période,"Nombre d'unités":d.N||0}));
   makeSortableTable('table-per-mun',[
-    {key:'Année',label:'Année',numeric:true},
     {key:'Municipalité',label:'Municipalité'},
-    {key:'MRC',label:'MRC'},
     {key:'Type',label:'Type de construction'},
     {key:'Période',label:'Période'},
     {key:"Nombre d'unités",label:"Nb d'unités",numeric:true},
