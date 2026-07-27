@@ -819,6 +819,13 @@ function applyStateFromUrl(){
 }
 
 // ── SORTABLE FILTERABLE TABLE ─────────────────────────────────────────────────
+// Donnée absente : le pipeline renvoie null quand un indicateur n'a pas pu être calculé.
+// Sans ce test, Number(null) valait 0 et la cellule affichait « 0 » comme s'il s'agissait
+// d'une mesure.
+function isBlankCell(v,col){
+  if(v===null||v===undefined||v==='') return true;
+  return !!col?.numeric && !Number.isFinite(Number(v));
+}
 function makeSortableTable(containerId, columns, rows, opts={}){
   const container=document.getElementById(containerId);
   if(!container) return;
@@ -833,8 +840,11 @@ function makeSortableTable(containerId, columns, rows, opts={}){
       r=r.filter(row=>columns.some(c=>String(row[c.key]??'').toLowerCase().includes(q)));
     }
     r.sort((a,b)=>{
-      const av=a[sortCol]??'', bv=b[sortCol]??'';
       const col=columns.find(c=>c.key===sortCol);
+      const av=a[sortCol], bv=b[sortCol];
+      // Une valeur absente n'est pas un zéro : elle se range en fin de tri, dans les deux sens.
+      const aVide=isBlankCell(av,col), bVide=isBlankCell(bv,col);
+      if(aVide||bVide) return aVide&&bVide?0:(aVide?1:-1);
       if(col?.numeric) return sortDir==='asc'?(Number(av)-Number(bv)):(Number(bv)-Number(av));
       return sortDir==='asc'?String(av).localeCompare(String(bv),'fr'):String(bv).localeCompare(String(av),'fr');
     });
@@ -863,8 +873,8 @@ function makeSortableTable(containerId, columns, rows, opts={}){
       const isTotal=totalKey&&String(row[totalKey]??'').startsWith('Total');
       html+=`<tr${isTotal?' class="total-row"':''}>`;
       columns.forEach(c=>{
-        const v=row[c.key]??'';
-        const fv=c.numeric?Number(v).toLocaleString('fr-CA')+(c.suffix||''):v;
+        const v=row[c.key];
+        const fv=isBlankCell(v,c)?'—':(c.numeric?Number(v).toLocaleString('fr-CA')+(c.suffix||''):v);
         html+=`<td class="${c.numeric?'num':''}${c.pct?' pct':''}">${fv}</td>`;
       });
       html+='</tr>';
@@ -1224,7 +1234,7 @@ function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMR
   };
   const terrainSeries=types.map(type=>({name:type,values:years.map(year=>({year, value:supAgg(year,type,'superficie_terrain')}))}));
   const aireSeries=types.map(type=>({name:type,values:years.map(year=>({year, value:supAgg(year,type,'aire_etages')}))}));
-  const SUP_NOTE=()=>FOOTNOTE_TYPES()+(parLogement?" Les superficies sont rapportées au logement : la superficie totale du groupe est divisée par le nombre total de logements (RL0311A). Une unité détenue en copropriété divise porte déjà sa quote-part de terrain et l'aire de son seul logement, tandis qu'un immeuble à logements multiples porte le terrain et l'aire de l'ensemble du bâtiment : la division rend les deux comparables. Pour les maisons détachées et jumelées, la valeur par logement est identique à la moyenne par unité d'évaluation.":'');
+  const SUP_NOTE=()=>FOOTNOTE_TYPES()+(parLogement?" Les superficies sont rapportées au logement : la superficie totale du groupe est divisée par le nombre total de logements (RL0311A). Une unité détenue en copropriété divise porte déjà sa quote-part de terrain et l'aire de son seul logement, tandis qu'un immeuble à logements multiples porte le terrain et l'aire de l'ensemble du bâtiment : la division rend les deux comparables. Pour les maisons détachées et jumelées, la valeur par logement est identique à la moyenne par unité d'évaluation. Les unités dont la superficie n'est pas relevée au rôle sont écartées des deux termes du ratio ; un groupe sans aucune mesure exploitable est affiché « — » plutôt que zéro.":'');
   const COL_TERR=`Superficie terrain${supLabel} (m²)`, COL_AIRE=`Aire d'étages${supLabel} (m²)`;
   const mrcRows=allData.map(d=>({Année:Number(d.Annee),MRC:d.CDNAME,Type:d.Types,[COL_TERR]:supVal(d,'superficie_terrain'),[COL_AIRE]:supVal(d,'aire_etages')}))
     .sort((a,b)=>a.Année-b.Année||a.MRC.localeCompare(b.MRC,'fr')||a.Type.localeCompare(b.Type,'fr'));

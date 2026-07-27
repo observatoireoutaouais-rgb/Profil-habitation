@@ -385,18 +385,32 @@ def superficie_frame(Role_UE,keys):
     unités sans nombre de logements exploitable (rl0311a nul ou absent, possible en
     mode « complet ») sont écartées des ratios.
 
+    Une superficie nulle n'est pas une mesure : elle signale une donnée non relevée, et
+    les deux sources l'écrivent différemment. Les XML de l'API laissent RL0308A vide,
+    tandis que les DBF des SHP provinciaux (2012-2022) y inscrivent 0. Compter ces zéros
+    comme des aires réelles écrasait les moyennes de la période SHP — l'aire d'étages
+    moyenne des « Autres immeubles résidentiels », catégorie riche en unités agricoles
+    ou sans lien physique reconnu, tombait ainsi à 1 m² par logement, et la rupture se
+    voyait aussi sur les immeubles à logements multiples entre 2022 et 2023. Les valeurs
+    non strictement positives sont donc traitées comme absentes, au numérateur comme au
+    dénominateur, ce qui aligne les deux sources.
+
     Les colonnes n_log_* sont les dénominateurs employés : repondérer les moyennes par
     ces effectifs redonne exactement le ratio agrégé sur plusieurs territoires.
     """
     d=Role_UE.copy()
     log=pd.to_numeric(d["rl0311a"],errors="coerce").where(lambda s:s>0)
-    d["_terr"]=d["rl0302a"].where(log.notna())
-    d["_aire"]=d["rl0308a"].where(log.notna())
-    d["_log_terr"]=log.where(d["rl0302a"].notna())
-    d["_log_aire"]=log.where(d["rl0308a"].notna())
+    terr=pd.to_numeric(d["rl0302a"],errors="coerce").where(lambda s:s>0)
+    aire=pd.to_numeric(d["rl0308a"],errors="coerce").where(lambda s:s>0)
+    d["_terr_ue"]=terr
+    d["_aire_ue"]=aire
+    d["_terr"]=terr.where(log.notna())
+    d["_aire"]=aire.where(log.notna())
+    d["_log_terr"]=log.where(terr.notna())
+    d["_log_aire"]=log.where(aire.notna())
     g=d.groupby(keys).agg(
-        superficie_terrain=("rl0302a","mean"),
-        aire_etages=("rl0308a","mean"),
+        superficie_terrain=("_terr_ue","mean"),
+        aire_etages=("_aire_ue","mean"),
         n_ue=("Annee","size"),
         _terr=("_terr","sum"),_log_terr=("_log_terr","sum"),
         _aire=("_aire","sum"),_log_aire=("_log_aire","sum"),
