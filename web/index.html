@@ -1187,52 +1187,77 @@ function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMR
   const allData=filterYearRangeMRC(DATA[dk('superficie_mrc')]||[]);
   const years=[...new Set(allData.map(d=>Number(d.Annee)).filter(Boolean))].sort((a,b)=>a-b);
   const types=[...new Set(allData.map(d=>d.Types).filter(t=>t && !t.startsWith('Total') && t!=='Autres immeubles résidentiels'))];
-  // Moyenne pondérée par n_ue sur toutes les MRC filtrées (poids 1 si n_ue absent)
+  // Superficies par logement lorsque le pipeline les fournit, sinon repli sur les
+  // moyennes par unité d'évaluation (données antérieures à cette méthode).
+  const SUP_FIELDS={
+    superficie_terrain:{parLog:'superficie_terrain_par_log',poids:'n_log_terrain'},
+    aire_etages:{parLog:'aire_etages_par_log',poids:'n_log_aire'},
+  };
+  const parLogement=allData.some(d=>Number.isFinite(Number(d.aire_etages_par_log))||Number.isFinite(Number(d.superficie_terrain_par_log)));
+  const supLabel=parLogement?' par logement':'';
+  // Ratio des sommes : repondérer chaque MRC par son nombre de logements redonne
+  // exactement Σ superficie / Σ logements sur le territoire filtré.
+  // Number(null) vaut 0 : une valeur absente doit être écartée, jamais moyennée comme zéro.
+  const supNum=v=>{
+    if(v===null||v===undefined||v==='') return null;
+    const n=Number(v);
+    return Number.isFinite(n)?n:null;
+  };
   const supAgg=(year,type,field)=>{
+    const f=SUP_FIELDS[field];
+    const valKey=parLogement?f.parLog:field;
     let s=0,w=0;
     allData.forEach(d=>{
       if(Number(d.Annee)!==year||d.Types!==type) return;
-      const v=Number(d[field]);
-      if(!Number.isFinite(v)) return;
-      const wi=Number(d.n_ue)>0?Number(d.n_ue):1;
+      const v=supNum(d[valKey]);
+      if(v===null) return;
+      const raw=supNum(parLogement?d[f.poids]:d.n_ue);
+      const wi=raw>0?raw:1;
       s+=v*wi; w+=wi;
     });
     return w>0?s/w:null;
   };
+  const supVal=(d,field)=>{
+    const f=SUP_FIELDS[field];
+    const v=supNum(parLogement?d[f.parLog]:d[field]);
+    return v===null?null:Math.round(v);
+  };
   const terrainSeries=types.map(type=>({name:type,values:years.map(year=>({year, value:supAgg(year,type,'superficie_terrain')}))}));
   const aireSeries=types.map(type=>({name:type,values:years.map(year=>({year, value:supAgg(year,type,'aire_etages')}))}));
-  const mrcRows=allData.map(d=>({Année:Number(d.Annee),MRC:d.CDNAME,Type:d.Types,'Superficie terrain (m²)':Math.round(d.superficie_terrain||0),"Aire d'étages (m²)":Math.round(d.aire_etages||0)}))
+  const SUP_NOTE=()=>FOOTNOTE_TYPES()+(parLogement?" Les superficies sont rapportées au logement : la superficie totale du groupe est divisée par le nombre total de logements (RL0311A). Une unité détenue en copropriété divise porte déjà sa quote-part de terrain et l'aire de son seul logement, tandis qu'un immeuble à logements multiples porte le terrain et l'aire de l'ensemble du bâtiment : la division rend les deux comparables. Pour les maisons détachées et jumelées, la valeur par logement est identique à la moyenne par unité d'évaluation.":'');
+  const COL_TERR=`Superficie terrain${supLabel} (m²)`, COL_AIRE=`Aire d'étages${supLabel} (m²)`;
+  const mrcRows=allData.map(d=>({Année:Number(d.Annee),MRC:d.CDNAME,Type:d.Types,[COL_TERR]:supVal(d,'superficie_terrain'),[COL_AIRE]:supVal(d,'aire_etages')}))
     .sort((a,b)=>a.Année-b.Année||a.MRC.localeCompare(b.MRC,'fr')||a.Type.localeCompare(b.Type,'fr'));
 
   content.innerHTML=`
   <div class="section-header">
-    <h2>Superficie moyenne du terrain et aire d'étages</h2>
+    <h2>Superficie moyenne du terrain et aire d'étages${supLabel}</h2>
     <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Moyennes en mètres carrés · ${currentYearMin} à ${currentYearMax}</div>
   </div>
   <div class="charts-grid">
     <div class="chart-card" id="card-sup-chart">
-      <h3>Superficie moyenne du terrain par type de construction résidentielle · ${mrcLabel}</h3>
+      <h3>Superficie moyenne du terrain${supLabel} par type de construction résidentielle · ${mrcLabel}</h3>
       <div class="chart-subtitle">Évolution ${currentYearMin}–${currentYearMax} · En mètres carrés (m²)</div>
       <div class="chart-area" id="chart-sup-terrain"></div>
-      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-sup-chart',title:`Superficie_terrain_${mrcLabel}_${currentYearMin}_${currentYearMax}`})}
+      ${chartMeta({note:SUP_NOTE(),source:SOURCE,csvData:true,chartId:'card-sup-chart',title:`Superficie_terrain_${mrcLabel}_${currentYearMin}_${currentYearMax}`})}
     </div>
     <div class="chart-card" id="card-sup-chart-aire">
-      <h3>Aire d'étages moyenne par type de construction résidentielle · ${mrcLabel}</h3>
+      <h3>Aire d'étages moyenne${supLabel} par type de construction résidentielle · ${mrcLabel}</h3>
       <div class="chart-subtitle">Évolution ${currentYearMin}–${currentYearMax} · En mètres carrés (m²)</div>
       <div class="chart-area" id="chart-sup-aire"></div>
-      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-sup-chart-aire',title:`Aire_etages_${mrcLabel}_${currentYearMin}_${currentYearMax}`})}
+      ${chartMeta({note:SUP_NOTE(),source:SOURCE,csvData:true,chartId:'card-sup-chart-aire',title:`Aire_etages_${mrcLabel}_${currentYearMin}_${currentYearMax}`})}
     </div>
   </div>
   <div class="charts-grid" style="margin-top:24px">
     <div class="chart-card" id="card-sup-mrc" style="overflow-x:auto">
-      <h3>Superficie moyenne du terrain et aire d'étages par type de construction résidentielle, données détaillées · ${mrcLabel}</h3>
+      <h3>Superficie moyenne du terrain et aire d'étages${supLabel} par type de construction résidentielle, données détaillées · ${mrcLabel}</h3>
       <div id="table-sup-mrc"></div>
-      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-sup-mrc',title:`Superficie_detail_${annee}_${mrcLabel}`})}
+      ${chartMeta({note:SUP_NOTE(),source:SOURCE,csvData:true,chartId:'card-sup-mrc',title:`Superficie_detail_${annee}_${mrcLabel}`})}
     </div>
     <div class="chart-card" id="card-sup-mun" style="overflow-x:auto">
-      <h3>Superficie moyenne du terrain et aire d'étages par type de construction résidentielle par municipalité, ${annee} · ${mrcLabel}</h3>
+      <h3>Superficie moyenne du terrain et aire d'étages${supLabel} par type de construction résidentielle par municipalité, ${annee} · ${mrcLabel}</h3>
       <div id="table-sup-mun"></div>
-      ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-sup-mun',singleYear:true,title:`Superficie_municipalites_${annee}_${mrcLabel}`})}
+      ${chartMeta({note:SUP_NOTE(),source:SOURCE,csvData:true,chartId:'card-sup-mun',singleYear:true,title:`Superficie_municipalites_${annee}_${mrcLabel}`})}
     </div>
   </div>`;
 
@@ -1242,19 +1267,19 @@ function renderSuperficie(content,mrcLabel,annee,filterYearMRC,filterYearRangeMR
     {key:'Année',label:'Année',numeric:true},
     {key:'MRC',label:'MRC'},
     {key:'Type',label:'Type de construction'},
-    {key:'Superficie terrain (m²)',label:'Superficie terrain (m²)',numeric:true},
-    {key:"Aire d'étages (m²)",label:"Aire d'étages (m²)",numeric:true},
+    {key:COL_TERR,label:COL_TERR,numeric:true},
+    {key:COL_AIRE,label:COL_AIRE,numeric:true},
   ],mrcRows,{defaultSort:'Année',totalKey:'Type'});
   storeCSV('card-sup-mrc',mrcRows); storeCSV('card-sup-chart',mrcRows); storeCSV('card-sup-chart-aire',mrcRows);
 
-  const munRows=(munData||[]).map(d=>({Année:Number(d.Annee),Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,'Superficie terrain (m²)':Math.round(d.superficie_terrain||0),"Aire d'étages (m²)":Math.round(d.aire_etages||0)}));
+  const munRows=(munData||[]).map(d=>({Année:Number(d.Annee),Municipalité:d.CSDNAME,MRC:d.CDNAME,Type:d.Types,[COL_TERR]:supVal(d,'superficie_terrain'),[COL_AIRE]:supVal(d,'aire_etages')}));
   makeSortableTable('table-sup-mun',[
     {key:'Année',label:'Année',numeric:true},
     {key:'Municipalité',label:'Municipalité'},
     {key:'MRC',label:'MRC'},
     {key:'Type',label:'Type'},
-    {key:'Superficie terrain (m²)',label:'Superficie terrain (m²)',numeric:true},
-    {key:"Aire d'étages (m²)",label:"Aire d'étages (m²)",numeric:true},
+    {key:COL_TERR,label:COL_TERR,numeric:true},
+    {key:COL_AIRE,label:COL_AIRE,numeric:true},
   ],munRows,{defaultSort:'Municipalité'});
   storeCSV('card-sup-mun',munRows);
 }
