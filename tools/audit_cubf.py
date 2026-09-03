@@ -6,8 +6,10 @@ fiche méthodologique OGAT) ?
 
 Usage : python tools/audit_cubf.py [annee]
 """
-import re, sys, time
+import os, re, sys, time
 from collections import Counter
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import requests
 import pipeline as P
 
