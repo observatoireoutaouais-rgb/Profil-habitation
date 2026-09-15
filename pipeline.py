@@ -295,8 +295,12 @@ def mamh_base_mask(d):
     rl=d["rl0105_num"]
     return rl.isin([1000,1010,1211,1702])|((rl>=5000)&(rl<=5999))
 def mamh_optional_mask(d):
+    # Fiche méthodologique OGAT, attributs facultatifs : « les codes 1543, 1549 et ceux
+    # compris entre 8120 et 8199, si la MRC dispose de données précises à cet égard ».
+    # La plage part de 8120 : 8100 est l'en-tête générique de la classe agricole du CUBF
+    # et 8110 n'est pas retenu par la fiche.
     rl=d["rl0105_num"]
-    return rl.isin([1543,1549])|((rl>=8100)&(rl<=8199))
+    return rl.isin([1543,1549])|((rl>=8120)&(rl<=8199))
 def mamh_eligible_mask(d,include_optional=False):
     m=mamh_base_mask(d)
     if include_optional:
