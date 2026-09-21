@@ -9,7 +9,7 @@ Sources selon l'année :
     sum(rl0302a) = empreinte réelle, sum(rl0311a) = total logements.
 """
 import requests, xml.etree.ElementTree as ET, pandas as pd
-import io, time, csv, json, os, zipfile, re, struct, shutil
+import io, time, csv, json, os, zipfile, re, struct
 from collections import Counter
 import numpy as np
 from datetime import date
@@ -264,16 +264,21 @@ def read_role_year_shp(annee,zip_path,pf_lookup):
             if len(buf)>=CHUNK:
                 frames.append(compact_frame(buf,annee)); buf=[]
         if buf: frames.append(compact_frame(buf,annee))
-        # Contrôle de vraisemblance : un zip tronqué ou rejeté livre une fraction
-        # des unités attendues. Le seuil suit le périmètre du pipeline (≈ 800 unités
-        # par municipalité couverte) au lieu de la valeur absolue calibrée du temps
-        # où il ne portait que trois régions.
-        seuil=800*max(len(pf_lookup),1)
-        if rows_year<seuil:
-            print(f"  ⚠  {rows_year:,} UE (seuil {seuil:,}) – zip suspect, ignoré.")
-            QA_DROPPED_YEARS.append({"annee":annee,"raison":f"SHP suspect ({rows_year:,} UE < {seuil:,})"})
+        # Contrôle de vraisemblance : un zip tronqué ou rejeté ne couvre qu'une
+        # partie du territoire. Le contrôle porte sur le nombre de municipalités
+        # trouvées, pas sur le nombre d'unités d'évaluation : une grande ville
+        # pèse à elle seule des centaines de milliers d'unités, si bien qu'un zip
+        # amputé des trois quarts du Québec peut rester volumineux. Le rôle 2013
+        # en est l'exemple — 1,5 million d'unités, mais seulement 194 des 1 077
+        # municipalités attendues. La couverture, elle, ne se laisse pas tromper.
+        COUVERTURE_MIN=0.5
+        attendu=max(len(pf_lookup),1)
+        if len(found_codes)<COUVERTURE_MIN*attendu:
+            raison=f"SHP incomplet ({len(found_codes)} municipalités sur {attendu})"
+            print(f"  ⚠  {raison} – zip ignoré ({rows_year:,} UE écartées).")
+            QA_DROPPED_YEARS.append({"annee":annee,"raison":raison})
             return [],[]
-        print(f"  ✓ {rows_year:,} UE retenues ({len(found_codes)} municipalités)")
+        print(f"  ✓ {rows_year:,} UE retenues ({len(found_codes)}/{attendu} municipalités)")
         return frames,[]
     except Exception as e:
         print(f"  ERR SHP {annee}: {e}")
@@ -482,7 +487,16 @@ def save_json_mun(df,stem,region_by_mrc):
     Le détail municipal du Québec entier pèse plusieurs dizaines de Mo par
     indicateur. Le tableau de bord n'a jamais besoin que de la région consultée :
     il ne télécharge donc que le fragment correspondant.
+
+    Les fragments de cet indicateur issus d'une exécution précédente sont retirés
+    d'abord, pour qu'une région qui n'a plus de données ne laisse pas un fichier
+    périmé derrière elle. Le nettoyage est volontairement limité à cet indicateur :
+    effacer tout le dossier détruirait les indicateurs PU, qui ne sont produits
+    qu'en exécution locale, avec les Role_*_PU.zip, et qu'une exécution en CI ne
+    régénère jamais.
     """
+    MUN_DIR.mkdir(parents=True,exist_ok=True)
+    for vieux in MUN_DIR.glob(f"{stem}_r*.json"): vieux.unlink()
     reg=df["CDNAME"].map(region_by_mrc)
     inconnues=sorted(set(df.loc[reg.isna(),"CDNAME"]))
     if inconnues: print(f"  ⚠  {stem} : MRC sans région – {inconnues[:5]}")
@@ -663,9 +677,6 @@ def main():
     pf_lookup,region_names=load_pf_mun(our_mrcs)
     print(f"\nSHP zips : {dict(sorted(SHP_ZIPS.items())) or 'aucun'}")
     print(f"PU  zips : {dict(sorted(PU_ZIPS.items())) or 'aucun'}")
-    # Le détail municipal est éclaté par région : on repart d'un dossier propre pour
-    # qu'aucun fragment d'une exécution précédente (région retirée, MRC renommée) ne survive.
-    if MUN_DIR.exists(): shutil.rmtree(MUN_DIR)
     # Une année à la fois : agrégée puis libérée. Tous les indicateurs exportés sont
     # ventilés par année, l'empilement des agrégats donne donc les mêmes fichiers
     # qu'un traitement en bloc, pour une fraction de la mémoire.
