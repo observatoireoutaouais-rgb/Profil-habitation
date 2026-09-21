@@ -27,6 +27,7 @@ select:focus{outline:none;border-color:var(--teal);}
 .tab-btn{padding:7px 14px;border:none;background:transparent;border-radius:6px;font-family:inherit;font-size:.8rem;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .2s;white-space:nowrap;}
 .tab-btn.active{background:var(--white);color:var(--teal-dark);box-shadow:0 1px 4px rgba(0,0,0,.1);}
 .cubf-group{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;}
+.scope-hint{flex-basis:100%;margin:2px 0 0;font-size:.74rem;color:var(--text-light);font-style:italic;}
 .cubf-btn{padding:6px 11px;border:1.5px solid var(--border);background:var(--bg);border-radius:6px;font-family:inherit;font-size:.75rem;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .2s;white-space:nowrap;line-height:1.3;}
 .cubf-btn:hover{border-color:var(--teal-light);color:var(--teal);}
 .cubf-btn.active{background:var(--teal-dark);border-color:var(--teal-dark);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15);}
@@ -175,7 +176,7 @@ body.embed-mode{overflow-y:auto;height:auto;}
 <header>
   <div>
     <h1>Profil de l'habitation</h1>
-    <div class="subtitle">Rôle d'évaluation foncière · Outaouais · Laurentides · Montérégie</div>
+    <div class="subtitle">Rôle d'évaluation foncière · Toutes les MRC et municipalités du Québec</div>
   </div>
   <div class="source-badge">Source : MAMH, Rôle d'évaluation<br>foncière des municipalités</div>
 </header>
@@ -183,12 +184,8 @@ body.embed-mode{overflow-y:auto;height:auto;}
 <div class="controls">
   <div class="control-group">
     <label>Région</label>
-    <select id="sel-region">
-      <option value="">Toutes</option>
-      <option value="7">Outaouais</option>
-      <option value="15">Laurentides</option>
-      <option value="16">Montérégie</option>
-    </select>
+    <!-- Les régions sont injectées depuis data/regions.json (voir populateRegionSelect). -->
+    <select id="sel-region"><option value="">Chargement…</option></select>
   </div>
   <div class="control-group">
     <label>MRC</label>
@@ -218,6 +215,7 @@ body.embed-mode{overflow-y:auto;height:auto;}
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
     Méthodologie CUBF
   </button>
+  <div class="scope-hint" id="scope-hint">Choisissez une région ou une MRC pour afficher le détail par municipalité.</div>
   <div class="tabs">
     <button class="tab-btn active" data-tab="logements">Logements</button>
     <button class="tab-btn" data-tab="valeur">Valeur foncière</button>
@@ -452,23 +450,116 @@ const FOOTNOTE_TYPES_MAP={
 function FOOTNOTE_TYPES(){ return FOOTNOTE_TYPES_MAP[currentCubf] || FOOTNOTE_TYPES_MAP.mamh_strict; }
 const SOURCE=`Ministère des Affaires municipales et de l'Habitation (MAMH), rôle d'évaluation foncière des municipalités.`;
 
-let currentMRC=null,currentTab='logements',currentYear=null,currentYearMin=null,currentYearMax=null,currentCubf='mamh_strict';
+let currentMRC=null,currentRegion='',currentTab='logements',currentYear=null,currentYearMin=null,currentYearMax=null,currentCubf='mamh_strict';
 const CUBF_LABELS={mamh_strict:'Filtre CUBF strict — 1000, 1010, 1211, 1702, 5000–5999',mamh_optional:'Filtre CUBF élargi — 1000, 1010, 1211, 1702, 1543, 1549, 5000–5999, 8120–8199',mamh_plus_others:'Filtre CUBF complet — 1000–1999, 5000–5999, 8120–8199'};
 function getCubfLabel(){return CUBF_LABELS[currentCubf]||'';}
 function dk(base){const s=['mrc_list','nouveaux_logements_mrc','nouveaux_logements_mun','densite_pu_mrc','densite_pu_mun','types_nouveaux_mrc'];if(s.includes(base))return base;return base+'_'+currentCubf;}
 
 // ── LOAD ──────────────────────────────────────────────────────────────────────
-async function loadAll(){
-  const files=['mrc_list',
-    'nouveaux_logements_mrc','nouveaux_logements_mun','densite_pu_mrc','densite_pu_mun','types_nouveaux_mrc',
-    'population_mrc','projections_pop_mrc','menages_proj_mrc','taux_inoccupation_schl','tenure_menages_mrc'];
-  const variantFiles=['logements_types_mrc','logements_types_mun','valeur_mrc','valeur_mun','age_mrc','age_mun','periode_mrc','periode_mun','superficie_mrc','superficie_mun'];
-  const suffixes=['mamh_strict','mamh_optional','mamh_plus_others'];
-  variantFiles.forEach(f=>suffixes.forEach(s=>files.push(f+'_'+s)));
-  await Promise.all(files.map(async f=>{
-    try{ const r=await fetch(`./data/${f}.json`); DATA[f]=await r.json(); }
-    catch(e){ DATA[f]=[]; console.warn(`Missing: ${f}.json`); }
-  }));
+// Le tableau de bord couvre les 1 100 municipalités du Québec : tout télécharger
+// d'un bloc représenterait des centaines de Mo. Les fichiers sont donc chargés
+// selon trois portées.
+//   CORE       : petits et valables partout, chargés une fois pour toutes.
+//   MRC_SCOPED : une centaine de MRC, uniquement pour le filtre CUBF actif.
+//   MUN_SCOPED : détail municipal, éclaté par région par le pipeline
+//                (web/data/mun) et chargé pour la seule région consultée.
+const CORE_FILES=['mrc_list','regions','nouveaux_logements_mrc','densite_pu_mrc','types_nouveaux_mrc',
+  'population_mrc','projections_pop_mrc','menages_proj_mrc','taux_inoccupation_schl','tenure_menages_mrc'];
+const MRC_SCOPED=['logements_types_mrc','valeur_mrc','age_mrc','periode_mrc','superficie_mrc'];
+const MUN_SCOPED=['logements_types_mun','valeur_mun','age_mun','periode_mun','superficie_mun'];
+const MUN_SCOPED_PLAIN=['nouveaux_logements_mun','densite_pu_mun'];
+
+// Un fichier absent (région sans donnée, indicateur PU non régénéré) rend un
+// tableau vide : les graphiques concernés se masquent d'eux-mêmes.
+const _fetched={};
+function fetchOnce(url){
+  if(!_fetched[url]) _fetched[url]=fetch(url).then(r=>r.ok?r.json():[]).catch(()=>[]);
+  return _fetched[url];
+}
+
+// Région dont dépend le détail municipal : celle du sélecteur, ou celle de la MRC
+// choisie — une intégration iframe ne transmet que la MRC.
+function activeRegion(){
+  if(currentMRC){
+    const m=(DATA.mrc_list||[]).find(d=>d.CDNAME===currentMRC);
+    if(m&&m.Region!=null) return String(m.Region);
+  }
+  return currentRegion||'';
+}
+
+async function loadCore(){
+  await Promise.all(CORE_FILES.map(async f=>{ DATA[f]=await fetchOnce(`./data/${f}.json`); }));
+}
+
+// Recharge ce que la sélection courante (filtre CUBF + région) rend nécessaire.
+async function loadScoped(){
+  const v=currentCubf, reg=activeRegion();
+  const jobs=MRC_SCOPED.map(async b=>{ DATA[`${b}_${v}`]=await fetchOnce(`./data/${b}_${v}.json`); });
+  MUN_SCOPED.forEach(b=>jobs.push((async()=>{
+    DATA[`${b}_${v}`]=reg?await fetchOnce(`./data/mun/${b}_${v}_r${reg}.json`):[];
+  })()));
+  MUN_SCOPED_PLAIN.forEach(b=>jobs.push((async()=>{
+    DATA[b]=reg?await fetchOnce(`./data/mun/${b}_r${reg}.json`):[];
+  })()));
+  await Promise.all(jobs);
+  const hint=document.getElementById('scope-hint');
+  if(hint) hint.style.display=reg?'none':'';
+}
+
+// Un changement de portée demande des fichiers parfois absents : on les attend
+// avant de redessiner. Le compteur écarte une réponse devenue obsolète lorsque
+// l'utilisateur enchaîne les sélections.
+let _scopeSeq=0;
+async function refresh(resetYears){
+  const seq=++_scopeSeq;
+  await loadScoped();
+  if(seq!==_scopeSeq) return;
+  if(resetYears) populateYearSelect();
+  render();
+}
+
+const REGION_NOMS={1:'Bas-Saint-Laurent',2:'Saguenay–Lac-Saint-Jean',3:'Capitale-Nationale',
+  4:'Mauricie',5:'Estrie',6:'Montréal',7:'Outaouais',8:'Abitibi-Témiscamingue',9:'Côte-Nord',
+  10:'Nord-du-Québec',11:'Gaspésie–Îles-de-la-Madeleine',12:'Chaudière-Appalaches',13:'Laval',
+  14:'Lanaudière',15:'Laurentides',16:'Montérégie',17:'Centre-du-Québec'};
+function regionNom(code){
+  const r=(DATA.regions||[]).find(d=>Number(d.Region)===Number(code));
+  return (r&&r.nom)||REGION_NOMS[Number(code)]||`Région ${code}`;
+}
+function populateRegionSelect(){
+  const sel=document.getElementById('sel-region');
+  if(!sel) return;
+  // Les codes viennent de mrc_list : le sélecteur ne propose que des régions
+  // effectivement couvertes, même si regions.json manque.
+  const codes=[...new Set((DATA.mrc_list||[]).map(d=>Number(d.Region)).filter(Number.isFinite))].sort((a,b)=>a-b);
+  sel.innerHTML='<option value="">Toutes les régions</option>'+
+    codes.map(c=>`<option value="${c}">${regionNom(c)}</option>`).join('');
+  sel.value=currentRegion||'';
+}
+
+// ── PORTÉE COURANTE ───────────────────────────────────────────────────────────
+// La MRC choisie, sinon la région choisie, sinon le Québec entier.
+let _regionOf=null;
+function regionOf(cdname){
+  if(!_regionOf){
+    _regionOf={};
+    (DATA.mrc_list||[]).forEach(d=>{ _regionOf[d.CDNAME]=String(d.Region); });
+  }
+  return _regionOf[cdname]||'';
+}
+function scopeRows(arr){
+  if(currentMRC) return (arr||[]).filter(d=>d.CDNAME===currentMRC);
+  return scopeRegionRows(arr);
+}
+// Portée régionale seule : sert de valeur de référence à laquelle comparer une MRC.
+function scopeRegionRows(arr){
+  if(!currentRegion) return arr||[];
+  return (arr||[]).filter(d=>regionOf(d.CDNAME)===currentRegion);
+}
+function scopeLabel(){
+  if(currentMRC) return currentMRC;
+  if(currentRegion) return regionNom(currentRegion);
+  return 'Tout le Québec';
 }
 
 function getAvailableYears(){
@@ -574,6 +665,7 @@ function storeCSV(cardId, rows){
 function buildStateUrl(embedId=''){
   const url=new URL(window.location.href.split('#')[0]);
   url.searchParams.set('tab', currentTab);
+  if(currentRegion) url.searchParams.set('region', currentRegion); else url.searchParams.delete('region');
   if(currentMRC) url.searchParams.set('mrc', currentMRC); else url.searchParams.delete('mrc');
   if(currentYear!==null) url.searchParams.set('year', currentYear);
   if(currentYearMin!==null) url.searchParams.set('ymin', currentYearMin);
@@ -616,6 +708,7 @@ function updateIframeCode(){
 function buildIframeUrl(chartId, cubf, ymin, ymax, singleYear=false){
   const url=new URL(window.location.href.split('#')[0]);
   url.searchParams.set('tab', currentTab);
+  if(currentRegion) url.searchParams.set('region', currentRegion);
   if(currentMRC) url.searchParams.set('mrc', currentMRC);
   if(singleYear){
     url.searchParams.set('year', ymin||currentYear);
@@ -732,7 +825,7 @@ function setEmbedCubf(btn){
   currentCubf=btn.dataset.cubf;
   // sync main cubf buttons too
   document.querySelectorAll('.cubf-btn').forEach(b=>b.classList.toggle('active',b.dataset.cubf===currentCubf));
-  render();
+  refresh();
 }
 function setEmbedYearSingle(){
   const sel=document.getElementById('embed-ysingle'); if(!sel) return;
@@ -810,6 +903,7 @@ function applyStateFromUrl(){
   const params=new URLSearchParams(window.location.search);
   const tab=params.get('tab'); if(tab) currentTab=tab;
   const mrc=params.get('mrc'); currentMRC=mrc||null;
+  const region=params.get('region'); if(region) currentRegion=region;
   const year=Number(params.get('year')); if(Number.isFinite(year)&&year>0) currentYear=year;
   const ymin=Number(params.get('ymin')); if(Number.isFinite(ymin)&&ymin>0) currentYearMin=ymin;
   const ymax=Number(params.get('ymax')); if(Number.isFinite(ymax)&&ymax>0) currentYearMax=ymax;
@@ -904,9 +998,9 @@ function makeSortableTable(containerId, columns, rows, opts={}){
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
   const content=document.getElementById('content');
-  const mrcLabel=currentMRC||'Toutes les MRC';
+  const mrcLabel=scopeLabel();
   const annee=currentYear;
-  const filterMRC=arr=>currentMRC?arr.filter(d=>d.CDNAME===currentMRC):arr;
+  const filterMRC=scopeRows;
   const filterYear=arr=>arr.filter(d=>d.Annee==annee);
   const filterYearRange=arr=>arr.filter(d=>{
     const y=Number(d.Annee);
@@ -1489,8 +1583,8 @@ function drawMultiLineChart(id, years, series, suffix=''){
 
 // ── EVENTS ────────────────────────────────────────────────────────────────────
 const maybeRedrawMap=()=>{};
-document.getElementById('sel-region').addEventListener('change',function(){ populateMRCSelect(this.value); currentMRC=null; maybeRedrawMap(); render(); });
-document.getElementById('sel-mrc').addEventListener('change',function(){ currentMRC=this.value||null; maybeRedrawMap(); render(); });
+document.getElementById('sel-region').addEventListener('change',function(){ currentRegion=this.value||''; populateMRCSelect(currentRegion); currentMRC=null; maybeRedrawMap(); refresh(); });
+document.getElementById('sel-mrc').addEventListener('change',function(){ currentMRC=this.value||null; maybeRedrawMap(); refresh(); });
 document.getElementById('sel-annee').addEventListener('change',function(){ currentYear=parseInt(this.value,10); maybeRedrawMap(); render(); });
 document.getElementById('sel-annee-min').addEventListener('change',function(){ currentYearMin=parseInt(this.value,10); syncYearRange('min'); maybeRedrawMap(); render(); });
 document.getElementById('sel-annee-max').addEventListener('change',function(){ currentYearMax=parseInt(this.value,10); syncYearRange('max'); maybeRedrawMap(); render(); });
@@ -1555,11 +1649,13 @@ function renderCibles(content,mrcLabel){
   let {ratioMisesEnChantier}=ciblesParams;
 
   // ── DATA ──────────────────────────────────────────────────────────────
-  const menProj=DATA.menages_proj_mrc||[];
-  const logData=DATA[dk('logements_types_mrc')]||[];
-  const filt=arr=>currentMRC?arr.filter(d=>d.CDNAME===currentMRC):arr;
+  // Les séries de référence portent sur la région consultée — sur le Québec
+  // entier lorsqu'aucune région n'est sélectionnée.
+  const menProj=scopeRegionRows(DATA.menages_proj_mrc||[]);
+  const logData=scopeRegionRows(DATA[dk('logements_types_mrc')]||[]);
+  const filt=scopeRows;
 
-  // MRC (or all-Outaouais) series
+  // Série de la MRC (ou de toute la portée courante)
   const logByYear={};
   filt(logData).forEach(r=>{const y=Number(r.Annee);logByYear[y]=(logByYear[y]||0)+Number(r.Total||0);});
   const logYears=Object.keys(logByYear).map(Number).sort((a,b)=>a-b);
@@ -1570,7 +1666,7 @@ function renderCibles(content,mrcLabel){
   filt(menProj).filter(d=>d.Scenario===scenario).forEach(r=>{menByYear[r.Annee]=(menByYear[r.Annee]||0)+r.Menages;});
 
   // Étendre les ménages vers le passé via population ÷ taille_ménage calibrée à l'année ISQ la plus ancienne
-  const popData=DATA.population_mrc||[];
+  const popData=scopeRegionRows(DATA.population_mrc||[]);
   const popByYear={};
   filt(popData).forEach(r=>{const y=Number(r.Annee);popByYear[y]=(popByYear[y]||0)+Number(r.Population||0);});
   const menISQYears=Object.keys(menByYear).map(Number).sort((a,b)=>a-b);
@@ -1597,7 +1693,7 @@ function renderCibles(content,mrcLabel){
   const Mactuel=menByYear[latestMenYear]||0;
   const ratioActuel=Mactuel>0?+(Lactuel/Mactuel).toFixed(3):0;
 
-  // Région Outaouais totals (no MRC filter) for reference values
+  // Totaux de la portée régionale (sans filtre MRC), valeurs de référence
   const logByYearAll={};
   logData.forEach(r=>{const y=Number(r.Annee);logByYearAll[y]=(logByYearAll[y]||0)+Number(r.Total||0);});
   const LRegional=logByYearAll[latestLogYear]||0;
@@ -1808,7 +1904,7 @@ function renderCibles(content,mrcLabel){
       </select>
     </div>
     <div class="cibles-param" style="min-width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
-      <div style="font-size:.7rem;color:var(--text-light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Ratio par année (${mrcLabel||'Outaouais'})</div>
+      <div style="font-size:.7rem;color:var(--text-light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Ratio par année (${mrcLabel})</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;">
         ${refYearsAvail.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.85rem;font-weight:600;color:${y>=periodeDebut&&y<=periodeFin?'var(--teal-dark)':'var(--text-light)'};">${refRatioByYear[y]?.toFixed(3)||'–'}</div></div>`).join('')}
         ${periodeYrs.length>1?`<div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">Moy. ${periodeDebut}–${periodeFin}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioPeriode.toFixed(3)}</div></div>`:''}
@@ -2019,8 +2115,13 @@ function renderCibles(content,mrcLabel){
 // ── INIT ──────────────────────────────────────────────────────────────────────
 (async()=>{
   try{
-    await loadAll();
+    await loadCore();
     applyStateFromUrl();
+    populateRegionSelect();
+    // Une intégration iframe ne transmet que la MRC : la région en découle.
+    const reg=activeRegion();
+    if(reg){ currentRegion=reg; const rs=document.getElementById('sel-region'); if(rs) rs.value=reg; }
+    await loadScoped();
   // sync cubf button UI from URL param
   document.querySelectorAll('.cubf-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.cubf===currentCubf);
@@ -2031,7 +2132,7 @@ function renderCibles(content,mrcLabel){
   });
   populateEmbedYearSelects();
     populateYearSelect();
-    populateMRCSelect(document.getElementById('sel-region').value||'');
+    populateMRCSelect(currentRegion);
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===currentTab));
     if(currentEmbedId) applyEmbedMode();
     render();
@@ -2044,7 +2145,7 @@ function renderCibles(content,mrcLabel){
 
 // ── TAB: INDICATEURS STRATÉGIQUES ─────────────────────────────────────────────
 function renderIndicateurs(content, mrcLabel, annee) {
-  function fi(data){ return currentMRC ? data.filter(d=>d.CDNAME===currentMRC) : data; }
+  function fi(data){ return scopeRows(data); }
 
   // ── IND 1: Variation par type ──────────────────────────────────────────────
   const TYPES_IND1 = [
@@ -2083,7 +2184,7 @@ function renderIndicateurs(content, mrcLabel, annee) {
   const cumPart = cumTot>0?(cumPU/cumTot*100):null;
 
   // ── IND 3: Densité ────────────────────────────────────────────────────────
-  const denMRC_all = DATA.densite_pu_mrc||[];
+  const denMRC_all = scopeRegionRows(DATA.densite_pu_mrc||[]);
   const denMRC = fi(denMRC_all);
   const denMUN = fi(DATA.densite_pu_mun||[]);
   // Aggregate by year (sum across MRCs when all selected)
@@ -2416,9 +2517,8 @@ function drawInd3Den(id,years,denByYr,denMRC_fi){
       document.querySelectorAll('.cubf-btn').forEach(b=>b.classList.remove('active'));
       this.classList.add('active');
       currentCubf=this.dataset.cubf;
-      populateYearSelect();
       drawMap();
-      render();
+      refresh(true);
     });
     btn.addEventListener('mouseenter',function(e){
       clearTimeout(hideTimer);

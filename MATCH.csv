@@ -1,54 +1,440 @@
 Municipalité,CDNAME,Région
-Alleyn-et-Cawood,Pontiac,7
+Kamouraska,Kamouraska,1
+La Pocatière,Kamouraska,1
+Mont-Carmel,Kamouraska,1
+Rivière-Ouelle,Kamouraska,1
+Saint-Alexandre-de-Kamouraska,Kamouraska,1
+Saint-André-de-Kamouraska,Kamouraska,1
+Saint-Bruno-de-Kamouraska,Kamouraska,1
+Saint-Denis-De La Bouteillerie,Kamouraska,1
+Saint-Gabriel-Lalemant,Kamouraska,1
+Saint-Germain-de-Kamouraska,Kamouraska,1
+Saint-Joseph-de-Kamouraska,Kamouraska,1
+Saint-Onésime-d'Ixworth,Kamouraska,1
+Saint-Pacôme,Kamouraska,1
+Saint-Pascal,Kamouraska,1
+Saint-Philippe-de-Néri,Kamouraska,1
+Sainte-Anne-de-la-Pocatière,Kamouraska,1
+Sainte-Hélène-de-Kamouraska,Kamouraska,1
+Baie-des-Sables,La Matanie,1
+Grosses-Roches,La Matanie,1
+Les Méchins,La Matanie,1
+Matane,La Matanie,1
+Saint-Adelme,La Matanie,1
+Saint-Jean-de-Cherbourg,La Matanie,1
+Saint-Léandre,La Matanie,1
+Saint-René-de-Matane,La Matanie,1
+Saint-Ulric,La Matanie,1
+Sainte-Félicité,La Matanie,1
+Sainte-Paule,La Matanie,1
+Albertville,La Matapédia,1
+Amqui,La Matapédia,1
+Causapscal,La Matapédia,1
+Lac-au-Saumon,La Matapédia,1
+Saint-Alexandre-des-Lacs,La Matapédia,1
+Saint-Cléophas,La Matapédia,1
+Saint-Damase,La Matapédia,1
+Saint-Léon-le-Grand,La Matapédia,1
+Saint-Moïse,La Matapédia,1
+Saint-Noël,La Matapédia,1
+Saint-Tharcisius,La Matapédia,1
+Saint-Vianney,La Matapédia,1
+Saint-Zénon-du-Lac-Humqui,La Matapédia,1
+Sainte-Florence,La Matapédia,1
+Sainte-Irène,La Matapédia,1
+Sainte-Marguerite-Marie,La Matapédia,1
+Sayabec,La Matapédia,1
+Val-Brillant,La Matapédia,1
+Grand-Métis,La Mitis,1
+La Rédemption,La Mitis,1
+Les Hauteurs,La Mitis,1
+Métis-sur-Mer,La Mitis,1
+Mont-Joli,La Mitis,1
+Padoue,La Mitis,1
+Price,La Mitis,1
+Saint-Charles-Garnier,La Mitis,1
+Saint-Donat,La Mitis,1
+Saint-Gabriel-de-Rimouski,La Mitis,1
+Saint-Joseph-de-Lepage,La Mitis,1
+Saint-Octave-de-Métis,La Mitis,1
+Sainte-Angèle-de-Mérici,La Mitis,1
+Sainte-Flavie,La Mitis,1
+Sainte-Jeanne-d'Arc,La Mitis,1
+Sainte-Luce,La Mitis,1
+Notre-Dame-des-Neiges,Les Basques,1
+Saint-Clément,Les Basques,1
+Saint-Éloi,Les Basques,1
+Saint-Guy,Les Basques,1
+Saint-Jean-de-Dieu,Les Basques,1
+Saint-Mathieu-de-Rioux,Les Basques,1
+Saint-Médard,Les Basques,1
+Saint-Simon-de-Rimouski,Les Basques,1
+Sainte-Françoise,Les Basques,1
+Sainte-Rita,Les Basques,1
+Trois-Pistoles,Les Basques,1
+Esprit-Saint,Rimouski-Neigette,1
+La Trinité-des-Monts,Rimouski-Neigette,1
+Rimouski,Rimouski-Neigette,1
+Saint-Anaclet-de-Lessard,Rimouski-Neigette,1
+Saint-Eugène-de-Ladrière,Rimouski-Neigette,1
+Saint-Fabien,Rimouski-Neigette,1
+Saint-Marcellin,Rimouski-Neigette,1
+Saint-Narcisse-de-Rimouski,Rimouski-Neigette,1
+Saint-Valérien,Rimouski-Neigette,1
+Cacouna,Rivière-du-Loup,1
+L'Isle-Verte,Rivière-du-Loup,1
+Notre-Dame-des-Sept-Douleurs,Rivière-du-Loup,1
+Notre-Dame-du-Portage,Rivière-du-Loup,1
+Rivière-du-Loup,Rivière-du-Loup,1
+Saint-Antonin,Rivière-du-Loup,1
+Saint-Arsène,Rivière-du-Loup,1
+Saint-Cyprien,Rivière-du-Loup,1
+Saint-Épiphane,Rivière-du-Loup,1
+Saint-François-Xavier-de-Viger,Rivière-du-Loup,1
+Saint-Hubert-de-Rivière-du-Loup,Rivière-du-Loup,1
+Saint-Modeste,Rivière-du-Loup,1
+Saint-Paul-de-la-Croix,Rivière-du-Loup,1
+Auclair,Témiscouata,1
+Biencourt,Témiscouata,1
+Dégelis,Témiscouata,1
+Lac-des-Aigles,Témiscouata,1
+Lejeune,Témiscouata,1
+Packington,Témiscouata,1
+Pohénégamook,Témiscouata,1
+Rivière-Bleue,Témiscouata,1
+Saint-Athanase,Témiscouata,1
+Saint-Elzéar-de-Témiscouata,Témiscouata,1
+Saint-Eusèbe,Témiscouata,1
+Saint-Honoré-de-Témiscouata,Témiscouata,1
+Saint-Jean-de-la-Lande,Témiscouata,1
+Saint-Juste-du-Lac,Témiscouata,1
+Saint-Louis-du-Ha! Ha!,Témiscouata,1
+Saint-Marc-du-Lac-Long,Témiscouata,1
+Saint-Michel-du-Squatec,Témiscouata,1
+Saint-Pierre-de-Lamy,Témiscouata,1
+Témiscouata-sur-le-Lac,Témiscouata,1
+Alma,Lac-Saint-Jean-Est,2
+Desbiens,Lac-Saint-Jean-Est,2
+Hébertville,Lac-Saint-Jean-Est,2
+Hébertville-Station,Lac-Saint-Jean-Est,2
+L'Ascension-de-Notre-Seigneur,Lac-Saint-Jean-Est,2
+Labrecque,Lac-Saint-Jean-Est,2
+Lamarche,Lac-Saint-Jean-Est,2
+Métabetchouan-Lac-à-la-Croix,Lac-Saint-Jean-Est,2
+Saint-Bruno,Lac-Saint-Jean-Est,2
+Saint-Gédéon,Lac-Saint-Jean-Est,2
+Saint-Henri-de-Taillon,Lac-Saint-Jean-Est,2
+Saint-Ludger-de-Milot,Lac-Saint-Jean-Est,2
+Saint-Nazaire,Lac-Saint-Jean-Est,2
+Sainte-Monique,Lac-Saint-Jean-Est,2
+Chambord,Le Domaine-du-Roy,2
+La Doré,Le Domaine-du-Roy,2
+Lac-Bouchette,Le Domaine-du-Roy,2
+Roberval,Le Domaine-du-Roy,2
+Saint-André-du-Lac-Saint-Jean,Le Domaine-du-Roy,2
+Saint-Félicien,Le Domaine-du-Roy,2
+Saint-François-de-Sales,Le Domaine-du-Roy,2
+Saint-Prime,Le Domaine-du-Roy,2
+Sainte-Hedwidge,Le Domaine-du-Roy,2
+Bégin,Le Fjord-du-Saguenay,2
+Ferland-et-Boilleau,Le Fjord-du-Saguenay,2
+L'Anse-Saint-Jean,Le Fjord-du-Saguenay,2
+Larouche,Le Fjord-du-Saguenay,2
+Petit-Saguenay,Le Fjord-du-Saguenay,2
+Rivière-Éternité,Le Fjord-du-Saguenay,2
+Saint-Ambroise,Le Fjord-du-Saguenay,2
+Saint-Charles-de-Bourget,Le Fjord-du-Saguenay,2
+Saint-David-de-Falardeau,Le Fjord-du-Saguenay,2
+Saint-Félix-d'Otis,Le Fjord-du-Saguenay,2
+Saint-Fulgence,Le Fjord-du-Saguenay,2
+Saint-Honoré,Le Fjord-du-Saguenay,2
+Sainte-Rose-du-Nord,Le Fjord-du-Saguenay,2
+Albanel,Maria-Chapdelaine,2
+Dolbeau-Mistassini,Maria-Chapdelaine,2
+Girardville,Maria-Chapdelaine,2
+Normandin,Maria-Chapdelaine,2
+Notre-Dame-de-Lorette,Maria-Chapdelaine,2
+Péribonka,Maria-Chapdelaine,2
+Saint-Augustin,Maria-Chapdelaine,2
+Saint-Edmond-les-Plaines,Maria-Chapdelaine,2
+Saint-Eugène-d'Argentenay,Maria-Chapdelaine,2
+Saint-Stanislas,Maria-Chapdelaine,2
+Saint-Thomas-Didyme,Maria-Chapdelaine,2
+Sainte-Jeanne-d'Arc,Maria-Chapdelaine,2
+Saguenay,Saguenay,2
+Baie-Saint-Paul,Charlevoix,3
+L'Isle-aux-Coudres,Charlevoix,3
+Les Éboulements,Charlevoix,3
+Petite-Rivière-Saint-François,Charlevoix,3
+Saint-Hilarion,Charlevoix,3
+Saint-Urbain,Charlevoix,3
+Baie-Sainte-Catherine,Charlevoix-Est,3
+Clermont,Charlevoix-Est,3
+La Malbaie,Charlevoix-Est,3
+Notre-Dame-des-Monts,Charlevoix-Est,3
+Saint-Aimé-des-Lacs,Charlevoix-Est,3
+Saint-Irénée,Charlevoix-Est,3
+Saint-Siméon,Charlevoix-Est,3
+Saint-François-de-l'Île-d'Orléans,L'Île-d'Orléans,3
+Saint-Jean-de-l'Île-d'Orléans,L'Île-d'Orléans,3
+Saint-Laurent-de-l'Île-d'Orléans,L'Île-d'Orléans,3
+Saint-Pierre-de-l'Île-d'Orléans,L'Île-d'Orléans,3
+Sainte-Famille-de-l'Île-d'Orléans,L'Île-d'Orléans,3
+Sainte-Pétronille,L'Île-d'Orléans,3
+Beaupré,La Côte-de-Beaupré,3
+Boischatel,La Côte-de-Beaupré,3
+Château-Richer,La Côte-de-Beaupré,3
+L'Ange-Gardien,La Côte-de-Beaupré,3
+Saint-Ferréol-les-Neiges,La Côte-de-Beaupré,3
+Saint-Joachim,La Côte-de-Beaupré,3
+Saint-Tite-des-Caps,La Côte-de-Beaupré,3
+Sainte-Anne-de-Beaupré,La Côte-de-Beaupré,3
+Fossambault-sur-le-Lac,La Jacques-Cartier,3
+Lac-Beauport,La Jacques-Cartier,3
+Lac-Delage,La Jacques-Cartier,3
+Lac-Saint-Joseph,La Jacques-Cartier,3
+Saint-Gabriel-de-Valcartier,La Jacques-Cartier,3
+Sainte-Brigitte-de-Laval,La Jacques-Cartier,3
+Sainte-Catherine-de-la-Jacques-Cartier,La Jacques-Cartier,3
+Shannon,La Jacques-Cartier,3
+Stoneham-et-Tewkesbury,La Jacques-Cartier,3
+Cap-Santé,Portneuf,3
+Deschambault-Grondines,Portneuf,3
+Donnacona,Portneuf,3
+Lac-Sergent,Portneuf,3
+Neuville,Portneuf,3
+Pont-Rouge,Portneuf,3
+Portneuf,Portneuf,3
+Rivière-à-Pierre,Portneuf,3
+Saint-Alban,Portneuf,3
+Saint-Basile,Portneuf,3
+Saint-Casimir,Portneuf,3
+Saint-Gilbert,Portneuf,3
+Saint-Léonard-de-Portneuf,Portneuf,3
+Saint-Marc-des-Carrières,Portneuf,3
+Saint-Raymond,Portneuf,3
+Saint-Thuribe,Portneuf,3
+Saint-Ubalde,Portneuf,3
+Sainte-Christine-d'Auvergne,Portneuf,3
+L'Ancienne-Lorette,Québec,3
+Québec,Québec,3
+Saint-Augustin-de-Desmaures,Québec,3
+La Bostonnais,La Tuque,4
+La Tuque,La Tuque,4
+Lac-Édouard,La Tuque,4
+Batiscan,Les Chenaux,4
+Champlain,Les Chenaux,4
+Notre-Dame-du-Mont-Carmel,Les Chenaux,4
+Saint-Luc-de-Vincennes,Les Chenaux,4
+Saint-Maurice,Les Chenaux,4
+Saint-Narcisse,Les Chenaux,4
+Saint-Prosper-de-Champlain,Les Chenaux,4
+Saint-Stanislas,Les Chenaux,4
+Sainte-Anne-de-la-Pérade,Les Chenaux,4
+Sainte-Geneviève-de-Batiscan,Les Chenaux,4
+Charette,Maskinongé,4
+Louiseville,Maskinongé,4
+Maskinongé,Maskinongé,4
+Saint-Alexis-des-Monts,Maskinongé,4
+Saint-Barnabé,Maskinongé,4
+Saint-Boniface,Maskinongé,4
+Saint-Édouard-de-Maskinongé,Maskinongé,4
+Saint-Élie-de-Caxton,Maskinongé,4
+Saint-Étienne-des-Grès,Maskinongé,4
+Saint-Justin,Maskinongé,4
+Saint-Léon-le-Grand,Maskinongé,4
+Saint-Mathieu-du-Parc,Maskinongé,4
+Saint-Paulin,Maskinongé,4
+Saint-Sévère,Maskinongé,4
+Sainte-Angèle-de-Prémont,Maskinongé,4
+Sainte-Ursule,Maskinongé,4
+Yamachiche,Maskinongé,4
+Grandes-Piles,Mékinac,4
+Hérouxville,Mékinac,4
+Lac-aux-Sables,Mékinac,4
+Notre-Dame-de-Montauban,Mékinac,4
+Saint-Adelphe,Mékinac,4
+Saint-Roch-de-Mékinac,Mékinac,4
+Saint-Séverin,Mékinac,4
+Saint-Tite,Mékinac,4
+Sainte-Thècle,Mékinac,4
+Trois-Rives,Mékinac,4
+Shawinigan,Shawinigan,4
+Trois-Rivières,Trois-Rivières,4
+Abercorn,Brome-Missisquoi,5
+Bedford (CT),Brome-Missisquoi,5
+Bedford (V),Brome-Missisquoi,5
+Bolton-Ouest,Brome-Missisquoi,5
+Brigham,Brome-Missisquoi,5
+Brome,Brome-Missisquoi,5
+Bromont,Brome-Missisquoi,5
+Cowansville,Brome-Missisquoi,5
+Dunham,Brome-Missisquoi,5
+East Farnham,Brome-Missisquoi,5
+Farnham,Brome-Missisquoi,5
+Frelighsburg,Brome-Missisquoi,5
+Lac-Brome,Brome-Missisquoi,5
+Notre-Dame-de-Stanbridge,Brome-Missisquoi,5
+Pike River,Brome-Missisquoi,5
+Saint-Armand,Brome-Missisquoi,5
+Saint-Ignace-de-Stanbridge,Brome-Missisquoi,5
+Sainte-Sabine,Brome-Missisquoi,5
+Stanbridge East,Brome-Missisquoi,5
+Stanbridge Station,Brome-Missisquoi,5
+Sutton,Brome-Missisquoi,5
+Barnston-Ouest,Coaticook,5
+Coaticook,Coaticook,5
+Compton,Coaticook,5
+Dixville,Coaticook,5
+East Hereford,Coaticook,5
+Martinville,Coaticook,5
+Saint-Herménégilde,Coaticook,5
+Saint-Malo,Coaticook,5
+Saint-Venant-de-Paquette,Coaticook,5
+Sainte-Edwidge-de-Clifton,Coaticook,5
+Stanstead-Est,Coaticook,5
+Waterville,Coaticook,5
+Granby,La Haute-Yamaska,5
+Roxton Pond,La Haute-Yamaska,5
+Saint-Alphonse-de-Granby,La Haute-Yamaska,5
+Saint-Joachim-de-Shefford,La Haute-Yamaska,5
+Sainte-Cécile-de-Milton,La Haute-Yamaska,5
+Shefford,La Haute-Yamaska,5
+Warden,La Haute-Yamaska,5
+Waterloo,La Haute-Yamaska,5
+Audet,Le Granit,5
+Courcelles,Le Granit,5
+Frontenac,Le Granit,5
+Lac-Drolet,Le Granit,5
+Lac-Mégantic,Le Granit,5
+Lambton,Le Granit,5
+Marston,Le Granit,5
+Milan,Le Granit,5
+Nantes,Le Granit,5
+Notre-Dame-des-Bois,Le Granit,5
+Piopolis,Le Granit,5
+Saint-Augustin-de-Woburn,Le Granit,5
+Saint-Ludger,Le Granit,5
+Saint-Robert-Bellarmin,Le Granit,5
+Saint-Romain,Le Granit,5
+Saint-Sébastien,Le Granit,5
+Sainte-Cécile-de-Whitton,Le Granit,5
+Stornoway,Le Granit,5
+Stratford,Le Granit,5
+Val-Racine,Le Granit,5
+Ascot Corner,Le Haut-Saint-François,5
+Bury,Le Haut-Saint-François,5
+Chartierville,Le Haut-Saint-François,5
+Cookshire-Eaton,Le Haut-Saint-François,5
+Dudswell,Le Haut-Saint-François,5
+East Angus,Le Haut-Saint-François,5
+Hampden,Le Haut-Saint-François,5
+La Patrie,Le Haut-Saint-François,5
+Lingwick,Le Haut-Saint-François,5
+Newport,Le Haut-Saint-François,5
+Saint-Isidore-de-Clifton,Le Haut-Saint-François,5
+Scotstown,Le Haut-Saint-François,5
+Weedon,Le Haut-Saint-François,5
+Westbury,Le Haut-Saint-François,5
+Bonsecours,Le Val-Saint-François,5
+Cleveland,Le Val-Saint-François,5
+Kingsbury,Le Val-Saint-François,5
+Lawrenceville,Le Val-Saint-François,5
+Maricourt,Le Val-Saint-François,5
+Melbourne,Le Val-Saint-François,5
+Racine,Le Val-Saint-François,5
+Richmond,Le Val-Saint-François,5
+Saint-Claude,Le Val-Saint-François,5
+Saint-Denis-de-Brompton,Le Val-Saint-François,5
+Saint-François-Xavier-de-Brompton,Le Val-Saint-François,5
+Sainte-Anne-de-la-Rochelle,Le Val-Saint-François,5
+Stoke,Le Val-Saint-François,5
+Ulverton,Le Val-Saint-François,5
+Val-Joli,Le Val-Saint-François,5
+Valcourt (CT),Le Val-Saint-François,5
+Valcourt (V),Le Val-Saint-François,5
+Windsor,Le Val-Saint-François,5
+Danville,Les Sources,5
+Ham-Sud,Les Sources,5
+Saint-Adrien,Les Sources,5
+Saint-Camille,Les Sources,5
+Saint-Georges-de-Windsor,Les Sources,5
+Val-des-Sources,Les Sources,5
+Wotton,Les Sources,5
+Austin,Memphrémagog,5
+Ayer's Cliff,Memphrémagog,5
+Bolton-Est,Memphrémagog,5
+Eastman,Memphrémagog,5
+Hatley (CT),Memphrémagog,5
+Hatley (M),Memphrémagog,5
+Magog,Memphrémagog,5
+North Hatley,Memphrémagog,5
+Ogden,Memphrémagog,5
+Orford,Memphrémagog,5
+Potton,Memphrémagog,5
+Saint-Étienne-de-Bolton,Memphrémagog,5
+Sainte-Catherine-de-Hatley,Memphrémagog,5
+Stanstead (CT),Memphrémagog,5
+Stanstead (V),Memphrémagog,5
+Stukely-Sud,Memphrémagog,5
+Sherbrooke,Sherbrooke,5
+Baie-D'Urfé,Montréal,6
+Beaconsfield,Montréal,6
+Côte-Saint-Luc,Montréal,6
+Dollard-des-Ormeaux,Montréal,6
+Dorval,Montréal,6
+Hampstead,Montréal,6
+Kirkland,Montréal,6
+L'Île-Dorval,Montréal,6
+Mont-Royal,Montréal,6
+Montréal,Montréal,6
+Montréal-Est,Montréal,6
+Montréal-Ouest,Montréal,6
+Pointe-Claire,Montréal,6
+Sainte-Anne-de-Bellevue,Montréal,6
+Senneville,Montréal,6
+Westmount,Montréal,6
+Gatineau,Gatineau,7
 Aumond,La Vallée-de-la-Gatineau,7
 Blue Sea,La Vallée-de-la-Gatineau,7
-Boileau,Papineau,7
 Bois-Franc,La Vallée-de-la-Gatineau,7
 Bouchette,La Vallée-de-la-Gatineau,7
-Bowman,Papineau,7
-Bristol,Pontiac,7
-Bryson,Pontiac,7
-Campbell's Bay,Pontiac,7
-Cantley,Les Collines-de-l'Outaouais,7
 Cascades-Malignes,La Vallée-de-la-Gatineau,7
 Cayamant,La Vallée-de-la-Gatineau,7
-Chelsea,Les Collines-de-l'Outaouais,7
-Chichester,Pontiac,7
-Chénéville,Papineau,7
-Clarendon,Pontiac,7
-Denholm,La Vallée-de-la-Gatineau,7
-Duhamel,Papineau,7
 Déléage,La Vallée-de-la-Gatineau,7
+Denholm,La Vallée-de-la-Gatineau,7
 Dépôt-Échouani,La Vallée-de-la-Gatineau,7
 Egan-Sud,La Vallée-de-la-Gatineau,7
-Fassett,Papineau,7
-Fort-Coulonge,Pontiac,7
-Gatineau,Gatineau,7
 Gracefield,La Vallée-de-la-Gatineau,7
 Grand-Remous,La Vallée-de-la-Gatineau,7
 Kazabazua,La Vallée-de-la-Gatineau,7
 Kitigan Zibi,La Vallée-de-la-Gatineau,7
-L'Ange-Gardien,Les Collines-de-l'Outaouais,7
-L'Isle-aux-Allumettes,Pontiac,7
-L'Île-du-Grand-Calumet,Pontiac,7
-La Pêche,Les Collines-de-l'Outaouais,7
 Lac-Lenôtre,La Vallée-de-la-Gatineau,7
 Lac-Moselle,La Vallée-de-la-Gatineau,7
-Lac-Nilgaut,Pontiac,7
 Lac-Pythonga,La Vallée-de-la-Gatineau,7
 Lac-Rapide,La Vallée-de-la-Gatineau,7
 Lac-Sainte-Marie,La Vallée-de-la-Gatineau,7
-Lac-Simon,Papineau,7
-Lac-des-Plages,Papineau,7
-Litchfield,Pontiac,7
-Lochaber,Papineau,7
-Lochaber-Partie-Ouest,Papineau,7
 Low,La Vallée-de-la-Gatineau,7
 Maniwaki,La Vallée-de-la-Gatineau,7
-Mansfield-et-Pontefract,Pontiac,7
-Mayo,Papineau,7
 Messines,La Vallée-de-la-Gatineau,7
 Montcerf-Lytton,La Vallée-de-la-Gatineau,7
+Sainte-Thérèse-de-la-Gatineau,La Vallée-de-la-Gatineau,7
+Cantley,Les Collines-de-l'Outaouais,7
+Chelsea,Les Collines-de-l'Outaouais,7
+L'Ange-Gardien,Les Collines-de-l'Outaouais,7
+La Pêche,Les Collines-de-l'Outaouais,7
+Pontiac,Les Collines-de-l'Outaouais,7
+Val-des-Monts,Les Collines-de-l'Outaouais,7
+Boileau,Papineau,7
+Bowman,Papineau,7
+Chénéville,Papineau,7
+Duhamel,Papineau,7
+Fassett,Papineau,7
+Lac-des-Plages,Papineau,7
+Lac-Simon,Papineau,7
+Lochaber,Papineau,7
+Lochaber-Partie-Ouest,Papineau,7
+Mayo,Papineau,7
 Montebello,Papineau,7
 Montpellier,Papineau,7
 Mulgrave-et-Derry,Papineau,7
@@ -56,187 +442,688 @@ Namur,Papineau,7
 Notre-Dame-de-Bonsecours,Papineau,7
 Notre-Dame-de-la-Paix,Papineau,7
 Notre-Dame-de-la-Salette,Papineau,7
-Otter Lake,Pontiac,7
 Papineauville,Papineau,7
 Plaisance,Papineau,7
-Pontiac,Les Collines-de-l'Outaouais,7
-Portage-du-Fort,Pontiac,7
-Rapides-des-Joachims,Pontiac,7
 Ripon,Papineau,7
 Saint-André-Avellin,Papineau,7
-Saint-Sixte,Papineau,7
 Saint-Émile-de-Suffolk,Papineau,7
-Sainte-Thérèse-de-la-Gatineau,La Vallée-de-la-Gatineau,7
+Saint-Sixte,Papineau,7
+Thurso,Papineau,7
+Val-des-Bois,Papineau,7
+Alleyn-et-Cawood,Pontiac,7
+Bristol,Pontiac,7
+Bryson,Pontiac,7
+Campbell's Bay,Pontiac,7
+Chichester,Pontiac,7
+Clarendon,Pontiac,7
+Fort-Coulonge,Pontiac,7
+L'Île-du-Grand-Calumet,Pontiac,7
+L'Isle-aux-Allumettes,Pontiac,7
+Lac-Nilgaut,Pontiac,7
+Litchfield,Pontiac,7
+Mansfield-et-Pontefract,Pontiac,7
+Otter Lake,Pontiac,7
+Portage-du-Fort,Pontiac,7
+Rapides-des-Joachims,Pontiac,7
 Shawville,Pontiac,7
 Sheenboro,Pontiac,7
 Thorne,Pontiac,7
-Thurso,Papineau,7
-Val-des-Bois,Papineau,7
-Val-des-Monts,Les Collines-de-l'Outaouais,7
 Waltham,Pontiac,7
-Amherst,Les Laurentides,15
-Arundel,Les Laurentides,15
+Amos,Abitibi,8
+Barraute,Abitibi,8
+Berry,Abitibi,8
+Champneuf,Abitibi,8
+La Corne,Abitibi,8
+La Morandière-Rochebaucourt,Abitibi,8
+La Motte,Abitibi,8
+Landrienne,Abitibi,8
+Launay,Abitibi,8
+Preissac,Abitibi,8
+Saint-Dominique-du-Rosaire,Abitibi,8
+Saint-Félix-de-Dalquier,Abitibi,8
+Saint-Marc-de-Figuery,Abitibi,8
+Saint-Mathieu-d'Harricana,Abitibi,8
+Sainte-Gertrude-Manneville,Abitibi,8
+Trécesson,Abitibi,8
+Authier,Abitibi-Ouest,8
+Authier-Nord,Abitibi-Ouest,8
+Chazel,Abitibi-Ouest,8
+Clermont,Abitibi-Ouest,8
+Clerval,Abitibi-Ouest,8
+Duparquet,Abitibi-Ouest,8
+Dupuy,Abitibi-Ouest,8
+Gallichan,Abitibi-Ouest,8
+La Reine,Abitibi-Ouest,8
+La Sarre,Abitibi-Ouest,8
+Macamic,Abitibi-Ouest,8
+Normétal,Abitibi-Ouest,8
+Palmarolle,Abitibi-Ouest,8
+Poularies,Abitibi-Ouest,8
+Rapide-Danseur,Abitibi-Ouest,8
+Roquemaure,Abitibi-Ouest,8
+Saint-Lambert,Abitibi-Ouest,8
+Sainte-Germaine-Boulé,Abitibi-Ouest,8
+Sainte-Hélène-de-Mancebourg,Abitibi-Ouest,8
+Taschereau,Abitibi-Ouest,8
+Val-Saint-Gilles,Abitibi-Ouest,8
+Belcourt,La Vallée-de-l'Or,8
+Malartic,La Vallée-de-l'Or,8
+Rivière-Héva,La Vallée-de-l'Or,8
+Senneterre (P),La Vallée-de-l'Or,8
+Senneterre (V),La Vallée-de-l'Or,8
+Val-d'Or,La Vallée-de-l'Or,8
+Rouyn-Noranda,Rouyn-Noranda,8
+Béarn,Témiscamingue,8
+Belleterre,Témiscamingue,8
+Duhamel-Ouest,Témiscamingue,8
+Fugèreville,Témiscamingue,8
+Guérin,Témiscamingue,8
+Kipawa,Témiscamingue,8
+Laforce,Témiscamingue,8
+Latulipe-et-Gaboury,Témiscamingue,8
+Laverlochère-Angliers,Témiscamingue,8
+Lorrainville,Témiscamingue,8
+Moffet,Témiscamingue,8
+Nédélec,Témiscamingue,8
+Notre-Dame-du-Nord,Témiscamingue,8
+Rémigny,Témiscamingue,8
+Saint-Bruno-de-Guigues,Témiscamingue,8
+Saint-Édouard-de-Fabre,Témiscamingue,8
+Saint-Eugène-de-Guigues,Témiscamingue,8
+Témiscaming,Témiscamingue,8
+Ville-Marie,Témiscamingue,8
+Fermont,Caniapiscau,9
+Schefferville,Caniapiscau,9
+Colombier,La Haute-Côte-Nord,9
+Forestville,La Haute-Côte-Nord,9
+Les Bergeronnes,La Haute-Côte-Nord,9
+Les Escoumins,La Haute-Côte-Nord,9
+Longue-Rive,La Haute-Côte-Nord,9
+Portneuf-sur-Mer,La Haute-Côte-Nord,9
+Sacré-Coeur,La Haute-Côte-Nord,9
+Tadoussac,La Haute-Côte-Nord,9
+Blanc-Sablon,Le Golfe-du-Saint-Laurent,9
+Bonne-Espérance,Le Golfe-du-Saint-Laurent,9
+Côte-Nord-du-Golfe-du-Saint-Laurent,Le Golfe-du-Saint-Laurent,9
+Gros-Mécatina,Le Golfe-du-Saint-Laurent,9
+Saint-Augustin,Le Golfe-du-Saint-Laurent,9
+Baie-Comeau,Manicouagan,9
+Baie-Trinité,Manicouagan,9
+Chute-aux-Outardes,Manicouagan,9
+Franquelin,Manicouagan,9
+Godbout,Manicouagan,9
+Pointe-aux-Outardes,Manicouagan,9
+Pointe-Lebel,Manicouagan,9
+Ragueneau,Manicouagan,9
+Aguanish,Minganie,9
+Baie-Johan-Beetz,Minganie,9
+Havre-Saint-Pierre,Minganie,9
+L'Île-d'Anticosti,Minganie,9
+Longue-Pointe-de-Mingan,Minganie,9
+Natashquan,Minganie,9
+Rivière-au-Tonnerre,Minganie,9
+Rivière-Saint-Jean,Minganie,9
+Port-Cartier,Sept-Rivières,9
+Sept-Îles,Sept-Rivières,9
+Chapais,Jamésie,10
+Chibougamau,Jamésie,10
+Eeyou Istchee Baie-James,Jamésie,10
+Lebel-sur-Quévillon,Jamésie,10
+Matagami,Jamésie,10
+Carleton-sur-Mer,Avignon,11
+Escuminac,Avignon,11
+L'Ascension-de-Patapédia,Avignon,11
+Maria,Avignon,11
+Matapédia,Avignon,11
+Nouvelle,Avignon,11
+Pointe-à-la-Croix,Avignon,11
+Ristigouche-Partie-Sud-Est,Avignon,11
+Saint-Alexis-de-Matapédia,Avignon,11
+Saint-André-de-Restigouche,Avignon,11
+Saint-François-d'Assise,Avignon,11
+Bonaventure,Bonaventure,11
+Caplan,Bonaventure,11
+Cascapédia-Saint-Jules,Bonaventure,11
+Hope,Bonaventure,11
+Hope Town,Bonaventure,11
+New Carlisle,Bonaventure,11
+New Richmond,Bonaventure,11
+Paspébiac,Bonaventure,11
+Saint-Alphonse,Bonaventure,11
+Saint-Elzéar,Bonaventure,11
+Saint-Godefroi,Bonaventure,11
+Saint-Siméon,Bonaventure,11
+Shigawake,Bonaventure,11
+Grosse-Île,Communauté maritime des Îles-de-la-Madeleine,11
+Les Îles-de-la-Madeleine,Communauté maritime des Îles-de-la-Madeleine,11
+Cloridorme,La Côte-de-Gaspé,11
+Gaspé,La Côte-de-Gaspé,11
+Grande-Vallée,La Côte-de-Gaspé,11
+Murdochville,La Côte-de-Gaspé,11
+Petite-Vallée,La Côte-de-Gaspé,11
+Cap-Chat,La Haute-Gaspésie,11
+La Martre,La Haute-Gaspésie,11
+Marsoui,La Haute-Gaspésie,11
+Mont-Saint-Pierre,La Haute-Gaspésie,11
+Rivière-à-Claude,La Haute-Gaspésie,11
+Saint-Maxime-du-Mont-Louis,La Haute-Gaspésie,11
+Sainte-Anne-des-Monts,La Haute-Gaspésie,11
+Sainte-Madeleine-de-la-Rivière-Madeleine,La Haute-Gaspésie,11
+Chandler,Le Rocher-Percé,11
+Grande-Rivière,Le Rocher-Percé,11
+Percé,Le Rocher-Percé,11
+Port-Daniel-Gascons,Le Rocher-Percé,11
+Sainte-Thérèse-de-Gaspé,Le Rocher-Percé,11
+Beauceville,Beauce-Centre,12
+Saint-Alfred,Beauce-Centre,12
+Saint-Frédéric,Beauce-Centre,12
+Saint-Joseph-de-Beauce,Beauce-Centre,12
+Saint-Joseph-des-Érables,Beauce-Centre,12
+Saint-Jules,Beauce-Centre,12
+Saint-Odilon-de-Cranbourne,Beauce-Centre,12
+Saint-Séverin,Beauce-Centre,12
+Saint-Victor,Beauce-Centre,12
+Tring-Jonction,Beauce-Centre,12
+La Guadeloupe,Beauce-Sartigan,12
+Lac-Poulin,Beauce-Sartigan,12
+Notre-Dame-des-Pins,Beauce-Sartigan,12
+Saint-Benoît-Labre,Beauce-Sartigan,12
+Saint-Côme-Linière,Beauce-Sartigan,12
+Saint-Éphrem-de-Beauce,Beauce-Sartigan,12
+Saint-Évariste-de-Forsyth,Beauce-Sartigan,12
+Saint-Gédéon-de-Beauce,Beauce-Sartigan,12
+Saint-Georges,Beauce-Sartigan,12
+Saint-Hilaire-de-Dorset,Beauce-Sartigan,12
+Saint-Honoré-de-Shenley,Beauce-Sartigan,12
+Saint-Martin,Beauce-Sartigan,12
+Saint-Philibert,Beauce-Sartigan,12
+Saint-René,Beauce-Sartigan,12
+Saint-Simon-les-Mines,Beauce-Sartigan,12
+Saint-Théophile,Beauce-Sartigan,12
+Armagh,Bellechasse,12
+Beaumont,Bellechasse,12
+Honfleur,Bellechasse,12
+La Durantaye,Bellechasse,12
+Notre-Dame-Auxiliatrice-de-Buckland,Bellechasse,12
+Saint-Anselme,Bellechasse,12
+Saint-Charles-de-Bellechasse,Bellechasse,12
+Saint-Damien-de-Buckland,Bellechasse,12
+Saint-Gervais,Bellechasse,12
+Saint-Henri,Bellechasse,12
+Saint-Lazare-de-Bellechasse,Bellechasse,12
+Saint-Léon-de-Standon,Bellechasse,12
+Saint-Malachie,Bellechasse,12
+Saint-Michel-de-Bellechasse,Bellechasse,12
+Saint-Nazaire-de-Dorchester,Bellechasse,12
+Saint-Nérée-de-Bellechasse,Bellechasse,12
+Saint-Philémon,Bellechasse,12
+Saint-Raphaël,Bellechasse,12
+Saint-Vallier,Bellechasse,12
+Sainte-Claire,Bellechasse,12
+L'Islet,L'Islet,12
+Saint-Adalbert,L'Islet,12
+Saint-Aubert,L'Islet,12
+Saint-Cyrille-de-Lessard,L'Islet,12
+Saint-Damase-de-L'Islet,L'Islet,12
+Saint-Jean-Port-Joli,L'Islet,12
+Saint-Marcel,L'Islet,12
+Saint-Omer,L'Islet,12
+Saint-Pamphile,L'Islet,12
+Saint-Roch-des-Aulnaies,L'Islet,12
+Sainte-Félicité,L'Islet,12
+Sainte-Louise,L'Islet,12
+Sainte-Perpétue,L'Islet,12
+Tourville,L'Islet,12
+Frampton,La Nouvelle-Beauce,12
+Saint-Bernard,La Nouvelle-Beauce,12
+Saint-Elzéar,La Nouvelle-Beauce,12
+Saint-Isidore,La Nouvelle-Beauce,12
+Saint-Lambert-de-Lauzon,La Nouvelle-Beauce,12
+Sainte-Hénédine,La Nouvelle-Beauce,12
+Sainte-Marguerite,La Nouvelle-Beauce,12
+Sainte-Marie,La Nouvelle-Beauce,12
+Saints-Anges,La Nouvelle-Beauce,12
+Scott,La Nouvelle-Beauce,12
+Vallée-Jonction,La Nouvelle-Beauce,12
+Adstock,Les Appalaches,12
+Beaulac-Garthby,Les Appalaches,12
+Disraeli (P),Les Appalaches,12
+Disraeli (V),Les Appalaches,12
+East Broughton,Les Appalaches,12
+Irlande,Les Appalaches,12
+Kinnear's Mills,Les Appalaches,12
+Sacré-Coeur-de-Jésus,Les Appalaches,12
+Saint-Adrien-d'Irlande,Les Appalaches,12
+Saint-Fortunat,Les Appalaches,12
+Saint-Jacques-de-Leeds,Les Appalaches,12
+Saint-Jacques-le-Majeur-de-Wolfestown,Les Appalaches,12
+Saint-Jean-de-Brébeuf,Les Appalaches,12
+Saint-Joseph-de-Coleraine,Les Appalaches,12
+Saint-Julien,Les Appalaches,12
+Saint-Pierre-de-Broughton,Les Appalaches,12
+Sainte-Clotilde-de-Beauce,Les Appalaches,12
+Sainte-Praxède,Les Appalaches,12
+Thetford Mines,Les Appalaches,12
+Lac-Etchemin,Les Etchemins,12
+Saint-Benjamin,Les Etchemins,12
+Saint-Camille-de-Lellis,Les Etchemins,12
+Saint-Cyprien,Les Etchemins,12
+Saint-Louis-de-Gonzague,Les Etchemins,12
+Saint-Luc-de-Bellechasse,Les Etchemins,12
+Saint-Magloire,Les Etchemins,12
+Saint-Prosper,Les Etchemins,12
+Saint-Zacharie,Les Etchemins,12
+Sainte-Aurélie,Les Etchemins,12
+Sainte-Justine,Les Etchemins,12
+Sainte-Rose-de-Watford,Les Etchemins,12
+Sainte-Sabine,Les Etchemins,12
+Lévis,Lévis,12
+Dosquet,Lotbinière,12
+Laurier-Station,Lotbinière,12
+Leclercville,Lotbinière,12
+Lotbinière,Lotbinière,12
+Notre-Dame-du-Sacré-Coeur-d'Issoudun,Lotbinière,12
+Saint-Agapit,Lotbinière,12
+Saint-Antoine-de-Tilly,Lotbinière,12
+Saint-Apollinaire,Lotbinière,12
+Saint-Édouard-de-Lotbinière,Lotbinière,12
+Saint-Flavien,Lotbinière,12
+Saint-Gilles,Lotbinière,12
+Saint-Janvier-de-Joly,Lotbinière,12
+Saint-Narcisse-de-Beaurivage,Lotbinière,12
+Saint-Patrice-de-Beaurivage,Lotbinière,12
+Saint-Sylvestre,Lotbinière,12
+Sainte-Agathe-de-Lotbinière,Lotbinière,12
+Sainte-Croix,Lotbinière,12
+Val-Alain,Lotbinière,12
+Berthier-sur-Mer,Montmagny,12
+Cap-Saint-Ignace,Montmagny,12
+Lac-Frontière,Montmagny,12
+Montmagny,Montmagny,12
+Notre-Dame-du-Rosaire,Montmagny,12
+Saint-Antoine-de-l'Isle-aux-Grues,Montmagny,12
+Saint-Fabien-de-Panet,Montmagny,12
+Saint-François-de-la-Rivière-du-Sud,Montmagny,12
+Saint-Just-de-Bretenières,Montmagny,12
+Saint-Paul-de-Montminy,Montmagny,12
+Saint-Pierre-de-la-Rivière-du-Sud,Montmagny,12
+Sainte-Apolline-de-Patton,Montmagny,12
+Sainte-Euphémie-sur-Rivière-du-Sud,Montmagny,12
+Sainte-Lucie-de-Beauregard,Montmagny,12
+Laval,Laval,13
+Berthierville,D'Autray,14
+La Visitation-de-l'Île-Dupas,D'Autray,14
+Lanoraie,D'Autray,14
+Lavaltrie,D'Autray,14
+Mandeville,D'Autray,14
+Saint-Barthélemy,D'Autray,14
+Saint-Cléophas-de-Brandon,D'Autray,14
+Saint-Cuthbert,D'Autray,14
+Saint-Didace,D'Autray,14
+Saint-Gabriel,D'Autray,14
+Saint-Gabriel-de-Brandon,D'Autray,14
+Saint-Ignace-de-Loyola,D'Autray,14
+Saint-Norbert,D'Autray,14
+Sainte-Élisabeth,D'Autray,14
+Sainte-Geneviève-de-Berthier,D'Autray,14
+Crabtree,Joliette,14
+Joliette,Joliette,14
+Notre-Dame-de-Lourdes,Joliette,14
+Notre-Dame-des-Prairies,Joliette,14
+Saint-Ambroise-de-Kildare,Joliette,14
+Saint-Charles-Borromée,Joliette,14
+Saint-Paul,Joliette,14
+Saint-Pierre,Joliette,14
+Saint-Thomas,Joliette,14
+Sainte-Mélanie,Joliette,14
+Charlemagne,L'Assomption,14
+L'Assomption,L'Assomption,14
+L'Épiphanie,L'Assomption,14
+Repentigny,L'Assomption,14
+Saint-Sulpice,L'Assomption,14
+Mascouche,Les Moulins,14
+Terrebonne,Les Moulins,14
+Chertsey,Matawinie,14
+Entrelacs,Matawinie,14
+Notre-Dame-de-la-Merci,Matawinie,14
+Rawdon,Matawinie,14
+Saint-Alphonse-Rodriguez,Matawinie,14
+Saint-Côme,Matawinie,14
+Saint-Damien,Matawinie,14
+Saint-Donat,Matawinie,14
+Saint-Félix-de-Valois,Matawinie,14
+Saint-Jean-de-Matha,Matawinie,14
+Saint-Michel-des-Saints,Matawinie,14
+Saint-Zénon,Matawinie,14
+Sainte-Béatrix,Matawinie,14
+Sainte-Émélie-de-l'Énergie,Matawinie,14
+Sainte-Marcelline-de-Kildare,Matawinie,14
+Saint-Alexis,Montcalm,14
+Saint-Calixte,Montcalm,14
+Saint-Esprit,Montcalm,14
+Saint-Jacques,Montcalm,14
+Saint-Liguori,Montcalm,14
+Saint-Lin-Laurentides,Montcalm,14
+Saint-Roch-de-l'Achigan,Montcalm,14
+Saint-Roch-Ouest,Montcalm,14
+Sainte-Julienne,Montcalm,14
+Sainte-Marie-Salomé,Montcalm,14
 Baie-des-Chaloupes,Antoine-Labelle,15
-Barkmere,Les Laurentides,15
-Brownsburg-Chatham,Argenteuil,15
-Brébeuf,Les Laurentides,15
 Chute-Saint-Philippe,Antoine-Labelle,15
-Doncaster,Les Laurentides,15
-Estérel,Les Pays-d'en-Haut,15
 Ferme-Neuve,Antoine-Labelle,15
-Gore,Argenteuil,15
-Grenville,Argenteuil,15
-Grenville-sur-la-Rouge,Argenteuil,15
-Harrington,Argenteuil,15
-Huberdeau,Les Laurentides,15
-Ivry-sur-le-Lac,Les Laurentides,15
 Kiamika,Antoine-Labelle,15
 L'Ascension,Antoine-Labelle,15
-La Conception,Les Laurentides,15
 La Macaza,Antoine-Labelle,15
-La Minerve,Les Laurentides,15
-Labelle,Les Laurentides,15
 Lac-Akonapwehikan,Antoine-Labelle,15
 Lac-Bazinet,Antoine-Labelle,15
 Lac-De La Bidière,Antoine-Labelle,15
+Lac-de-la-Maison-de-Pierre,Antoine-Labelle,15
+Lac-de-la-Pomme,Antoine-Labelle,15
+Lac-des-Écorces,Antoine-Labelle,15
 Lac-Douaire,Antoine-Labelle,15
+Lac-du-Cerf,Antoine-Labelle,15
 Lac-Ernest,Antoine-Labelle,15
 Lac-Marguerite,Antoine-Labelle,15
 Lac-Oscar,Antoine-Labelle,15
 Lac-Saguay,Antoine-Labelle,15
 Lac-Saint-Paul,Antoine-Labelle,15
-Lac-Supérieur,Les Laurentides,15
-Lac-Tremblant-Nord,Les Laurentides,15
 Lac-Wagwabika,Antoine-Labelle,15
-Lac-de-la-Maison-de-Pierre,Antoine-Labelle,15
-Lac-de-la-Pomme,Antoine-Labelle,15
-Lac-des-Seize-Îles,Les Pays-d'en-Haut,15
-Lac-des-Écorces,Antoine-Labelle,15
-Lac-du-Cerf,Antoine-Labelle,15
-Lachute,Argenteuil,15
-Lantier,Les Laurentides,15
-Mille-Isles,Argenteuil,15
-Mont-Blanc,Les Laurentides,15
 Mont-Laurier,Antoine-Labelle,15
 Mont-Saint-Michel,Antoine-Labelle,15
-Mont-Tremblant,Les Laurentides,15
-Montcalm,Les Laurentides,15
 Nominingue,Antoine-Labelle,15
 Notre-Dame-de-Pontmain,Antoine-Labelle,15
 Notre-Dame-du-Laus,Antoine-Labelle,15
-Piedmont,Les Pays-d'en-Haut,15
-Prévost,La Rivière-du-Nord,15
 Rivière-Rouge,Antoine-Labelle,15
-Saint-Adolphe-d'Howard,Les Pays-d'en-Haut,15
 Saint-Aimé-du-Lac-des-Îles,Antoine-Labelle,15
+Sainte-Anne-du-Lac,Antoine-Labelle,15
+Brownsburg-Chatham,Argenteuil,15
+Gore,Argenteuil,15
+Grenville,Argenteuil,15
+Grenville-sur-la-Rouge,Argenteuil,15
+Harrington,Argenteuil,15
+Lachute,Argenteuil,15
+Mille-Isles,Argenteuil,15
 Saint-André-d'Argenteuil,Argenteuil,15
+Wentworth,Argenteuil,15
+Deux-Montagnes,Deux-Montagnes,15
+Oka,Deux-Montagnes,15
+Pointe-Calumet,Deux-Montagnes,15
+Saint-Eustache,Deux-Montagnes,15
+Saint-Joseph-du-Lac,Deux-Montagnes,15
+Saint-Placide,Deux-Montagnes,15
+Sainte-Marthe-sur-le-Lac,Deux-Montagnes,15
+Prévost,La Rivière-du-Nord,15
 Saint-Colomban,La Rivière-du-Nord,15
-Saint-Faustin-Lac-Carré,Les Laurentides,15
 Saint-Hippolyte,La Rivière-du-Nord,15
 Saint-Jérôme,La Rivière-du-Nord,15
+Sainte-Sophie,La Rivière-du-Nord,15
+Amherst,Les Laurentides,15
+Arundel,Les Laurentides,15
+Barkmere,Les Laurentides,15
+Brébeuf,Les Laurentides,15
+Doncaster,Les Laurentides,15
+Huberdeau,Les Laurentides,15
+Ivry-sur-le-Lac,Les Laurentides,15
+La Conception,Les Laurentides,15
+La Minerve,Les Laurentides,15
+Labelle,Les Laurentides,15
+Lac-Supérieur,Les Laurentides,15
+Lac-Tremblant-Nord,Les Laurentides,15
+Lantier,Les Laurentides,15
+Mont-Blanc,Les Laurentides,15
+Mont-Tremblant,Les Laurentides,15
+Montcalm,Les Laurentides,15
+Saint-Faustin-Lac-Carré,Les Laurentides,15
+Sainte-Agathe-des-Monts,Les Laurentides,15
+Sainte-Lucie-des-Laurentides,Les Laurentides,15
+Val-David,Les Laurentides,15
+Val-des-Lacs,Les Laurentides,15
+Val-Morin,Les Laurentides,15
+Estérel,Les Pays-d'en-Haut,15
+Lac-des-Seize-Îles,Les Pays-d'en-Haut,15
+Morin-Heights,Les Pays-d'en-Haut,15
+Piedmont,Les Pays-d'en-Haut,15
+Saint-Adolphe-d'Howard,Les Pays-d'en-Haut,15
 Saint-Sauveur,Les Pays-d'en-Haut,15
 Sainte-Adèle,Les Pays-d'en-Haut,15
-Sainte-Agathe-des-Monts,Les Laurentides,15
 Sainte-Anne-des-Lacs,Les Pays-d'en-Haut,15
-Sainte-Anne-du-Lac,Antoine-Labelle,15
-Sainte-Lucie-des-Laurentides,Les Laurentides,15
 Sainte-Marguerite-du-Lac-Masson,Les Pays-d'en-Haut,15
-Sainte-Sophie,La Rivière-du-Nord,15
-Val-David,Les Laurentides,15
-Val-Morin,Les Laurentides,15
-Val-des-Lacs,Les Laurentides,15
-Wentworth,Argenteuil,15
 Wentworth-Nord,Les Pays-d'en-Haut,15
+Mirabel,Mirabel,15
+Blainville,Thérèse-De Blainville,15
+Bois-des-Filion,Thérèse-De Blainville,15
+Boisbriand,Thérèse-De Blainville,15
+Lorraine,Thérèse-De Blainville,15
+Rosemère,Thérèse-De Blainville,15
+Sainte-Anne-des-Plaines,Thérèse-De Blainville,15
+Sainte-Thérèse,Thérèse-De Blainville,15
 Acton Vale,Acton,16
+Béthanie,Acton,16
+Roxton,Acton,16
+Roxton Falls,Acton,16
+Saint-Nazaire-d'Acton,Acton,16
+Saint-Théodore-d'Acton,Acton,16
+Sainte-Christine,Acton,16
+Upton,Acton,16
+Beauharnois,Beauharnois-Salaberry,16
+Saint-Étienne-de-Beauharnois,Beauharnois-Salaberry,16
+Saint-Louis-de-Gonzague,Beauharnois-Salaberry,16
+Saint-Stanislas-de-Kostka,Beauharnois-Salaberry,16
+Saint-Urbain-Premier,Beauharnois-Salaberry,16
+Sainte-Martine,Beauharnois-Salaberry,16
+Salaberry-de-Valleyfield,Beauharnois-Salaberry,16
+Beloeil,La Vallée-du-Richelieu,16
+Carignan,La Vallée-du-Richelieu,16
+Chambly,La Vallée-du-Richelieu,16
+McMasterville,La Vallée-du-Richelieu,16
+Mont-Saint-Hilaire,La Vallée-du-Richelieu,16
+Otterburn Park,La Vallée-du-Richelieu,16
+Saint-Antoine-sur-Richelieu,La Vallée-du-Richelieu,16
+Saint-Basile-le-Grand,La Vallée-du-Richelieu,16
+Saint-Charles-sur-Richelieu,La Vallée-du-Richelieu,16
+Saint-Denis-sur-Richelieu,La Vallée-du-Richelieu,16
+Saint-Jean-Baptiste,La Vallée-du-Richelieu,16
+Saint-Marc-sur-Richelieu,La Vallée-du-Richelieu,16
+Saint-Mathieu-de-Beloeil,La Vallée-du-Richelieu,16
+Clarenceville,Le Haut-Richelieu,16
+Henryville,Le Haut-Richelieu,16
+Lacolle,Le Haut-Richelieu,16
+Mont-Saint-Grégoire,Le Haut-Richelieu,16
+Noyan,Le Haut-Richelieu,16
+Saint-Alexandre,Le Haut-Richelieu,16
+Saint-Blaise-sur-Richelieu,Le Haut-Richelieu,16
+Saint-Georges-de-Clarenceville,Le Haut-Richelieu,16
+Saint-Jean-sur-Richelieu,Le Haut-Richelieu,16
+Saint-Paul-de-l'Île-aux-Noix,Le Haut-Richelieu,16
+Saint-Sébastien,Le Haut-Richelieu,16
+Saint-Valentin,Le Haut-Richelieu,16
+Sainte-Anne-de-Sabrevois,Le Haut-Richelieu,16
+Sainte-Brigide-d'Iberville,Le Haut-Richelieu,16
+Venise-en-Québec,Le Haut-Richelieu,16
 Akwesasne,Le Haut-Saint-Laurent,16
 Akwesasne (partie),Le Haut-Saint-Laurent,16
-Ange-Gardien,Rouville,16
-Beauharnois,Beauharnois-Salaberry,16
-Béthanie,Acton,16
-Clarenceville,Le Haut-Richelieu,16
 Dundee,Le Haut-Saint-Laurent,16
 Elgin,Le Haut-Saint-Laurent,16
 Franklin,Le Haut-Saint-Laurent,16
 Godmanchester,Le Haut-Saint-Laurent,16
 Havelock,Le Haut-Saint-Laurent,16
-Hemmingford,Les Jardins-de-Napierville,16
-Henryville,Le Haut-Richelieu,16
 Hinchinbrooke,Le Haut-Saint-Laurent,16
 Howick,Le Haut-Saint-Laurent,16
 Huntingdon,Le Haut-Saint-Laurent,16
-La Présentation,Les Maskoutains,16
-Lacolle,Le Haut-Richelieu,16
-Marieville,Rouville,16
-Massueville,Pierre-De Saurel,16
-Mont-Saint-Grégoire,Le Haut-Richelieu,16
-Morin-Heights,Les Pays-d'en-Haut,16
-Napierville,Les Jardins-de-Napierville,16
-Noyan,Le Haut-Richelieu,16
 Ormstown,Le Haut-Saint-Laurent,16
-Richelieu,Rouville,16
-Rougemont,Rouville,16
-Roxton,Acton,16
-Roxton Falls,Acton,16
-Saint-Aimé,Pierre-De Saurel,16
-Saint-Alexandre,Le Haut-Richelieu,16
 Saint-Anicet,Le Haut-Saint-Laurent,16
-Saint-Barnabé-Sud,Les Maskoutains,16
-Saint-Bernard-de-Lacolle,Les Jardins-de-Napierville,16
-Saint-Bernard-de-Michaudville,Les Maskoutains,16
-Saint-Blaise-sur-Richelieu,Le Haut-Richelieu,16
 Saint-Chrysostome,Le Haut-Saint-Laurent,16
+Sainte-Barbe,Le Haut-Saint-Laurent,16
+Très-Saint-Sacrement,Le Haut-Saint-Laurent,16
+Hemmingford (CT),Les Jardins-de-Napierville,16
+Hemmingford (VL),Les Jardins-de-Napierville,16
+Napierville,Les Jardins-de-Napierville,16
+Saint-Bernard-de-Lacolle,Les Jardins-de-Napierville,16
 Saint-Cyprien-de-Napierville,Les Jardins-de-Napierville,16
-Saint-Césaire,Rouville,16
+Saint-Édouard,Les Jardins-de-Napierville,16
+Saint-Jacques-le-Mineur,Les Jardins-de-Napierville,16
+Saint-Michel,Les Jardins-de-Napierville,16
+Saint-Patrice-de-Sherrington,Les Jardins-de-Napierville,16
+Saint-Rémi,Les Jardins-de-Napierville,16
+Sainte-Clotilde,Les Jardins-de-Napierville,16
+La Présentation,Les Maskoutains,16
+Saint-Barnabé-Sud,Les Maskoutains,16
+Saint-Bernard-de-Michaudville,Les Maskoutains,16
 Saint-Damase,Les Maskoutains,16
-Saint-David,Pierre-De Saurel,16
 Saint-Dominique,Les Maskoutains,16
-Saint-Georges-de-Clarenceville,Le Haut-Richelieu,16
-Saint-Gérard-Majella,Pierre-De Saurel,16
 Saint-Hugues,Les Maskoutains,16
 Saint-Hyacinthe,Les Maskoutains,16
-Saint-Jacques-le-Mineur,Les Jardins-de-Napierville,16
-Saint-Jean-sur-Richelieu,Le Haut-Richelieu,16
-Saint-Joseph-de-Sorel,Pierre-De Saurel,16
 Saint-Jude,Les Maskoutains,16
 Saint-Liboire,Les Maskoutains,16
 Saint-Louis,Les Maskoutains,16
-Saint-Louis-de-Gonzague,Beauharnois-Salaberry,16
 Saint-Marcel-de-Richelieu,Les Maskoutains,16
-Saint-Mathias-sur-Richelieu,Rouville,16
-Saint-Michel,Les Jardins-de-Napierville,16
-Saint-Nazaire-d'Acton,Acton,16
-Saint-Ours,Pierre-De Saurel,16
-Saint-Patrice-de-Sherrington,Les Jardins-de-Napierville,16
-Saint-Paul-d'Abbotsford,Rouville,16
-Saint-Paul-de-l'Île-aux-Noix,Le Haut-Richelieu,16
 Saint-Pie,Les Maskoutains,16
-Saint-Robert,Pierre-De Saurel,16
-Saint-Roch-de-Richelieu,Pierre-De Saurel,16
-Saint-Rémi,Les Jardins-de-Napierville,16
 Saint-Simon,Les Maskoutains,16
-Saint-Stanislas-de-Kostka,Beauharnois-Salaberry,16
-Saint-Sébastien,Le Haut-Richelieu,16
-Saint-Théodore-d'Acton,Acton,16
-Saint-Urbain-Premier,Beauharnois-Salaberry,16
-Saint-Valentin,Le Haut-Richelieu,16
 Saint-Valérien-de-Milton,Les Maskoutains,16
-Saint-Édouard,Les Jardins-de-Napierville,16
-Saint-Étienne-de-Beauharnois,Beauharnois-Salaberry,16
-Sainte-Angèle-de-Monnoir,Rouville,16
-Sainte-Anne-de-Sabrevois,Le Haut-Richelieu,16
-Sainte-Anne-de-Sorel,Pierre-De Saurel,16
-Sainte-Barbe,Le Haut-Saint-Laurent,16
-Sainte-Brigide-d'Iberville,Le Haut-Richelieu,16
-Sainte-Christine,Acton,16
-Sainte-Clotilde,Les Jardins-de-Napierville,16
 Sainte-Hélène-de-Bagot,Les Maskoutains,16
 Sainte-Madeleine,Les Maskoutains,16
 Sainte-Marie-Madeleine,Les Maskoutains,16
-Sainte-Martine,Beauharnois-Salaberry,16
+Boucherville,Longueuil,16
+Brossard,Longueuil,16
+Longueuil,Longueuil,16
+Saint-Bruno-de-Montarville,Longueuil,16
+Saint-Lambert,Longueuil,16
+Calixa-Lavallée,Marguerite-D'Youville,16
+Contrecoeur,Marguerite-D'Youville,16
+Saint-Amable,Marguerite-D'Youville,16
+Sainte-Julie,Marguerite-D'Youville,16
+Varennes,Marguerite-D'Youville,16
+Verchères,Marguerite-D'Youville,16
+Massueville,Pierre-De Saurel,16
+Saint-Aimé,Pierre-De Saurel,16
+Saint-David,Pierre-De Saurel,16
+Saint-Gérard-Majella,Pierre-De Saurel,16
+Saint-Joseph-de-Sorel,Pierre-De Saurel,16
+Saint-Ours,Pierre-De Saurel,16
+Saint-Robert,Pierre-De Saurel,16
+Saint-Roch-de-Richelieu,Pierre-De Saurel,16
+Sainte-Anne-de-Sorel,Pierre-De Saurel,16
 Sainte-Victoire-de-Sorel,Pierre-De Saurel,16
-Salaberry-de-Valleyfield,Beauharnois-Salaberry,16
 Sorel-Tracy,Pierre-De Saurel,16
-Très-Saint-Sacrement,Le Haut-Saint-Laurent,16
-Upton,Acton,16
-Venise-en-Québec,Le Haut-Richelieu,16
 Yamaska,Pierre-De Saurel,16
+Candiac,Roussillon,16
+Châteauguay,Roussillon,16
+Delson,Roussillon,16
+La Prairie,Roussillon,16
+Léry,Roussillon,16
+Mercier,Roussillon,16
+Saint-Constant,Roussillon,16
+Saint-Isidore,Roussillon,16
+Saint-Mathieu,Roussillon,16
+Saint-Philippe,Roussillon,16
+Sainte-Catherine,Roussillon,16
+Ange-Gardien,Rouville,16
+Marieville,Rouville,16
+Richelieu,Rouville,16
+Rougemont,Rouville,16
+Saint-Césaire,Rouville,16
+Saint-Mathias-sur-Richelieu,Rouville,16
+Saint-Paul-d'Abbotsford,Rouville,16
+Sainte-Angèle-de-Monnoir,Rouville,16
+Coteau-du-Lac,Vaudreuil-Soulanges,16
+Hudson,Vaudreuil-Soulanges,16
+L'Île-Cadieux,Vaudreuil-Soulanges,16
+L'Île-Perrot,Vaudreuil-Soulanges,16
+Les Cèdres,Vaudreuil-Soulanges,16
+Les Coteaux,Vaudreuil-Soulanges,16
+Notre-Dame-de-l'Île-Perrot,Vaudreuil-Soulanges,16
+Pincourt,Vaudreuil-Soulanges,16
+Pointe-des-Cascades,Vaudreuil-Soulanges,16
+Pointe-Fortune,Vaudreuil-Soulanges,16
+Rigaud,Vaudreuil-Soulanges,16
+Rivière-Beaudette,Vaudreuil-Soulanges,16
+Saint-Clet,Vaudreuil-Soulanges,16
+Saint-Lazare,Vaudreuil-Soulanges,16
+Saint-Polycarpe,Vaudreuil-Soulanges,16
+Saint-Télesphore,Vaudreuil-Soulanges,16
+Saint-Zotique,Vaudreuil-Soulanges,16
+Sainte-Justine-de-Newton,Vaudreuil-Soulanges,16
+Sainte-Marthe,Vaudreuil-Soulanges,16
+Terrasse-Vaudreuil,Vaudreuil-Soulanges,16
+Très-Saint-Rédempteur,Vaudreuil-Soulanges,16
+Vaudreuil-Dorion,Vaudreuil-Soulanges,16
+Vaudreuil-sur-le-Lac,Vaudreuil-Soulanges,16
+Chesterville,Arthabaska,17
+Daveluyville,Arthabaska,17
+Ham-Nord,Arthabaska,17
+Kingsey Falls,Arthabaska,17
+Maddington Falls,Arthabaska,17
+Notre-Dame-de-Ham,Arthabaska,17
+Saint-Albert,Arthabaska,17
+Saint-Christophe-d'Arthabaska,Arthabaska,17
+Saint-Louis-de-Blandford,Arthabaska,17
+Saint-Norbert-d'Arthabaska,Arthabaska,17
+Saint-Rémi-de-Tingwick,Arthabaska,17
+Saint-Rosaire,Arthabaska,17
+Saint-Samuel,Arthabaska,17
+Saint-Valère,Arthabaska,17
+Sainte-Clotilde-de-Horton,Arthabaska,17
+Sainte-Élizabeth-de-Warwick,Arthabaska,17
+Sainte-Hélène-de-Chester,Arthabaska,17
+Sainte-Séraphine,Arthabaska,17
+Saints-Martyrs-Canadiens,Arthabaska,17
+Tingwick,Arthabaska,17
+Victoriaville,Arthabaska,17
+Warwick,Arthabaska,17
+Bécancour,Bécancour,17
+Deschaillons-sur-Saint-Laurent,Bécancour,17
+Fortierville,Bécancour,17
+Lemieux,Bécancour,17
+Manseau,Bécancour,17
+Parisville,Bécancour,17
+Saint-Pierre-les-Becquets,Bécancour,17
+Saint-Sylvère,Bécancour,17
+Sainte-Cécile-de-Lévrard,Bécancour,17
+Sainte-Françoise,Bécancour,17
+Sainte-Marie-de-Blandford,Bécancour,17
+Sainte-Sophie-de-Lévrard,Bécancour,17
+Drummondville,Drummond,17
+Durham-Sud,Drummond,17
+L'Avenir,Drummond,17
+Lefebvre,Drummond,17
+Notre-Dame-du-Bon-Conseil (P),Drummond,17
+Notre-Dame-du-Bon-Conseil (VL),Drummond,17
+Saint-Bonaventure,Drummond,17
+Saint-Cyrille-de-Wendover,Drummond,17
+Saint-Edmond-de-Grantham,Drummond,17
+Saint-Eugène,Drummond,17
+Saint-Félix-de-Kingsey,Drummond,17
+Saint-Germain-de-Grantham,Drummond,17
+Saint-Guillaume,Drummond,17
+Saint-Lucien,Drummond,17
+Saint-Majorique-de-Grantham,Drummond,17
+Saint-Pie-de-Guire,Drummond,17
+Sainte-Brigitte-des-Saults,Drummond,17
+Wickham,Drummond,17
+Inverness,L'Érable,17
+Laurierville,L'Érable,17
+Lyster,L'Érable,17
+Notre-Dame-de-Lourdes,L'Érable,17
+Plessisville (P),L'Érable,17
+Plessisville (V),L'Érable,17
+Princeville,L'Érable,17
+Saint-Ferdinand,L'Érable,17
+Saint-Pierre-Baptiste,L'Érable,17
+Sainte-Sophie-d'Halifax,L'Érable,17
+Villeroy,L'Érable,17
+Aston-Jonction,Nicolet-Yamaska,17
+Baie-du-Febvre,Nicolet-Yamaska,17
+Grand-Saint-Esprit,Nicolet-Yamaska,17
+La Visitation-de-Yamaska,Nicolet-Yamaska,17
+Nicolet,Nicolet-Yamaska,17
+Pierreville,Nicolet-Yamaska,17
+Saint-Célestin (M),Nicolet-Yamaska,17
+Saint-Célestin (VL),Nicolet-Yamaska,17
+Saint-Elphège,Nicolet-Yamaska,17
+Saint-François-du-Lac,Nicolet-Yamaska,17
+Saint-Léonard-d'Aston,Nicolet-Yamaska,17
+Saint-Wenceslas,Nicolet-Yamaska,17
+Saint-Zéphirin-de-Courval,Nicolet-Yamaska,17
+Sainte-Eulalie,Nicolet-Yamaska,17
+Sainte-Monique,Nicolet-Yamaska,17
+Sainte-Perpétue,Nicolet-Yamaska,17

@@ -9,7 +9,8 @@ Sources selon l'année :
     sum(rl0302a) = empreinte réelle, sum(rl0311a) = total logements.
 """
 import requests, xml.etree.ElementTree as ET, pandas as pd
-import io, time, csv, json, os, zipfile, re, struct
+import io, time, csv, json, os, zipfile, re, struct, shutil
+from collections import Counter
 import numpy as np
 from datetime import date
 from pathlib import Path
@@ -34,6 +35,22 @@ MATCH_PATH  = "MATCH.csv"
 PF_MUN_PATH = "pf-mun-2023-2023.csv"
 DATA_DIR    = Path("web/data")
 DATA_DIR.mkdir(exist_ok=True)
+# Détail municipal, éclaté par région administrative (voir save_json_mun).
+MUN_DIR     = DATA_DIR/"mun"
+MODES       = ["mamh_strict","mamh_optional","mamh_plus_others"]
+# Un territoire équivalent à une MRC est écrit « Hors MRC - X » au profil financier ;
+# trois d'entre eux portent un autre nom chez l'ISQ (population, ménages, projections).
+# MATCH.csv est construit avec les mêmes règles : les deux doivent rester alignés,
+# sans quoi les MRC du rôle ne rejoignent plus celles des données de population.
+MRC_ALIASES = {
+    "Des Chenaux": "Les Chenaux",
+    "Les Îles de la Madeleine": "Communauté maritime des Îles-de-la-Madeleine",
+    "Nord du Québec": "Jamésie",
+}
+def normalize_mrc(nom):
+    nom=nom.strip()
+    if nom.startswith("Hors MRC - "): nom=nom[len("Hors MRC - "):].strip()
+    return MRC_ALIASES.get(nom,nom)
 TYPE_COLS = [
     "Maisons individuelles détachées",
     "Maisons jumelées ou en rangée",
@@ -43,7 +60,7 @@ TYPE_COLS = [
     "Maison mobile et roulotte",
     "Autres immeubles résidentiels",
 ]
-# Type écarté de l'onglet Superficie (voir export_indicator_set) et libellé du total qui en découle.
+# Type écarté de l'onglet Superficie (voir indicator_frames) et libellé du total qui en découle.
 SUP_TYPE_EXCLU = "Autres immeubles résidentiels"
 SUP_TOTAL_LABEL = "Total des types de construction présentés"
 def load_match():
@@ -54,29 +71,71 @@ def load_match():
     print(f"MATCH: {len(df)} municipalités, {df['CDNAME'].nunique()} MRC")
     return df
 def load_pf_mun(our_mrcs):
+    """Codes géographiques → (municipalité, MRC), plus le nom des régions administratives.
+
+    Le code géographique, et non le nom, identifie une municipalité : à l'échelle du
+    Québec trente-deux noms sont portés par deux municipalités de MRC différentes, et
+    dix le sont deux fois dans une même MRC (Bedford V et Bedford CT, Hatley M et
+    Hatley CT…). Ces dix paires reçoivent le suffixe de désignation employé par le
+    MAMH et l'ISQ, faute de quoi leurs données fusionneraient dans les tableaux.
+    """
     p=Path(PF_MUN_PATH)
-    if not p.exists(): print(f"  ⚠  {PF_MUN_PATH} introuvable"); return {}
-    lookup={}
+    if not p.exists(): print(f"  ⚠  {PF_MUN_PATH} introuvable"); return {},{}
+    raw=[]; regions={}
     with open(p,encoding="utf-8-sig",newline="") as f:
         for row in csv.DictReader(f):
             code=row["cod_geo_n"].strip()
             if not (code.isdigit() and len(code)==5): continue
-            nom_mun=row["nom_mun"].strip(); nom_mrc=row["nom_mrc"].strip()
-            if "Hors MRC - Gatineau" in nom_mrc: nom_mrc="Gatineau"
-            if nom_mun=="Clarenceville" and "Haut-Richelieu" in nom_mrc:
+            nom_mun=row["nom_mun"].strip(); nom_mrc=normalize_mrc(row["nom_mrc"])
+            if nom_mun=="Clarenceville" and nom_mrc=="Le Haut-Richelieu":
                 nom_mun="Saint-Georges-de-Clarenceville"
-            if nom_mrc in our_mrcs: lookup[code]=(nom_mun,nom_mrc)
-    print(f"pf-mun : {len(lookup)} codes pour nos {len(our_mrcs)} MRC")
-    return lookup
-def parse_xml(content,annee,nom_mun,cdname,region):
+            cod_ra=row["cod_ra"].strip()
+            if cod_ra.isdigit(): regions[int(cod_ra)]=row["nom_ra"].strip()
+            raw.append((code,nom_mun,nom_mrc,row["designation"].strip()))
+    homonymes={k for k,n in Counter((m,mrc) for _,m,mrc,_ in raw).items() if n>1}
+    lookup={}
+    for code,nom_mun,nom_mrc,designation in raw:
+        if (nom_mun,nom_mrc) in homonymes: nom_mun=f"{nom_mun} ({designation})"
+        if nom_mrc in our_mrcs: lookup[code]=(nom_mun,nom_mrc)
+    print(f"pf-mun : {len(lookup)} codes pour nos {len(our_mrcs)} MRC, {len(regions)} régions")
+    return lookup,regions
+RAW_NUM_COLS=["rl0302a","rl0307a","rl0308a","rl0309a","rl0311a","rl0402a","rl0403a","rl0404a"]
+RAW_COLS=["CSDNAME","CDNAME","rl0105a"]+RAW_NUM_COLS
+def compact_frame(records,annee):
+    """Lot d'unités d'évaluation converti tout de suite, au lieu d'être accumulé en texte.
+
+    Le pipeline couvre les 1 100 municipalités du Québec : une année du rôle
+    provincial approche les quatre millions d'unités d'évaluation. Gardées en
+    chaînes de caractères — une par champ et par unité — ces colonnes épuisent la
+    mémoire d'un runner GitHub Actions ; converties, elles tiennent dans quelques
+    centaines de Mo.
+
+    Les mesures restent en flottants 64 bits : les moyennes exportées (âge moyen,
+    valeurs foncières) portent sur des milliers d'unités, et la précision d'un
+    float32 s'y perdrait à la première décimale.
+
+    Le code d'utilisation des biens-fonds devient une catégorie : il ne sert jamais
+    de clé de regroupement, et le stocker une fois pour toutes évite des millions de
+    chaînes distinctes. CSDNAME et CDNAME, eux, restent en texte — ce sont des objets
+    partagés (un par municipalité, un par MRC), donc déjà peu coûteux, alors qu'une
+    clé de regroupement catégorielle ferait produire à pandas le produit cartésien
+    de toutes les catégories à chaque agrégation.
+    """
+    df=pd.DataFrame(records,columns=RAW_COLS)
+    df["Annee"]=np.int32(annee)
+    for c in RAW_NUM_COLS:
+        df[c]=pd.to_numeric(df[c],errors="coerce")
+    # Nettoyé une fois pour toutes ici : prepare_cubf lit ensuite la colonne telle quelle.
+    df["rl0105a"]=df["rl0105a"].fillna("").astype(str).str.strip().astype("category")
+    return df
+def parse_xml(content,annee,nom_mun,cdname):
     root=ET.fromstring(content); records=[]
     for ue in root.findall("RLUEx"):
         def g(tag,_ue=ue):
             v=_ue.findtext(tag); return v.strip() if v else None
-        records.append({"Annee":annee,"CSDNAME":nom_mun,"CDNAME":cdname,"Region":region,
-            "rl0105a":g("RL0105A"),"rl0302a":g("RL0302A"),"rl0307a":g("RL0307A"),
-            "rl0308a":g("RL0308A"),"rl0309a":g("RL0309A"),"rl0311a":g("RL0311A"),
-            "rl0402a":g("RL0402A"),"rl0403a":g("RL0403A"),"rl0404a":g("RL0404A")})
+        records.append((nom_mun,cdname,g("RL0105A"),g("RL0302A"),g("RL0307A"),
+            g("RL0308A"),g("RL0309A"),g("RL0311A"),
+            g("RL0402A"),g("RL0403A"),g("RL0404A")))
     return records
 def fetch_index(annee):
     url=INDEX_URLS[annee]; headers={"User-Agent":"Mozilla/5.0"}
@@ -97,47 +156,54 @@ def fetch_index(annee):
     print(f"{len(rows)} muns")
     return [(row[col_code].strip() if col_code else "", row[col_nom].strip(), row[col_url].strip())
             for row in rows if row.get(col_nom) and row.get(col_url)]
-def build_role_df_api(match_df,pf_lookup,pause=0.1):
-    mun_to_mrc=match_df.set_index("_mun_key")[["CDNAME","Region"]].to_dict("index")
-    muns_voulus=set(mun_to_mrc.keys()); our_codes=set(pf_lookup.keys()); all_rows,errors=[],[]
-    for annee in [a for a in ANNEES if a>=2023 and a not in SHP_ZIPS]:
-        print(f"\n══ Année {annee} (API) ══")
-        index=fetch_index(annee)
-        if not index: continue
-        noms_trouves={nom for _,nom,_ in index if nom in muns_voulus}
-        print(f"  {len(noms_trouves)}/{len(muns_voulus)} muns trouvées")
-        for code,nom_mun,url_xml in index:
-            if nom_mun not in muns_voulus: continue
-            # If code is a 5-digit numeric code not in our scope, skip (different municipality, same name)
-            if re.match(r'^\d{5}$', code) and code not in our_codes: continue
-            meta=mun_to_mrc[nom_mun]
-            # Proactively fix wrong index URL: if filename doesn't match expected RL{code}_{annee}.xml, correct it
-            if re.match(r'^\d{5}$',code):
+def fetch_role_year_api(annee,match_df,pf_lookup,pause=0.1):
+    """Une année du rôle via l'API MAMH, renvoyée en lots déjà compactés.
+
+    L'index est parcouru par code géographique : c'est lui, et non le nom, qui
+    identifie une municipalité (voir load_pf_mun). Les organismes sans code au
+    profil financier — territoires non organisés, réserves — restent rattachés
+    par leur nom, tel que MATCH.csv le donne.
+    """
+    mun_to_mrc=match_df.drop_duplicates("_mun_key").set_index("_mun_key")["CDNAME"].to_dict()
+    index=fetch_index(annee)
+    if not index: return [],[]
+    frames,errors=[],[]; n_mun=0
+    for code,nom_mun,url_xml in index:
+        est_code=bool(re.match(r'^\d{5}$',code))
+        if est_code:
+            if code not in pf_lookup: continue
+            nom_ref,cdname=pf_lookup[code]
+        else:
+            if nom_mun not in mun_to_mrc: continue
+            nom_ref,cdname=nom_mun,mun_to_mrc[nom_mun]
+        # Correction préventive d'une URL d'index erronée : le fichier attendu est RL{code}_{annee}.xml
+        if est_code:
+            base_url=url_xml.rsplit('/',1)[0]
+            expected=f"RL{code}_{annee}.xml"
+            if url_xml.rsplit('/',1)[-1]!=expected:
+                print(f"  ⚠ URL index incorrecte ({url_xml.rsplit('/',1)[-1]}) → {expected}")
+                url_xml=f"{base_url}/{expected}"
+        print(f"  [{annee}] {nom_ref} ({url_xml.split('/')[-1]})…",end=" ",flush=True)
+        try:
+            r=requests.get(url_xml,timeout=60); r.raise_for_status()
+            rows=parse_xml(r.content,annee,nom_ref,cdname)
+            frames.append(compact_frame(rows,annee)); n_mun+=1; print(f"{len(rows):,} UE")
+        except Exception as e:
+            if est_code:
                 base_url=url_xml.rsplit('/',1)[0]
-                expected=f"RL{code}_{annee}.xml"
-                if url_xml.rsplit('/',1)[-1]!=expected:
-                    print(f"  ⚠ URL index incorrecte ({url_xml.rsplit('/',1)[-1]}) → {expected}")
-                    url_xml=f"{base_url}/{expected}"
-            print(f"  [{annee}] {nom_mun} ({url_xml.split('/')[-1]})…",end=" ",flush=True)
-            try:
-                r=requests.get(url_xml,timeout=60); r.raise_for_status()
-                rows=parse_xml(r.content,annee,nom_mun,meta["CDNAME"],meta["Region"])
-                all_rows.extend(rows); print(f"{len(rows):,} UE")
-            except Exception as e:
-                if re.match(r'^\d{5}$',code):
-                    base_url=url_xml.rsplit('/',1)[0]
-                    url_fallback=f"{base_url}/RL{code}_{annee}.xml"
-                    print(f"↻ fallback RL{code}…",end=" ",flush=True)
-                    try:
-                        r=requests.get(url_fallback,timeout=60); r.raise_for_status()
-                        rows=parse_xml(r.content,annee,nom_mun,meta["CDNAME"],meta["Region"])
-                        all_rows.extend(rows); print(f"{len(rows):,} UE")
-                    except Exception as e2:
-                        print(f"ERR: {e2}"); errors.append({"annee":annee,"mun":nom_mun,"erreur":str(e2)})
-                else:
-                    print(f"ERR: {e}"); errors.append({"annee":annee,"mun":nom_mun,"erreur":str(e)})
-            time.sleep(pause)
-    return all_rows,errors
+                url_fallback=f"{base_url}/RL{code}_{annee}.xml"
+                print(f"↻ fallback RL{code}…",end=" ",flush=True)
+                try:
+                    r=requests.get(url_fallback,timeout=60); r.raise_for_status()
+                    rows=parse_xml(r.content,annee,nom_ref,cdname)
+                    frames.append(compact_frame(rows,annee)); n_mun+=1; print(f"{len(rows):,} UE")
+                except Exception as e2:
+                    print(f"ERR: {e2}"); errors.append({"annee":annee,"mun":nom_ref,"erreur":str(e2)})
+            else:
+                print(f"ERR: {e}"); errors.append({"annee":annee,"mun":nom_ref,"erreur":str(e)})
+        time.sleep(pause)
+    print(f"  ✓ {annee} : {n_mun} municipalités")
+    return frames,errors
 def _read_dbf_layout(f):
     header=f.read(32)
     num_records=struct.unpack("<I",header[4:8])[0]
@@ -153,58 +219,81 @@ def _read_dbf_layout(f):
     for name,length in fields:
         offsets[name]=(pos,length); pos+=length
     return num_records,header_size,record_size,offsets
-def build_role_df_shp(pf_lookup,match_df):
-    if not pf_lookup: return [],[]
-    region_map=match_df.drop_duplicates("CDNAME").set_index("CDNAME")["Region"].to_dict()
-    all_rows,errors=[],[]
+def read_role_year_shp(annee,zip_path,pf_lookup):
+    """Une année du rôle depuis le SHP provincial, lue par lots compactés au fil de l'eau.
+
+    Le DBF provincial porte près de quatre millions d'enregistrements : ils sont
+    convertis tous les CHUNK enregistrements plutôt qu'accumulés en mémoire vive.
+    """
+    CHUNK=250_000
+    print(f"\n══ Année {annee} (SHP : {zip_path.name}) ══")
+    if not zip_path.exists(): print(f"  ⚠  Zip introuvable"); return [],[]
+    try:
+        with zipfile.ZipFile(zip_path,"r") as zf:
+            def is_main_dbf(name):
+                u=name.upper()
+                if "ADR_UNITE_EVALN" in u: return False
+                return (u.endswith("B05EX1_B05V_UNITE_EVALN.DBF") or
+                        u.endswith("B05V_UNITE_EVALN.DBF") or
+                        u.endswith("UNITE_EVALN.DBF"))
+            dbf_entry=next((n for n in zf.namelist() if is_main_dbf(n)),None)
+            if not dbf_entry: print(f"  ⚠  DBF introuvable"); return [],[]
+            print(f"  Décompression de {dbf_entry}…",flush=True)
+            with zf.open(dbf_entry) as raw:
+                import io as _io; data=_io.BytesIO(raw.read())
+        num_records,header_size,record_size,offsets=_read_dbf_layout(data)
+        print(f"  {num_records:,} enregistrements")
+        code_pos,code_len=offsets["code_mun"]
+        frames=[]; buf=[]; rows_year=0; found_codes=set()
+        data.seek(header_size)
+        for _ in range(num_records):
+            rb=data.read(record_size)
+            if not rb or rb[0]==0x1A: break
+            if rb[0]==0x2A: continue
+            code=rb[code_pos:code_pos+code_len].decode("latin-1").strip()
+            if code not in pf_lookup: continue
+            nom_mun,cdname=pf_lookup[code]; found_codes.add(code)
+            def get(field):
+                if field not in offsets: return None
+                pos,ln=offsets[field]; v=rb[pos:pos+ln].decode("latin-1").strip()
+                return v if v else None
+            buf.append((nom_mun,cdname,get("rl0105a"),get("rl0302a"),get("rl0307a"),
+                get("rl0308a"),get("rl0309a"),get("rl0311a"),
+                get("rl0402a"),get("rl0403a"),get("rl0404a")))
+            rows_year+=1
+            if len(buf)>=CHUNK:
+                frames.append(compact_frame(buf,annee)); buf=[]
+        if buf: frames.append(compact_frame(buf,annee))
+        # Contrôle de vraisemblance : un zip tronqué ou rejeté livre une fraction
+        # des unités attendues. Le seuil suit le périmètre du pipeline (≈ 800 unités
+        # par municipalité couverte) au lieu de la valeur absolue calibrée du temps
+        # où il ne portait que trois régions.
+        seuil=800*max(len(pf_lookup),1)
+        if rows_year<seuil:
+            print(f"  ⚠  {rows_year:,} UE (seuil {seuil:,}) – zip suspect, ignoré.")
+            QA_DROPPED_YEARS.append({"annee":annee,"raison":f"SHP suspect ({rows_year:,} UE < {seuil:,})"})
+            return [],[]
+        print(f"  ✓ {rows_year:,} UE retenues ({len(found_codes)} municipalités)")
+        return frames,[]
+    except Exception as e:
+        print(f"  ERR SHP {annee}: {e}")
+        return [],[{"annee":annee,"mun":"SHP","erreur":str(e)}]
+def year_batches(match_df,pf_lookup):
+    """Livre le rôle année par année : chaque année est agrégée puis libérée.
+
+    Tenir toutes les années en mémoire simultanément était possible sur trois
+    régions ; sur le Québec entier cela représenterait des dizaines de millions
+    d'unités d'évaluation. Comme chaque indicateur exporté est ventilé par année,
+    agréger année par année donne exactement les mêmes fichiers.
+    """
+    for annee in [a for a in ANNEES if a>=2023 and a not in SHP_ZIPS]:
+        print(f"\n══ Année {annee} (API) ══")
+        frames,_=fetch_role_year_api(annee,match_df,pf_lookup)
+        if frames: yield annee,frames
     for annee,zip_path in sorted(SHP_ZIPS.items()):
-        print(f"\n══ Année {annee} (SHP : {zip_path.name}) ══")
-        if not zip_path.exists(): print(f"  ⚠  Zip introuvable"); continue
-        try:
-            with zipfile.ZipFile(zip_path,"r") as zf:
-                def is_main_dbf(name):
-                    u=name.upper()
-                    if "ADR_UNITE_EVALN" in u: return False
-                    return (u.endswith("B05EX1_B05V_UNITE_EVALN.DBF") or
-                            u.endswith("B05V_UNITE_EVALN.DBF") or
-                            u.endswith("UNITE_EVALN.DBF"))
-                dbf_entry=next((n for n in zf.namelist() if is_main_dbf(n)),None)
-                if not dbf_entry: print(f"  ⚠  DBF introuvable"); continue
-                print(f"  Décompression de {dbf_entry}…",flush=True)
-                with zf.open(dbf_entry) as raw:
-                    import io as _io; data=_io.BytesIO(raw.read())
-            num_records,header_size,record_size,offsets=_read_dbf_layout(data)
-            print(f"  {num_records:,} enregistrements")
-            code_pos,code_len=offsets["code_mun"]
-            rows_year=0; found_codes=set()
-            data.seek(header_size)
-            for _ in range(num_records):
-                rb=data.read(record_size)
-                if not rb or rb[0]==0x1A: break
-                if rb[0]==0x2A: continue
-                code=rb[code_pos:code_pos+code_len].decode("latin-1").strip()
-                if code not in pf_lookup: continue
-                nom_mun,cdname=pf_lookup[code]; found_codes.add(code)
-                def get(field):
-                    if field not in offsets: return None
-                    pos,ln=offsets[field]; v=rb[pos:pos+ln].decode("latin-1").strip()
-                    return v if v else None
-                all_rows.append({"Annee":annee,"CSDNAME":nom_mun,"CDNAME":cdname,
-                    "Region":region_map.get(cdname),"rl0105a":get("rl0105a"),
-                    "rl0302a":get("rl0302a"),"rl0307a":get("rl0307a"),"rl0308a":get("rl0308a"),
-                    "rl0309a":get("rl0309a"),"rl0311a":get("rl0311a"),"rl0402a":get("rl0402a"),
-                    "rl0403a":get("rl0403a"),"rl0404a":get("rl0404a")})
-                rows_year+=1
-            if rows_year<200000:
-                print(f"  ⚠  {rows_year:,} UE – zip suspect, ignoré.")
-                all_rows=[r for r in all_rows if r["Annee"]!=annee]
-                QA_DROPPED_YEARS.append({"annee":annee,"raison":f"SHP suspect ({rows_year:,} UE < 200 000)"})
-            else:
-                print(f"  ✓ {rows_year:,} UE retenues ({len(found_codes)} municipalités)")
-        except Exception as e:
-            print(f"  ERR SHP {annee}: {e}"); errors.append({"annee":annee,"mun":"SHP","erreur":str(e)})
-    return all_rows,errors
-def build_indicateurs_pu(pf_lookup):
+        frames,_=read_role_year_shp(annee,zip_path,pf_lookup)
+        if frames: yield annee,frames
+def build_indicateurs_pu(pf_lookup,region_by_mrc):
     """
     Indicateurs stratégiques – Périmètres d'urbanisation.
     Correction plan complémentaire (PDF Annexe 1) :
@@ -261,9 +350,9 @@ def build_indicateurs_pu(pf_lookup):
                 return TYPE_MAP_IND.get(int(lp),"Autres logements")
             df_new["Types"]=df_new.apply(classify_ind,axis=1)
             save_json(df_new.groupby(["CDNAME","rl0307a"]).agg(logements_PU=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"nouveaux_logements_mrc.json")
-            save_json(df_new.groupby(["CDNAME","CSDNAME","rl0307a"]).agg(logements_PU=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"nouveaux_logements_mun.json")
+            save_json_mun(df_new.groupby(["CDNAME","CSDNAME","rl0307a"]).agg(logements_PU=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"nouveaux_logements_mun",region_by_mrc)
             save_json(df_new.groupby(["CDNAME","rl0307a","Types"]).agg(logements=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"types_nouveaux_mrc.json")
-            save_json(df_new.groupby(["CDNAME","CSDNAME","rl0307a","Types"]).agg(logements=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"types_nouveaux_mun.json")
+            save_json_mun(df_new.groupby(["CDNAME","CSDNAME","rl0307a","Types"]).agg(logements=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"types_nouveaux_mun",region_by_mrc)
             df_den=df_res[df_res["rl0309a"].notna()&(df_res["rl0309a"]!=0)].copy()
             df_den["terrain_ha"]=df_den["rl0302a"]/10000
             den_mrc=df_den.groupby(["CDNAME","rl0307a"]).agg(area_ha=("terrain_ha","sum"),units=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"})
@@ -279,14 +368,15 @@ def build_indicateurs_pu(pf_lookup):
             den_mun["cum_units"]=den_mun.groupby(["CDNAME","CSDNAME"])["units"].cumsum()
             den_mun["densite_nette_PU"]=np.where(den_mun["cum_area"]>0,(den_mun["cum_units"]/den_mun["cum_area"]).round(3),np.nan)
             den_mun=den_mun[(den_mun["Annee_construction"]>=2012)&(den_mun["Annee_construction"]<=annee_pu)]
-            save_json(den_mun.round(3),"densite_pu_mun.json")
+            save_json_mun(den_mun.round(3),"densite_pu_mun",region_by_mrc)
             break
         except Exception as e:
             print(f"  ERR PU {annee_pu}: {e}")
             import traceback; traceback.print_exc()
 def prepare_cubf(df):
     d=df.copy()
-    d["rl0105_str"]=d["rl0105a"].fillna("").astype(str).str.strip()
+    # compact_frame livre la colonne déjà nettoyée : la repasser en texte suffit.
+    d["rl0105_str"]=d["rl0105a"].astype(str)
     d["rl0105_num"]=pd.to_numeric(d["rl0105_str"],errors="coerce")
     return d
 def mamh_base_mask(d):
@@ -361,9 +451,20 @@ def build_role_universe(df,mode="mamh_strict"):
         d.loc[d["Types"].isna()&eligible,"Types"]="Autres immeubles résidentiels"
         return d.dropna(subset=["Types"]).copy()
     raise ValueError(f"Mode inconnu: {mode}")
-def expand_logements(df):
-    d=df.dropna(subset=["rl0311a"]).copy(); d["rl0311a"]=d["rl0311a"].astype(int)
-    return d.loc[d.index.repeat(d["rl0311a"])].reset_index(drop=True)
+def compter_logements(Role_UE,keys):
+    """Nombre de logements par groupe.
+
+    Donne exactement le résultat de l'ancienne expansion — répéter chaque unité
+    d'évaluation autant de fois qu'elle compte de logements, puis compter les
+    lignes — sans matérialiser cette expansion, qui dépasserait quatre millions
+    de lignes par année à l'échelle du Québec. Comme dans l'expansion, les unités
+    sans nombre de logements exploitable (valeur absente ou nulle) ne comptent pas.
+    """
+    d=Role_UE[Role_UE["rl0311a"].notna()]
+    n=d["rl0311a"].astype("int64")
+    garde=n>0
+    d=d[garde].assign(_n=n[garde])
+    return d.groupby(keys).agg(N=("_n","sum")).reset_index()
 def categorize_periode(val):
     if pd.isna(val): return None
     elif val<=1960: return "1960 ou avant"
@@ -372,8 +473,22 @@ def categorize_periode(val):
     elif val<=2015: return "2001-2015"
     else: return "2016 et plus"
 def save_json(df,path):
+    (DATA_DIR/path).parent.mkdir(parents=True,exist_ok=True)
     df.to_json(DATA_DIR/path,orient="records",force_ascii=False,indent=None)
     print(f"  ✓ {path} ({len(df):,} lignes)")
+def save_json_mun(df,stem,region_by_mrc):
+    """Écrit un indicateur municipal en un fichier par région administrative.
+
+    Le détail municipal du Québec entier pèse plusieurs dizaines de Mo par
+    indicateur. Le tableau de bord n'a jamais besoin que de la région consultée :
+    il ne télécharge donc que le fragment correspondant.
+    """
+    reg=df["CDNAME"].map(region_by_mrc)
+    inconnues=sorted(set(df.loc[reg.isna(),"CDNAME"]))
+    if inconnues: print(f"  ⚠  {stem} : MRC sans région – {inconnues[:5]}")
+    connu=df[reg.notna()]
+    for r,part in connu.groupby(reg[reg.notna()].astype(int)):
+        save_json(part,f"mun/{stem}_r{r}.json")
 def superficie_frame(Role_UE,keys):
     """
     Superficies de terrain et aires d'étages, par unité d'évaluation et par logement.
@@ -427,35 +542,43 @@ def superficie_frame(Role_UE,keys):
     g["n_log_terrain"]=g["_log_terr"]
     g["n_log_aire"]=g["_log_aire"]
     return g.drop(columns=["_terr","_log_terr","_aire","_log_aire"])
-def export_indicator_set(Role_brut, mode, suffix):
+def indicator_frames(Role_brut, mode, suffix):
+    """Agrège une année du rôle selon un mode de catégorisation CUBF.
+
+    Renvoie {nom de fichier: (portée, tableau)} au lieu d'écrire directement :
+    main() empile les tableaux année après année, puis écrit une seule fois. La
+    portée « mun » désigne le détail municipal, éclaté par région à l'écriture.
+    """
     Role_UE=build_role_universe(Role_brut,mode=mode)
-    Role_exp=expand_logements(Role_UE)
-    print(f"  [{suffix}] {len(Role_UE):,} UE / {len(Role_exp):,} logements")
-    mrc_types=(Role_exp.groupby(["Annee","CDNAME","Types"]).agg(N=("Annee","count")).reset_index()
-        .pivot_table(index=["Annee","CDNAME"],columns="Types",values="N",aggfunc="sum").reset_index())
+    mrc_log=compter_logements(Role_UE,["Annee","CDNAME","Types"])
+    mun_log=compter_logements(Role_UE,["Annee","CDNAME","CSDNAME","Types"])
+    print(f"  [{suffix}] {len(Role_UE):,} UE / {int(mrc_log['N'].sum()):,} logements")
+    mrc_types=(mrc_log.pivot_table(index=["Annee","CDNAME"],columns="Types",values="N",aggfunc="sum").reset_index())
     mrc_types.columns.name=None
     for col in TYPE_COLS:
         if col not in mrc_types.columns: mrc_types[col]=0
     mrc_types["Total"]=mrc_types[TYPE_COLS].sum(axis=1)
     for col in TYPE_COLS:
         mrc_types[f"{col}_pct"]=np.where(mrc_types["Total"]>0,(mrc_types[col]/mrc_types["Total"]*100).round(2),np.nan)
-    save_json(mrc_types,f"logements_types_mrc_{suffix}.json")
-    save_json(Role_exp.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(N=("Annee","count")).reset_index().rename(columns={"Types":"Types de construction résidentielle","N":"Nombre de logements"}),f"logements_types_mun_{suffix}.json")
+    out={}
+    out[f"logements_types_mrc_{suffix}"]=("mrc",mrc_types)
+    out[f"logements_types_mun_{suffix}"]=("mun",mun_log.rename(columns={"Types":"Types de construction résidentielle","N":"Nombre de logements"}))
     mrc_val=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index()
     tot=Role_UE.groupby(["Annee","CDNAME"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index(); tot["Types"]="Total des unités d'évaluation résidentielles"
-    save_json(pd.concat([mrc_val,tot],ignore_index=True).round(0),f"valeur_mrc_{suffix}.json")
-    save_json(Role_UE.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index().round(0),f"valeur_mun_{suffix}.json")
+    out[f"valeur_mrc_{suffix}"]=("mrc",pd.concat([mrc_val,tot],ignore_index=True).round(0))
+    out[f"valeur_mun_{suffix}"]=("mun",Role_UE.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index().round(0))
     mrc_age=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(annee_moy=("rl0307a","mean"),n_ue=("Annee","size")).reset_index()
     tot_age=Role_UE.groupby(["Annee","CDNAME"]).agg(annee_moy=("rl0307a","mean"),n_ue=("Annee","size")).reset_index(); tot_age["Types"]="Total des unités d'évaluation résidentielles"
     mrc_age=pd.concat([mrc_age,tot_age],ignore_index=True); mrc_age["age_moyen"]=(mrc_age["Annee"]-mrc_age["annee_moy"]).round(1)
-    save_json(mrc_age,f"age_mrc_{suffix}.json")
+    out[f"age_mrc_{suffix}"]=("mrc",mrc_age)
     mun_age=Role_UE.groupby(["Annee","CDNAME","CSDNAME","Types"]).agg(annee_moy=("rl0307a","mean")).reset_index()
     tot_age_mun=Role_UE.groupby(["Annee","CDNAME","CSDNAME"]).agg(annee_moy=("rl0307a","mean")).reset_index(); tot_age_mun["Types"]="Total des unités d'évaluation résidentielles"
     mun_age=pd.concat([mun_age,tot_age_mun],ignore_index=True); mun_age["age_moyen"]=(mun_age["Annee"]-mun_age["annee_moy"]).round(1)
-    save_json(mun_age,f"age_mun_{suffix}.json")
+    out[f"age_mun_{suffix}"]=("mun",mun_age)
     Role_UE_per=Role_UE.copy(); Role_UE_per["Période"]=Role_UE_per["rl0307a"].apply(categorize_periode)
-    save_json(Role_UE_per.dropna(subset=["Période"]).groupby(["Annee","CDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index(),f"periode_mrc_{suffix}.json")
-    save_json(Role_UE_per.dropna(subset=["Période"]).groupby(["Annee","CDNAME","CSDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index(),f"periode_mun_{suffix}.json")
+    Role_UE_per=Role_UE_per.dropna(subset=["Période"])
+    out[f"periode_mrc_{suffix}"]=("mrc",Role_UE_per.groupby(["Annee","CDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index())
+    out[f"periode_mun_{suffix}"]=("mun",Role_UE_per.groupby(["Annee","CDNAME","CSDNAME","Types","Période"]).agg(N=("Annee","count")).reset_index())
     # « Autres immeubles résidentiels » regroupe les unités résidentielles dont le lien
     # physique n'est pas reconnu au rôle : exploitations agricoles, hôtels et résidences
     # provisoires, unités sans nombre de logements exploitable. Leur terrain se compte en
@@ -465,10 +588,11 @@ def export_indicator_set(Role_brut, mode, suffix):
     Role_sup=Role_UE[Role_UE["Types"]!=SUP_TYPE_EXCLU]
     mrc_sup=superficie_frame(Role_sup,["Annee","CDNAME","Types"])
     tot_sup=superficie_frame(Role_sup,["Annee","CDNAME"]); tot_sup["Types"]=SUP_TOTAL_LABEL
-    save_json(pd.concat([mrc_sup,tot_sup],ignore_index=True).round(1),f"superficie_mrc_{suffix}.json")
+    out[f"superficie_mrc_{suffix}"]=("mrc",pd.concat([mrc_sup,tot_sup],ignore_index=True).round(1))
     mun_sup=superficie_frame(Role_sup,["Annee","CDNAME","CSDNAME","Types"])
     tot_sup_mun=superficie_frame(Role_sup,["Annee","CDNAME","CSDNAME"]); tot_sup_mun["Types"]=SUP_TOTAL_LABEL
-    save_json(pd.concat([mun_sup,tot_sup_mun],ignore_index=True).round(1),f"superficie_mun_{suffix}.json")
+    out[f"superficie_mun_{suffix}"]=("mun",pd.concat([mun_sup,tot_sup_mun],ignore_index=True).round(1))
+    return out
 def clean_isq_name(val):
     # ISQ appends footnote markers to some names (ex.: "Papineau2") → strip trailing digits
     if val is None: return None
@@ -535,27 +659,41 @@ def build_population_data(match_df):
     print(f"  ✓ {len(men_out)} lignes ménages")
 def main():
     MATCH=load_match(); our_mrcs=set(MATCH["CDNAME"].unique())
-    pf_lookup=load_pf_mun(our_mrcs)
+    region_by_mrc=MATCH.drop_duplicates("CDNAME").set_index("CDNAME")["Region"].to_dict()
+    pf_lookup,region_names=load_pf_mun(our_mrcs)
     print(f"\nSHP zips : {dict(sorted(SHP_ZIPS.items())) or 'aucun'}")
     print(f"PU  zips : {dict(sorted(PU_ZIPS.items())) or 'aucun'}")
-    rows_api,_=build_role_df_api(MATCH,pf_lookup)
-    rows_shp,_=build_role_df_shp(pf_lookup,MATCH)
-    all_rows=rows_api+rows_shp
-    if not all_rows: print("Aucune donnée."); return
-    Role_brut=pd.DataFrame(all_rows)
-    num_cols=["rl0302a","rl0307a","rl0308a","rl0309a","rl0311a","rl0402a","rl0403a","rl0404a"]
-    Role_brut[num_cols]=Role_brut[num_cols].apply(pd.to_numeric,errors="coerce")
-    Role_brut["rl0105a"]=Role_brut["rl0105a"].fillna("").astype(str)
-    annees=sorted(Role_brut["Annee"].unique())
-    print(f"\n✓ Brut : {len(Role_brut):,} UE sur {len(annees)} années ({annees})")
+    # Le détail municipal est éclaté par région : on repart d'un dossier propre pour
+    # qu'aucun fragment d'une exécution précédente (région retirée, MRC renommée) ne survive.
+    if MUN_DIR.exists(): shutil.rmtree(MUN_DIR)
+    # Une année à la fois : agrégée puis libérée. Tous les indicateurs exportés sont
+    # ventilés par année, l'empilement des agrégats donne donc les mêmes fichiers
+    # qu'un traitement en bloc, pour une fraction de la mémoire.
+    acc={}; qa_by_year={}
+    for annee,frames in year_batches(MATCH,pf_lookup):
+        Role_brut=pd.concat(frames,ignore_index=True); frames.clear()
+        qa_by_year[annee]=(Role_brut["CSDNAME"].nunique(),len(Role_brut))
+        print(f"\n✓ Brut {annee} : {len(Role_brut):,} UE")
+        for mode in MODES:
+            for stem,(scope,frame) in indicator_frames(Role_brut,mode=mode,suffix=mode).items():
+                acc.setdefault(stem,(scope,[]))[1].append(frame)
+        del Role_brut
+    if not acc: print("Aucune donnée."); return
+    annees=sorted(qa_by_year)
+    print(f"\n✓ {len(annees)} années ({annees})")
+    print("\nÉcriture des indicateurs par mode de catégorisation...")
+    for stem,(scope,parts) in acc.items():
+        df=pd.concat(parts,ignore_index=True)
+        if scope=="mun": save_json_mun(df,stem,region_by_mrc)
+        else: save_json(df,f"{stem}.json")
+    acc.clear()
     # QA couverture : nb de municipalités et d'UE par année (années absentes incluses)
     n_attendu=len(MATCH)
-    qa_grp=Role_brut.groupby("Annee").agg(n_mun=("CSDNAME","nunique"),n_ue=("Annee","size"))
     dropped_by_year={d["annee"]:d["raison"] for d in QA_DROPPED_YEARS}
     qa_rows=[]
     for a in range(ANNEE_MIN,max(annees)+1):
-        if a in qa_grp.index:
-            n_mun=int(qa_grp.loc[a,"n_mun"]); n_ue=int(qa_grp.loc[a,"n_ue"])
+        if a in qa_by_year:
+            n_mun,n_ue=qa_by_year[a]
             note=None if n_mun>=n_attendu else f"{n_attendu-n_mun} municipalité(s) manquante(s)"
         else:
             n_mun=0; n_ue=0
@@ -564,14 +702,14 @@ def main():
                         "complet":n_mun>=n_attendu,"note":note})
         if note: print(f"  ⚠  QA {a} : {note} ({n_mun}/{n_attendu} mun)")
     save_json(pd.DataFrame(qa_rows),"qa_couverture.json")
-    print("\nExport des indicateurs par mode de catégorisation...")
-    export_indicator_set(Role_brut,mode="mamh_strict",suffix="mamh_strict")
-    export_indicator_set(Role_brut,mode="mamh_optional",suffix="mamh_optional")
-    export_indicator_set(Role_brut,mode="mamh_plus_others",suffix="mamh_plus_others")
     mrc_list=MATCH.groupby("CDNAME")["Municipalité"].apply(list).reset_index(); mrc_list.columns=["CDNAME","municipalites"]
-    region_map=MATCH.drop_duplicates("CDNAME").set_index("CDNAME")["Region"].to_dict(); mrc_list["Region"]=mrc_list["CDNAME"].map(region_map)
+    mrc_list["Region"]=mrc_list["CDNAME"].map(region_by_mrc)
     save_json(mrc_list,"mrc_list.json")
-    build_indicateurs_pu(pf_lookup)
+    # Le sélecteur de région du tableau de bord est construit à partir de ce fichier :
+    # il suit le contenu de MATCH.csv au lieu d'une liste figée dans la page.
+    regions=sorted({int(r) for r in region_by_mrc.values() if pd.notna(r)})
+    save_json(pd.DataFrame([{"Region":r,"nom":region_names.get(r,str(r))} for r in regions]),"regions.json")
+    build_indicateurs_pu(pf_lookup,region_by_mrc)
     build_population_data(MATCH)
     print("\n🎉 Pipeline terminé.")
 if __name__=="__main__":
