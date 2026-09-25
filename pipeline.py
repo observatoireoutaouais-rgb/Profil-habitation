@@ -57,7 +57,7 @@ TYPE_COLS = [
     "Logements dans un immeuble comportant deux logements ou plus",
     "Chalet et maison de villégiature",
     "Habitation en commun",
-    "Maison mobile et roulotte",
+    "Roulotte",
     "Autres immeubles résidentiels",
 ]
 # Type écarté de l'onglet Superficie (voir indicator_frames) et libellé du total qui en découle.
@@ -426,9 +426,14 @@ def assign_other_types_from_cubf(d,colname="Types"):
     s=out["rl0105_str"]
     out[colname]=None
     out.loc[s.str.startswith("11"),colname]="Chalet et maison de villégiature"
-    out.loc[s.str.startswith("12"),colname]="Maison mobile et roulotte"
+    out.loc[s.str.startswith("12"),colname]="Roulotte"
     out.loc[s.str.startswith("15"),colname]="Habitation en commun"
     out.loc[s.str.startswith(tuple(["16","17","18","19"])),colname]="Autres immeubles résidentiels"
+    # 1921-1923 : stationnement intérieur, stationnement extérieur et espace de rangement
+    # détenus en copropriété divise résidentielle (MEFQ). Ce ne sont pas des habitations :
+    # sans logement, elles gonflaient pourtant les unités d'évaluation des « Autres
+    # immeubles résidentiels » dans les indicateurs de valeur, d'âge et de période.
+    out.loc[s.isin(["1921","1922","1923"]),colname]=None
     return out
 def build_role_universe(df,mode="mamh_strict"):
     d=prepare_cubf(df)
@@ -444,8 +449,9 @@ def build_role_universe(df,mode="mamh_strict"):
         # Le repli par préfixe CUBF ne vaut que pour les codes hors liste MAMH. Pour un code
         # éligible, ce sont les règles MAMH qui font autorité : l'absence de type traduit un
         # nombre de logements manquant au rôle, pas une autre famille de bâtiment. Sans cette
-        # restriction, une unité 1211 (immeuble multifamilial) sans nombre de logements tombait
-        # sur le préfixe « 12 » et était classée « Maison mobile et roulotte ».
+        # restriction, une unité 1211 (maison mobile, retenue par la fiche OGAT
+        # et typée selon son lien physique) sans nombre de logements tombait sur le préfixe « 12 »
+        # et basculait dans « Roulotte », qui ne reçoit que les roulottes (1212).
         mask_other=d["Types"].isna() & ~eligible
         if mask_other.any():
             d_other=assign_other_types_from_cubf(d.loc[mask_other].copy(),colname="Types")
