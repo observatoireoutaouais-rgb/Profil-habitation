@@ -401,10 +401,13 @@ def mamh_eligible_mask(d,include_optional=False):
     if include_optional:
         m=m|mamh_optional_mask(d)
     return m
-def assign_mamh_types(d,include_optional=False,colname="Types"):
+def assign_mamh_types(d,include_optional=False,colname="Types",eligible=None):
+    # eligible : masque des unités à typer. Par défaut, la liste de codes MAMH ; le filtre
+    # complet le passe aussi pour appliquer les mêmes règles aux codes non résidentiels.
     out=d.copy()
     out[colname]=None
-    eligible=mamh_eligible_mask(out,include_optional=include_optional)
+    if eligible is None:
+        eligible=mamh_eligible_mask(out,include_optional=include_optional)
     out.loc[
         eligible&(out["rl0309a"]==1)&(out["rl0311a"]==1),
         colname
@@ -460,6 +463,18 @@ def build_role_universe(df,mode="mamh_strict"):
         # complet, sous la catégorie déjà employée pour les unités éligibles dont le lien
         # physique n'est pas reconnu.
         d.loc[d["Types"].isna()&eligible,"Types"]="Autres immeubles résidentiels"
+        # Le filtre complet compte l'ensemble des logements du rôle : une unité hors de la
+        # plage résidentielle qui déclare un logement — maison sur un boisé non exploité
+        # (9220), presbytère ou logement de fonction (6xxx), logement de gardien, ferme hors
+        # de 8120–8199 — est typée selon les règles MAMH, d'après son lien physique et son
+        # nombre de logements. Dans Bellechasse, 184 unités et 222 logements (1,1 %).
+        # Les stationnements et rangements en copropriété (1921–1923) restent écartés.
+        hors=(d["Types"].isna() & ~eligible & ~d["rl0105_str"].isin(["1921","1922","1923"])
+              & (d["rl0311a"]>0))
+        if hors.any():
+            d_hors=assign_mamh_types(d.loc[hors],colname="Types",
+                                     eligible=pd.Series(True,index=d.index[hors]))
+            d.loc[hors,"Types"]=d_hors["Types"]
         # Seules les unités qui comptent au moins un logement sont retenues, comme dans les
         # filtres strict et élargi, où le typage l'exige déjà. Les autres — surtout des
         # exploitations agricoles 81xx sans logement et des bâtiments accessoires 19xx —
@@ -573,9 +588,10 @@ def cubf_exclus_frame(Role_brut,Role_UE):
     """Logements que même le filtre complet laisse de côté, par code CUBF.
 
     Diagnostic : les unités d'évaluation absentes de l'univers complet mais qui
-    déclarent au moins un logement au rôle (RL0311a > 0) — logement de gardien
-    d'un bâtiment industriel, presbytère, ferme hors de la plage 8120–8199, etc.
-    Il sert à juger si un code mérite d'entrer dans l'un des filtres.
+    déclarent au moins un logement au rôle (RL0311a > 0). Le filtre complet typant
+    désormais tous les codes, il ne devrait rester que des stationnements et
+    rangements en copropriété (1921–1923) mal renseignés : toute autre ligne signale
+    une règle de typage à revoir.
     build_role_universe conserve l'index du rôle brut : la différence d'index
     donne exactement les unités écartées.
     """
