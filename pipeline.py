@@ -460,6 +460,13 @@ def build_role_universe(df,mode="mamh_strict"):
         # complet, sous la catégorie déjà employée pour les unités éligibles dont le lien
         # physique n'est pas reconnu.
         d.loc[d["Types"].isna()&eligible,"Types"]="Autres immeubles résidentiels"
+        # Seules les unités qui comptent au moins un logement sont retenues, comme dans les
+        # filtres strict et élargi, où le typage l'exige déjà. Les autres — surtout des
+        # exploitations agricoles 81xx sans logement et des bâtiments accessoires 19xx —
+        # n'ajoutaient rien au dénombrement, mais pesaient sur la valeur foncière, l'âge et
+        # la période de construction : dans Bellechasse (rôle 2024-2026), 2 610 unités sur
+        # 19 450, dont 2 587 dans « Autres immeubles résidentiels ».
+        d=d[d["rl0311a"].notna()&(d["rl0311a"]>0)]
         return d.dropna(subset=["Types"]).copy()
     raise ValueError(f"Mode inconnu: {mode}")
 def compter_logements(Role_UE,keys):
@@ -524,8 +531,8 @@ def superficie_frame(Role_UE,keys):
 
     Le dénominateur de chaque ratio est restreint aux unités dont le numérateur est
     renseigné, afin que numérateur et dénominateur portent sur les mêmes unités. Les
-    unités sans nombre de logements exploitable (rl0311a nul ou absent, possible en
-    mode « complet ») sont écartées des ratios.
+    unités sans nombre de logements exploitable (rl0311a nul ou absent) sont écartées
+    des ratios ; aucun filtre ne les retient plus, la garde reste par prudence.
 
     Une superficie nulle n'est pas une mesure : elle signale une donnée non relevée, et
     les deux sources l'écrivent différemment. Les XML de l'API laissent RL0308A vide,
