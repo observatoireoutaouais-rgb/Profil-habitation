@@ -635,7 +635,13 @@ def indicator_frames(Role_brut, mode, suffix):
     # dizaines d'hectares par logement — il décrit une propriété foncière, pas la superficie
     # d'une habitation — et dominait le total de la MRC. La catégorie est écartée des
     # superficies ; le total porte donc sur les seuls types présentés.
-    Role_sup=Role_UE[Role_UE["Types"]!=SUP_TYPE_EXCLU]
+    # Les exploitations agricoles 8120–8199 (filtres élargi et complet) sont écartées pour
+    # la même raison, quel que soit leur type : elles restent dans le dénombrement, la
+    # valeur et l'âge, mais leur terrain est celui de la ferme. Dans Bellechasse, 669 fermes
+    # typées « Maisons individuelles détachées » (44 ha par logement en moyenne) portaient à
+    # elles seules la moitié du terrain des types présentés et faisaient passer le terrain
+    # par logement de 11 700 à 29 500 m².
+    Role_sup=Role_UE[(Role_UE["Types"]!=SUP_TYPE_EXCLU)&~Role_UE["rl0105_num"].between(8120,8199)]
     mrc_sup=superficie_frame(Role_sup,["Annee","CDNAME","Types"])
     tot_sup=superficie_frame(Role_sup,["Annee","CDNAME"]); tot_sup["Types"]=SUP_TOTAL_LABEL
     out[f"superficie_mrc_{suffix}"]=("mrc",pd.concat([mrc_sup,tot_sup],ignore_index=True).round(1))
