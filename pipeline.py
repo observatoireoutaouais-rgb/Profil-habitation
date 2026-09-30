@@ -562,6 +562,27 @@ def superficie_frame(Role_UE,keys):
     g["n_log_terrain"]=g["_log_terr"]
     g["n_log_aire"]=g["_log_aire"]
     return g.drop(columns=["_terr","_log_terr","_aire","_log_aire"])
+def cubf_exclus_frame(Role_brut,Role_UE):
+    """Logements que même le filtre complet laisse de côté, par code CUBF.
+
+    Diagnostic : les unités d'évaluation absentes de l'univers complet mais qui
+    déclarent au moins un logement au rôle (RL0311a > 0) — logement de gardien
+    d'un bâtiment industriel, presbytère, ferme hors de la plage 8120–8199, etc.
+    Il sert à juger si un code mérite d'entrer dans l'un des filtres.
+    build_role_universe conserve l'index du rôle brut : la différence d'index
+    donne exactement les unités écartées.
+    """
+    ex=Role_brut.loc[Role_brut.index.difference(Role_UE.index)]
+    ex=ex[ex["rl0311a"].notna()&(ex["rl0311a"]>0)]
+    g=(ex.assign(CUBF=ex["rl0105a"].astype(str).replace("","(vide)"))
+         .groupby(["Annee","CDNAME","CUBF"],observed=True)
+         .agg(n_ue=("Annee","size"),logements=("rl0311a","sum")).reset_index())
+    g["logements"]=g["logements"].round(0).astype("int64")
+    if len(g):
+        top=g.groupby("CUBF")["logements"].sum().sort_values(ascending=False).head(10)
+        print(f"  [cubf exclus] {int(g['logements'].sum()):,} logements hors filtre complet ; "
+              f"principaux codes : {', '.join(f'{c} ({n:,})' for c,n in top.items())}")
+    return g
 def indicator_frames(Role_brut, mode, suffix):
     """Agrège une année du rôle selon un mode de catégorisation CUBF.
 
@@ -581,6 +602,8 @@ def indicator_frames(Role_brut, mode, suffix):
     for col in TYPE_COLS:
         mrc_types[f"{col}_pct"]=np.where(mrc_types["Total"]>0,(mrc_types[col]/mrc_types["Total"]*100).round(2),np.nan)
     out={}
+    if mode=="mamh_plus_others":
+        out["qa_cubf_exclus"]=("mrc",cubf_exclus_frame(Role_brut,Role_UE))
     out[f"logements_types_mrc_{suffix}"]=("mrc",mrc_types)
     out[f"logements_types_mun_{suffix}"]=("mun",mun_log.rename(columns={"Types":"Types de construction résidentielle","N":"Nombre de logements"}))
     mrc_val=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index()

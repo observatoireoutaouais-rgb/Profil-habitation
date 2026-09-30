@@ -146,6 +146,7 @@ Deux conséquences à garder en tête :
 | `mrc_list.json` | Liste MRC → municipalités (pour le filtre UI) |
 | `regions.json` | Régions administratives présentes (alimente le sélecteur Région) |
 | `qa_couverture.json` | Contrôle qualité : couverture par année |
+| `qa_cubf_exclus.json` | Diagnostic : logements (RL0311a > 0) écartés même par le filtre complet, par année, MRC et code CUBF |
 
 ### Où sont écrits les fichiers
 
