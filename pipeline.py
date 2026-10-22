@@ -438,6 +438,18 @@ def assign_other_types_from_cubf(d,colname="Types"):
     # immeubles résidentiels » dans les indicateurs de valeur, d'âge et de période.
     out.loc[s.isin(["1921","1922","1923"]),colname]=None
     return out
+def besoins_mask(d):
+    # Parc de logements de l'onglet Cibles (évaluation des besoins, OGAT annexe 1) :
+    # « Tous les types de logements privés sont comptabilisés par ce ratio, notamment
+    # les logements inoccupés, les résidences principales, les résidences de tourisme
+    # [...] et les résidences secondaires, telles que les chalets et les pied-à-terre »
+    # (p. 21). Codes du filtre strict, plus les chalets et maisons de villégiature
+    # (1100–1199), les roulottes (1212) et les exploitations agricoles (8120–8199).
+    # Les habitations en commun (15xx) relèvent des logements collectifs (partie B) ;
+    # les hôtels, pourvoiries et camps (16xx–19xx) et les codes hors de la plage
+    # résidentielle sont écartés.
+    rl=d["rl0105_num"]
+    return (mamh_base_mask(d)|((rl>=1100)&(rl<=1199))|(rl==1212)|((rl>=8120)&(rl<=8199)))
 def build_role_universe(df,mode="mamh_strict"):
     d=prepare_cubf(df)
     if mode=="mamh_strict":
@@ -445,6 +457,15 @@ def build_role_universe(df,mode="mamh_strict"):
         return d.dropna(subset=["Types"]).copy()
     if mode=="mamh_optional":
         d=assign_mamh_types(d,include_optional=True,colname="Types")
+        return d.dropna(subset=["Types"]).copy()
+    if mode=="besoins":
+        # Strict et 8120–8199 : règles MAMH (lien physique et nombre de logements).
+        # Chalets et roulottes : leur propre type, comme dans le filtre complet.
+        regles=mamh_base_mask(d)|((d["rl0105_num"]>=8120)&(d["rl0105_num"]<=8199))
+        d=assign_mamh_types(d,colname="Types",eligible=regles)
+        autres=besoins_mask(d)&~regles
+        d.loc[autres,"Types"]=assign_other_types_from_cubf(d.loc[autres],colname="Types")["Types"]
+        d=d[besoins_mask(d)&d["rl0311a"].notna()&(d["rl0311a"]>0)]
         return d.dropna(subset=["Types"]).copy()
     if mode=="mamh_plus_others":
         d=assign_mamh_types(d,include_optional=True,colname="Types")
@@ -659,6 +680,16 @@ def indicator_frames(Role_brut, mode, suffix):
     tot_sup_mun=superficie_frame(Role_sup,["Annee","CDNAME","CSDNAME"]); tot_sup_mun["Types"]=SUP_TOTAL_LABEL
     out[f"superficie_mun_{suffix}"]=("mun",pd.concat([mun_sup,tot_sup_mun],ignore_index=True).round(1))
     return out
+def besoins_frame(Role_brut):
+    """Logements par MRC et par type, parc de l'onglet Cibles (voir besoins_mask)."""
+    mrc_log=compter_logements(build_role_universe(Role_brut,mode="besoins"),["Annee","CDNAME","Types"])
+    print(f"  [besoins] {int(mrc_log['N'].sum()):,} logements")
+    t=mrc_log.pivot_table(index=["Annee","CDNAME"],columns="Types",values="N",aggfunc="sum").reset_index()
+    t.columns.name=None
+    for col in TYPE_COLS:
+        if col not in t.columns: t[col]=0
+    t["Total"]=t[TYPE_COLS].sum(axis=1)
+    return t
 def clean_isq_name(val):
     # ISQ appends footnote markers to some names (ex.: "Papineau2") → strip trailing digits
     if val is None: return None
@@ -740,6 +771,7 @@ def main():
         for mode in MODES:
             for stem,(scope,frame) in indicator_frames(Role_brut,mode=mode,suffix=mode).items():
                 acc.setdefault(stem,(scope,[]))[1].append(frame)
+        acc.setdefault("logements_besoins_mrc",("mrc",[]))[1].append(besoins_frame(Role_brut))
         del Role_brut
     if not acc: print("Aucune donnée."); return
     annees=sorted(qa_by_year)

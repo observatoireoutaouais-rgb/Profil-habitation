@@ -137,6 +137,7 @@ Deux conséquences à garder en tête :
 | `age_{mrc,mun}_{filtre}.json` | Âge moyen des unités d'évaluation résidentielles (+ `n_ue` au niveau MRC) |
 | `periode_{mrc,mun}_{filtre}.json` | Unités par période de construction |
 | `superficie_{mrc,mun}_{filtre}.json` | Superficie terrain et aire d'étages moyennes (+ `n_ue` au niveau MRC) |
+| `logements_besoins_mrc.json` | Logements par MRC et par type, parc de l'onglet Cibles : codes du filtre strict, chalets et maisons de villégiature (1100–1199), roulottes (1212) et exploitations agricoles (8120–8199) |
 | `nouveaux_logements_{mrc,mun}.json` | Logements construits dans les PU (nécessite `Role_*_PU.zip`) |
 | `types_nouveaux_{mrc,mun}.json` | Types des nouveaux logements dans les PU |
 | `densite_pu_{mrc,mun}.json` | Densité résidentielle nette dans les PU (log/ha) |

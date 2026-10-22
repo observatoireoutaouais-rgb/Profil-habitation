@@ -104,6 +104,7 @@ body.embed-mode .embed-controls{display:flex!important;}
 body.embed-section .section-header{display:block;}
 body.embed-section .chart-card{box-shadow:var(--shadow,0 1px 3px rgba(0,0,0,.06));border:1px solid var(--border);padding:20px;background:var(--white);}
 body.embed-section #embed-scope-controls{display:flex!important;}
+body.embed-section.parc-besoins #embed-controls>label,body.embed-section.parc-besoins .embed-cubf-btn{display:none!important;}
 body.embed-section #embed-period-controls,body.embed-section #embed-single-controls,body.embed-section .embed-sep{display:none!important;}
 .embed-controls{display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px;background:var(--white);border-bottom:1px solid var(--border);}
 body.embed-mode .embed-controls{position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);}
@@ -477,7 +478,7 @@ function dk(base){const s=['mrc_list','nouveaux_logements_mrc','nouveaux_logemen
 //   MRC_SCOPED : une centaine de MRC, uniquement pour le filtre CUBF actif.
 //   MUN_SCOPED : détail municipal, éclaté par région par le pipeline
 //                (web/data/mun) et chargé pour la seule région consultée.
-const CORE_FILES=['mrc_list','regions','nouveaux_logements_mrc','densite_pu_mrc','types_nouveaux_mrc',
+const CORE_FILES=['mrc_list','regions','logements_besoins_mrc','nouveaux_logements_mrc','densite_pu_mrc','types_nouveaux_mrc',
   'population_mrc','projections_pop_mrc','menages_proj_mrc','taux_inoccupation_schl','tenure_menages_mrc'];
 const MRC_SCOPED=['logements_types_mrc','valeur_mrc','age_mrc','periode_mrc','superficie_mrc'];
 const MUN_SCOPED=['logements_types_mun','valeur_mun','age_mun','periode_mun','superficie_mun'];
@@ -877,6 +878,7 @@ function populateEmbedYearSelects(){
 function applyEmbedMode(){
   document.body.classList.toggle('embed-mode', !!currentEmbedId);
   document.body.classList.toggle('embed-section', currentEmbedId==='section');
+  document.body.classList.toggle('parc-besoins', currentTab==='cibles'&&(DATA.logements_besoins_mrc||[]).length>0);
   if(!currentEmbedId) return;
   if(currentEmbedId==='section'){
     // Les sélecteurs de l'iframe reprennent ceux de la page (mêmes options, même valeur)
@@ -1700,7 +1702,10 @@ function renderCibles(content,mrcLabel){
   // Les séries de référence portent sur la région consultée — sur le Québec
   // entier lorsqu'aucune région n'est sélectionnée.
   const menProj=scopeRegionRows(DATA.menages_proj_mrc||[]);
-  const logData=scopeRegionRows(DATA[dk('logements_types_mrc')]||[]);
+  // Parc de logements propre à l'évaluation des besoins (voir besoins_mask, pipeline.py).
+  // Tant que le fichier n'est pas généré, le filtre CUBF courant sert de repli.
+  const parcBesoins=(DATA.logements_besoins_mrc||[]).length>0;
+  const logData=scopeRegionRows(parcBesoins?DATA.logements_besoins_mrc:(DATA[dk('logements_types_mrc')]||[]));
   const filt=scopeRows;
 
   // Série de la MRC (ou de toute la portée courante)
@@ -1762,9 +1767,12 @@ function renderCibles(content,mrcLabel){
   effectiveRatio=+effectiveRatio.toFixed(3);
 
   // ── MISES EN CHANTIER – ratio auto-calculé ────────────────────────────
-  const startsData=DATA.nouveaux_logements_mrc||[];
+  // Nouveaux logements de l'année y : variation du parc entre les rôles y et y+1, pertes
+  // comprises (note 27 : « La comparaison des années de référence des données des
+  // sommaires des rôles d'évaluation foncière permet d'estimer le nombre de nouveaux
+  // logements en tenant compte des pertes. »)
   const startsByYear={};
-  filt(startsData).forEach(r=>{const y=Number(r.Annee_construction);if(y) startsByYear[y]=(startsByYear[y]||0)+Number(r.logements_PU||0);});
+  logYears.forEach(y=>{ if(logByYear[y+1]!=null) startsByYear[y]=logByYear[y+1]-logByYear[y]; });
   // Années utilisables : ménages connus (non projetés) l'année même et la suivante
   const startsYrsAvail=Object.keys(startsByYear).map(Number).sort((a,b)=>a-b)
     .filter(y=>menByYear[y]&&menByYear[y+1]&&y+1<=lastISQEstYear);
@@ -1929,13 +1937,16 @@ function renderCibles(content,mrcLabel){
 
   // ── RENDER HTML ───────────────────────────────────────────────────────
   const cubfNames={mamh_strict:'Strict',mamh_optional:'Élargi',mamh_plus_others:'Complet'};
+  const parcLabel=parcBesoins
+    ?'codes CUBF 1000, 1010, 1211, 1702, 5000–5999, 1100–1199 (chalets et maisons de villégiature), 1212 (roulottes) et 8120–8199 (exploitations agricoles)'
+    :`filtre « ${cubfNames[currentCubf]||''} »`;
   const horizon20=latestMenYear+20;
   const tenureMRC=currentMRC?(DATA.tenure_menages_mrc||{})[currentMRC]:null;
   const sousTitre='font-size:.7rem;color:var(--text-light);line-height:1.5;';
   content.innerHTML=`
   <div class="section-header">
     <h2>Cibles en habitation – Besoins en logements privés</h2>
-    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Horizon de planification : ${latestMenYear}–${horizonAn} · Filtre CUBF : ${cubfNames[currentCubf]||''}${currentEmbedId?'':` · <button class="chart-btn btn-iframe" onclick="showIframe('section')">Obtenir l'iframe de la section</button>`}</div>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Horizon de planification : ${latestMenYear}–${horizonAn}${parcBesoins?'':` · Filtre CUBF : ${cubfNames[currentCubf]||''}`}${currentEmbedId?'':` · <button class="chart-btn btn-iframe" onclick="showIframe('section')">Obtenir l'iframe de la section</button>`}</div>
   </div>
 
   <div style="font-size:.78rem;color:var(--text);line-height:1.6;margin-bottom:16px;">
@@ -1978,7 +1989,7 @@ function renderCibles(content,mrcLabel){
     </div>
     <div class="cibles-param" style="min-width:100%;${sousTitre}">
       ${ratioPreset==='mamh'?`« La Stratégie québécoise en habitation détermine qu'un ratio équilibré correspond à 1,123 habitation par ménage pour l'ensemble du Québec. Ce ratio pourrait toutefois ne pas être adapté pour représenter les particularités d'un territoire. » « Ce ratio de 1,123 a été établi à partir d'une période de référence couvrant de 2014 à 2019. » (p. 21)<br>`:''}
-      « Tous les types de logements privés sont comptabilisés par ce ratio, notamment les logements inoccupés, les résidences principales, les résidences de tourisme (lorsque non catégorisées comme un usage commercial) et les résidences secondaires, telles que les chalets et les pied-à-terre, tous modes de tenure confondus. » (p. 21)<br>Logements : rôle d'évaluation foncière, filtre « ${cubfNames[currentCubf]||''} ».
+      « Tous les types de logements privés sont comptabilisés par ce ratio, notamment les logements inoccupés, les résidences principales, les résidences de tourisme (lorsque non catégorisées comme un usage commercial) et les résidences secondaires, telles que les chalets et les pied-à-terre, tous modes de tenure confondus. » (p. 21)<br>Logements : rôle d'évaluation foncière, ${parcLabel}.
     </div>
     ${ratioPreset==='periode'?`<div class="cibles-param">
       <label>Début de la période de référence</label>
@@ -2035,10 +2046,10 @@ function renderCibles(content,mrcLabel){
     <div class="cibles-param" style="min-width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
       <div style="font-size:.7rem;color:var(--text-light);margin-bottom:6px;">Ratio moyen de mises en chantier par nouveau ménage = Nbre de logements mis en chantier / Nbre de nouveaux ménages (p. 27)</div>
       ${ratioMCPreset==='calcule'&&periodeStartsYrs.length>0?`<div style="display:flex;gap:16px;flex-wrap:wrap;">
-        ${periodeStartsYrs.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.8rem;font-weight:600;color:var(--teal-dark);">${fmt(startsByYear[y])} / ${fmtSigne(deltaMenByYear[y])}</div></div>`).join('')}
+        ${periodeStartsYrs.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.8rem;font-weight:600;color:var(--teal-dark);">${fmtSigne(startsByYear[y])} / ${fmtSigne(deltaMenByYear[y])}</div></div>`).join('')}
         <div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">${fmt(sommeMC)} / ${fmt(sommeNouvMen)}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioMCCalc!=null?fmtDec(ratioMCCalc,3):'–'}</div></div>
       </div>`:''}
-      <div style="${sousTitre}margin-top:6px;">« Il est recommandé ici de ne considérer dans les mises en chantier que les logements achevés. » (p. 26) « Il est important de s'assurer que le nombre de logements perdus, par exemple par démolition ou par fusion de logements, est soustrait du nombre de logements construits durant cette même période. » (p. 27)<br>Mises en chantier : logements du rôle le plus récent, selon l'année de construction. Les logements perdus ne sont pas soustraits. Nouveaux ménages : variation annuelle (ISQ).</div>
+      <div style="${sousTitre}margin-top:6px;">« Il est recommandé ici de ne considérer dans les mises en chantier que les logements achevés. » (p. 26) « Il est important de s'assurer que le nombre de logements perdus, par exemple par démolition ou par fusion de logements, est soustrait du nombre de logements construits durant cette même période. » (p. 27)<br>« La comparaison des années de référence des données des sommaires des rôles d'évaluation foncière permet d'estimer le nombre de nouveaux logements en tenant compte des pertes. » (note 27, p. 27)<br>Nouveaux logements : rôle de l'année y+1 moins rôle de l'année y. Nouveaux ménages : ménages de l'année y+1 moins ménages de l'année y (ISQ).</div>
     </div>`:''}
     <div class="cibles-param">
       <label>Projections des ménages privés (ISQ)</label>
@@ -2061,7 +2072,7 @@ function renderCibles(content,mrcLabel){
     <div class="metric-card">
       <div class="metric-label">Logements (L<sub>actuel</sub>, ${latestLogYear})</div>
       <div class="metric-value">${fmt(Lactuel)}</div>
-      <div class="metric-sub">Rôle d'évaluation foncière · filtre ${cubfNames[currentCubf]||''}</div>
+      <div class="metric-sub">Rôle d'évaluation foncière${parcBesoins?' · chalets compris':` · filtre ${cubfNames[currentCubf]||''}`}</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Ménages privés (M<sub>actuel</sub>, ${latestMenYear})</div>
