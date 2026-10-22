@@ -183,7 +183,7 @@ body.embed-mode{overflow-y:auto;height:auto;}
 <header>
   <div>
     <h1>Profil de l'habitation</h1>
-    <div class="subtitle">Rôle d'évaluation foncière · Toutes les MRC et municipalités du Québec</div>
+    <div class="subtitle">Rôle d'évaluation foncière · MRC et municipalités de l'Outaouais, des Laurentides et de la Montérégie</div>
   </div>
   <div class="source-badge">Source : MAMH, Rôle d'évaluation<br>foncière des municipalités</div>
 </header>
@@ -536,6 +536,10 @@ const REGION_NOMS={1:'Bas-Saint-Laurent',2:'Saguenay–Lac-Saint-Jean',3:'Capita
   4:'Mauricie',5:'Estrie',6:'Montréal',7:'Outaouais',8:'Abitibi-Témiscamingue',9:'Côte-Nord',
   10:'Nord-du-Québec',11:'Gaspésie–Îles-de-la-Madeleine',12:'Chaudière-Appalaches',13:'Laval',
   14:'Lanaudière',15:'Laurentides',16:'Montérégie',17:'Centre-du-Québec'};
+// Régions proposées dans les sélecteurs. Les données des autres régions restent
+// chargées et accessibles : il suffit d'ajouter leur code ici pour les afficher.
+const REGIONS_VISIBLES=[7,15,16];
+const regionVisible=code=>REGIONS_VISIBLES.includes(Number(code));
 function regionNom(code){
   const r=(DATA.regions||[]).find(d=>Number(d.Region)===Number(code));
   return (r&&r.nom)||REGION_NOMS[Number(code)]||`Région ${code}`;
@@ -545,7 +549,7 @@ function populateRegionSelect(){
   if(!sel) return;
   // Les codes viennent de mrc_list : le sélecteur ne propose que des régions
   // effectivement couvertes, même si regions.json manque.
-  const codes=[...new Set((DATA.mrc_list||[]).map(d=>Number(d.Region)).filter(Number.isFinite))].sort((a,b)=>a-b);
+  const codes=[...new Set((DATA.mrc_list||[]).map(d=>Number(d.Region)).filter(Number.isFinite))].filter(regionVisible).sort((a,b)=>a-b);
   sel.innerHTML='<option value="">Toutes les régions</option>'+
     codes.map(c=>`<option value="${c}">${regionNom(c)}</option>`).join('');
   sel.value=currentRegion||'';
@@ -567,13 +571,13 @@ function scopeRows(arr){
 }
 // Portée régionale seule : sert de valeur de référence à laquelle comparer une MRC.
 function scopeRegionRows(arr){
-  if(!currentRegion) return arr||[];
+  if(!currentRegion) return (arr||[]).filter(d=>regionVisible(regionOf(d.CDNAME)));
   return (arr||[]).filter(d=>regionOf(d.CDNAME)===currentRegion);
 }
 function scopeLabel(){
   if(currentMRC) return currentMRC;
   if(currentRegion) return regionNom(currentRegion);
-  return 'Tout le Québec';
+  return REGIONS_VISIBLES.map(regionNom).join(', ');
 }
 
 function getAvailableYears(){
@@ -618,7 +622,7 @@ function syncYearRange(changed){
 function populateMRCSelect(regionFilter){
   const sel=document.getElementById('sel-mrc');
   const mrcList=DATA.mrc_list||[];
-  const filtered=regionFilter?mrcList.filter(d=>String(d.Region)===regionFilter):mrcList;
+  const filtered=regionFilter?mrcList.filter(d=>String(d.Region)===regionFilter):mrcList.filter(d=>regionVisible(d.Region));
   sel.innerHTML='<option value="">Toutes les MRC</option>'+
     filtered.map(d=>`<option value="${d.CDNAME}">${d.CDNAME}</option>`).join('');
   if(currentMRC&&filtered.find(d=>d.CDNAME===currentMRC)) sel.value=currentMRC;
@@ -2212,6 +2216,9 @@ function renderCibles(content,mrcLabel){
   try{
     await loadCore();
     applyStateFromUrl();
+    // Une adresse qui vise une région masquée revient à la portée par défaut
+    if(currentRegion&&!regionVisible(currentRegion)) currentRegion='';
+    if(currentMRC&&!regionVisible(regionOf(currentMRC))) currentMRC=null;
     populateRegionSelect();
     // Une intégration iframe ne transmet que la MRC : la région en découle.
     const reg=activeRegion();
