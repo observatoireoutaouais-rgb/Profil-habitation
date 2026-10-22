@@ -100,6 +100,10 @@ body.embed-mode .content{box-sizing:border-box;width:100%;}
 body.embed-mode .chart-area{width:100%;box-sizing:border-box;}
 body.embed-mode svg{max-width:100%;}
 body.embed-mode .embed-controls{display:flex!important;}
+/* embed=section : toute la section de l'onglet, avec ses cartes et son en-tête */
+body.embed-section .section-header{display:block;}
+body.embed-section .chart-card{box-shadow:var(--shadow,0 1px 3px rgba(0,0,0,.06));border:1px solid var(--border);padding:20px;background:var(--white);}
+body.embed-section #embed-period-controls,body.embed-section #embed-single-controls,body.embed-section .embed-sep{display:none!important;}
 .embed-controls{display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px;background:var(--white);border-bottom:1px solid var(--border);}
 body.embed-mode .embed-controls{position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);}
 body.embed-mode .content{padding-top:12px!important;overflow-y:auto;}
@@ -166,9 +170,11 @@ body.embed-mode{overflow-y:auto;height:auto;}
 .step-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--bg2);font-size:.82rem;}
 .step-row:last-child{border-bottom:none;}
 .step-row .step-label{color:var(--text-light);}
-.step-row .step-val{font-weight:600;font-variant-numeric:tabular-nums;color:var(--text);}
+.step-row .step-val{font-weight:600;font-variant-numeric:tabular-nums;color:var(--text);white-space:nowrap;padding-left:8px;}
 .step-row.total-step{background:var(--teal-pale);margin:6px -4px -4px;padding:7px 8px;border-radius:0 0 6px 6px;font-weight:700;}
 .step-row.total-step .step-val{color:var(--teal-dark);}
+.step-formula{font-size:.78rem;font-weight:600;color:var(--teal-dark);background:var(--bg2);border-radius:6px;padding:6px 8px;margin-bottom:6px;line-height:1.5;}
+.step-card h4{text-transform:none;letter-spacing:0;line-height:1.4;}
 </style>
 </head>
 <body>
@@ -738,8 +744,10 @@ function showIframe(chartId, singleYear=false){
   // Show/hide year controls
   const rangeRow=document.getElementById('iframe-range-row');
   const singleRow=document.getElementById('iframe-single-row');
-  if(rangeRow) rangeRow.style.display=singleYear?'none':'flex';
-  if(singleRow) singleRow.style.display=singleYear?'flex':'none';
+  // Une section entière (embed=section) n'a pas de sélecteur d'années
+  const isSection=chartId==='section';
+  if(rangeRow) rangeRow.style.display=(singleYear||isSection)?'none':'flex';
+  if(singleRow) singleRow.style.display=(singleYear&&!isSection)?'flex':'none';
   // Populate year selects
   const years=getAvailableYears();
   const yminSel=document.getElementById('iframe-ymin');
@@ -857,7 +865,13 @@ function populateEmbedYearSelects(){
 }
 function applyEmbedMode(){
   document.body.classList.toggle('embed-mode', !!currentEmbedId);
+  document.body.classList.toggle('embed-section', currentEmbedId==='section');
   if(!currentEmbedId) return;
+  if(currentEmbedId==='section'){
+    document.querySelectorAll('.embed-cubf-btn').forEach(b=>b.classList.toggle('active', b.dataset.cubf===currentCubf));
+    postEmbedHeight();
+    return;
+  }
   const content=document.getElementById('content');
   const target=document.getElementById(currentEmbedId);
   if(!content||!target) return;
@@ -1609,7 +1623,7 @@ let ciblesParams={
   methodeA1:'ratio',          // 'ratio' | 'inoccupation' | 'aucun'
   methodeA3:'ratio',          // 'ratio' | 'mises_chantier' | 'inoccupation' | 'aucun'
   ajustement:null,            // message affiché après un changement automatique de méthode
-  ratioPreset:'mamh',         // 'mamh' | 'regional' | 'local' | 'periode' | 'custom'
+  ratioPreset:'mamh',         // 'mamh' | 'periode' | 'custom'
   ratioEquilibre:1.123,       // used only when ratioPreset === 'custom'
   periodeDebut:null,          // auto-initialized to earliest available year
   periodeFin:null,            // auto-initialized to latest available year
@@ -1655,8 +1669,8 @@ function renderCibles(content,mrcLabel){
     ciblesParams.mcPeriodeFin=null;
     _lastTauxLocMRC=currentMRC;
   }
-  // Fallback if 'regional' preset was previously selected (option removed)
-  if(ciblesParams.ratioPreset==='regional') ciblesParams.ratioPreset='mamh';
+  // Options retirées (absentes de la méthode du MAMH) : retour à la valeur par défaut
+  if(['regional','local'].includes(ciblesParams.ratioPreset)) ciblesParams.ratioPreset='mamh';
   const {methodeA1,methodeA3,ratioPreset,ratioEquilibre,tauxInoccupation,ratioMCPreset,tauxLocataires,scenario,horizonAn,ajustement}=ciblesParams;
   ciblesParams.ajustement=null;
   let {ratioMisesEnChantier}=ciblesParams;
@@ -1678,7 +1692,7 @@ function renderCibles(content,mrcLabel){
   const menByYear={};
   filt(menProj).filter(d=>d.Scenario===scenario).forEach(r=>{menByYear[r.Annee]=(menByYear[r.Annee]||0)+r.Menages;});
 
-  // Étendre les ménages vers le passé via population ÷ taille_ménage calibrée à l'année ISQ la plus ancienne
+  // Étendre les ménages vers le passé via population / taille_ménage calibrée à l'année ISQ la plus ancienne
   const popData=scopeRegionRows(DATA.population_mrc||[]);
   const popByYear={};
   filt(popData).forEach(r=>{const y=Number(r.Annee);popByYear[y]=(popByYear[y]||0)+Number(r.Population||0);});
@@ -1706,28 +1720,6 @@ function renderCibles(content,mrcLabel){
   const Mactuel=menByYear[latestMenYear]||0;
   const ratioActuel=Mactuel>0?+(Lactuel/Mactuel).toFixed(3):0;
 
-  // Totaux de la portée régionale (sans filtre MRC), valeurs de référence
-  const logByYearAll={};
-  logData.forEach(r=>{const y=Number(r.Annee);logByYearAll[y]=(logByYearAll[y]||0)+Number(r.Total||0);});
-  const LRegional=logByYearAll[latestLogYear]||0;
-  const menByYearAll={};
-  menProj.filter(d=>d.Scenario===scenario).forEach(r=>{menByYearAll[r.Annee]=(menByYearAll[r.Annee]||0)+r.Menages;});
-  // Extend regional ménages historically too
-  const popByYearAll={};
-  popData.forEach(r=>{const y=Number(r.Annee);popByYearAll[y]=(popByYearAll[y]||0)+Number(r.Population||0);});
-  const calibYearAll=Object.keys(menByYearAll).map(Number).sort((a,b)=>a-b)[0]||2021;
-  const tailleMenageAll=(menByYearAll[calibYearAll]&&popByYearAll[calibYearAll])?(popByYearAll[calibYearAll]/menByYearAll[calibYearAll]):2.4;
-  Object.keys(popByYearAll).map(Number).filter(y=>y<calibYearAll&&popByYearAll[y]>0).forEach(y=>{
-    if(!menByYearAll[y]) menByYearAll[y]=Math.round(popByYearAll[y]/tailleMenageAll);
-  });
-  const menEstYearsAll=Object.keys(menByYearAll).map(Number).sort((a,b)=>a-b).filter(y=>y<=latestLogYear);
-  const MRegional=menEstYearsAll.length?menByYearAll[menEstYearsAll[menEstYearsAll.length-1]]||0:0;
-  const ratioRegional=MRegional>0?+(LRegional/MRegional).toFixed(3):1.123;
-
-  // Taux de non-occupation implicite (log. sans ménage principal : vacants + saisonniers + autres)
-  const tauxNonOccup=Lactuel>0?(Lactuel-Mactuel)/Lactuel:0;
-  const tauxNonOccupRegional=LRegional>0?(LRegional-MRegional)/LRegional:0;
-
   // Période de référence : années où logements ET ménages ISQ estimés (non projetés) sont disponibles
   const refYearsAvail=menYears.filter(y=>y<=Math.min(latestLogYear,lastISQEstYear)&&logByYear[y]&&menByYear[y]);
   const refRatioByYear={};
@@ -1744,8 +1736,6 @@ function renderCibles(content,mrcLabel){
   // Effective ratio (depends on preset)
   let effectiveRatio;
   if(ratioPreset==='mamh')          effectiveRatio=1.123;
-  else if(ratioPreset==='regional') effectiveRatio=ratioRegional;
-  else if(ratioPreset==='local')    effectiveRatio=ratioActuel;
   else if(ratioPreset==='periode')  effectiveRatio=ratioPeriode;
   else                              effectiveRatio=ratioEquilibre;
   effectiveRatio=+effectiveRatio.toFixed(3);
@@ -1764,7 +1754,7 @@ function renderCibles(content,mrcLabel){
   // Détail annuel (affichage) : mises en chantier de l'année y et ΔMénages y→y+1
   const deltaMenByYear={};
   periodeStartsYrs.forEach(y=>{deltaMenByYear[y]=menByYear[y+1]-menByYear[y];});
-  // Ratio MAMH : Σ mises en chantier ÷ Σ nouveaux ménages sur la période
+  // Ratio MAMH : Σ mises en chantier / Σ nouveaux ménages sur la période
   const sommeMC=periodeStartsYrs.reduce((s,y)=>s+startsByYear[y],0);
   const sommeNouvMen=periodeStartsYrs.reduce((s,y)=>s+deltaMenByYear[y],0);
   const ratioMCCalc=sommeNouvMen>0?+(sommeMC/sommeNouvMen).toFixed(3):null;
@@ -1777,7 +1767,7 @@ function renderCibles(content,mrcLabel){
 
   // ── MAMH CALCULATIONS ─────────────────────────────────────────────────
   // A.1.1 : déficit = (M_actuel × R_éq) − L_actuel
-  // A.1.2 : déficit = M_loc ÷ (1 − T_éq) × (T_éq − T_actuel) ÷ (1 − T_éq)   (formule MAMH, p. 24)
+  // A.1.2 : déficit = M_loc / (1 − T_éq) × (T_éq − T_actuel) / (1 − T_éq)   (formule MAMH, p. 24)
   const Mlocataires=Mactuel*tauxLocataires;
   const parcLocatifEquilibre=tauxInoccupation<1?Mlocataires/(1-tauxInoccupation):0;
   const facteurDeficit=hasSCHLData&&tauxInoccupation<1?(tauxInoccupation-tauxSCHL)/(1-tauxInoccupation):0;
@@ -1794,7 +1784,7 @@ function renderCibles(content,mrcLabel){
 
   // A.3 : facteur appliqué à la croissance (inclut A.2) ; l'excédent = croissance × (facteur − 1)
   //   A.3.1 : R_éq · A.3.2 : ratio de mises en chantier
-  //   A.3.3 : M_p + M_l ÷ (1 − T_éq)  →  (1 − part loc.) + part loc. ÷ (1 − T_éq)
+  //   A.3.3 : M_p + M_l / (1 − T_éq)  →  (1 − part loc.) + part loc. / (1 − T_éq)
   const a3Factor=methodeA3==='ratio'?effectiveRatio
     :methodeA3==='mises_chantier'?ratioMisesEnChantier
     :methodeA3==='inoccupation'?(1-tauxLocataires)+tauxLocataires/(1-tauxInoccupation)
@@ -1821,12 +1811,23 @@ function renderCibles(content,mrcLabel){
   });
   const logementsActuelsSeries=chartYears.map(y=>logByYear[y]||null);
 
-  // ── Étiquettes méthodes ────────────────────────────────────────────────
-  const lA1={ratio:'A.1.1 – Ratio log./ménage',inoccupation:'A.1.2 – Taux d\'inoccupation',aucun:'A.1 non appliquée'};
-  const lA3={ratio:'A.3.1 – Ratio log./ménage',mises_chantier:'A.3.2 – Ratio mises en chantier',inoccupation:'A.3.3 – Taux d\'inoccupation',aucun:'Aucun excédent'};
+  // ── Libellés (intitulés de l'annexe 1 du MAMH) ─────────────────────────
+  const lA1={ratio:'A.1.1',inoccupation:'A.1.2',aucun:'A.1 non réalisée'};
+  const lA3={ratio:'A.3.1',mises_chantier:'A.3.2',inoccupation:'A.3.3',aucun:'A.3 non réalisée'};
+  const tA1={
+    ratio:'A.1.1 : Prise en compte d\'un ratio d\'habitations par ménage privé',
+    inoccupation:'A.1.2 : Prise en compte d\'un taux d\'inoccupation équilibré des logements locatifs',
+    aucun:'Étape A.1 non réalisée'
+  };
+  const tA3={
+    ratio:'A.3.1 : Prise en compte d\'un ratio d\'habitations par ménage privé',
+    mises_chantier:'A.3.2 : Prise en compte d\'un ratio de mises en chantier par nouveau ménage privé',
+    inoccupation:'A.3.3 : Prise en compte d\'un taux d\'inoccupation équilibré des logements locatifs',
+    aucun:'Étape A.3 non réalisée (étape facultative)'
+  };
   const methA1Label=lA1[methodeA1], methA3Label=lA3[methodeA3];
-  // Libellé d'option A.3 incompatible avec l'A.1 courante : la choisir ajuste l'A.1
-  const a3Suffixe=v=>ciblesCompatibles(methodeA1,v)?'':' (ajuste l\'A.1)';
+  // Option A.3 incompatible avec l'A.1 courante : la choisir change l'A.1 (note 24)
+  const a3Suffixe=v=>ciblesCompatibles(methodeA1,v)?'':' — change l\'étape A.1 (note 24)';
 
   // ── Visibilité des champs paramètres ──────────────────────────────────
   const showRatio=methodeA1==='ratio'||methodeA3==='ratio';
@@ -1834,278 +1835,287 @@ function renderCibles(content,mrcLabel){
   const showRatioMC=methodeA3==='mises_chantier';
   const isCustomRatio=ratioPreset==='custom';
 
-  // ── Carte "Ratio actuel" : cible seulement si un ratio équilibré est appliqué
-  const cibleRatio=showRatio?effectiveRatio:null;
+  // ── Formats (virgule décimale, comme dans le document du MAMH) ─────────
+  const fmtDec=(v,d)=>Number(v).toLocaleString('fr-CA',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const fmtPctD=v=>fmtDec(v*100,1)+' %';
+  const formule=t=>`<div class="step-formula">${t}</div>`;
+  const ligne=(l,v='')=>`<div class="step-row"><span class="step-label">${l}</span><span class="step-val">${v}</span></div>`;
 
-  // ── Décomposition A.1 ─────────────────────────────────────────────────
-  const mlocStr=`${fmt(Mlocataires)} ménages locataires (${(tauxLocataires*100).toFixed(0)} % de ${fmt(Mactuel)})`;
+  // ── Étape A.1 ─────────────────────────────────────────────────────────
   const stepA1Rows=methodeA1==='ratio'
-    ?`<div class="step-row"><span class="step-label">Ménages (${latestMenYear}) × ${effectiveRatio}</span><span class="step-val">${fmt(logements_requis_A1)}</span></div>
-      <div class="step-row"><span class="step-label">Logements actuels (${latestLogYear})</span><span class="step-val">${fmt(Lactuel)}</span></div>`
+    ?formule('Déficit de logements = (M<sub>actuel</sub> × R<sub>éq</sub>) – L<sub>actuel</sub>')
+      +ligne(`M<sub>actuel</sub> : nombre de ménages actuellement sur le territoire (${latestMenYear})`,fmt(Mactuel))
+      +ligne('R<sub>éq</sub> : ratio moyen équilibré d\'habitations par ménage',fmtDec(effectiveRatio,3))
+      +ligne(`L<sub>actuel</sub> : nombre de logements actuellement sur le territoire (${latestLogYear})`,fmt(Lactuel))
+      +ligne(`Déficit de logements = (${fmt(Mactuel)} × ${fmtDec(effectiveRatio,3)}) – ${fmt(Lactuel)}`,fmtSigne(deficit_A1))
     :methodeA1==='inoccupation'
-    ?`<div class="step-row"><span class="step-label">${mlocStr}</span><span class="step-val"></span></div>
-      <div class="step-row"><span class="step-label">Parc locatif à l'équilibre : ménages loc. ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(parcLocatifEquilibre)}</span></div>
-      <div class="step-row"><span class="step-label">× facteur de déficit : (${fmtPct(tauxInoccupation)} − ${fmtPct(tauxSCHL)}, SCHL ${tauxSCHLYear}) ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${facteurDeficit.toFixed(4)}</span></div>`
-    :`<div class="step-row"><span class="step-label">Aucun déficit actuel n'est évalué</span><span class="step-val"></span></div>`;
+    ?formule('Déficit actuel de logements = M<sub>L</sub> / (1 – T<sub>éq</sub>) × (T<sub>éq</sub> – T<sub>actuel</sub>) / (1 – T<sub>éq</sub>)')
+      +ligne(`M<sub>L</sub> : nombre de ménages locataires (${fmtPctD(tauxLocataires)} de ${fmt(Mactuel)} ménages)`,fmt(Mlocataires))
+      +ligne('T<sub>éq</sub> : taux d\'inoccupation équilibré',fmtPctD(tauxInoccupation))
+      +ligne(`T<sub>actuel</sub> : taux d'inoccupation actuel (SCHL, ${tauxSCHLYear})`,fmtPctD(tauxSCHL))
+      +ligne('Parc de logements à l\'équilibre = M<sub>L</sub> / (1 – T<sub>éq</sub>)',fmt(parcLocatifEquilibre))
+      +ligne('Facteur de déficit = (T<sub>éq</sub> – T<sub>actuel</sub>) / (1 – T<sub>éq</sub>)',fmtDec(facteurDeficit,4))
+      +ligne('Déficit actuel de logements',fmtSigne(deficit_A1))
+    :ligne('Étape non réalisée');
 
-  // ── Décomposition A.3 ─────────────────────────────────────────────────
-  const mcSourceLabel=ratioMCPreset==='calcule'?`calculé période ${mcPeriodeDebut}–${mcPeriodeFin}`:'personnalisé';
-  const stepA3Middle=methodeA3==='ratio'
-    ?`<div class="step-row"><span class="step-label">Croissance × ratio équilibré (${effectiveRatio})</span><span class="step-val">${fmt(besoinCroissance)}</span></div>`
+  // ── Étape A.3 ─────────────────────────────────────────────────────────
+  const mcSourceLabel=ratioMCPreset==='calcule'?`période de référence ${mcPeriodeDebut}–${mcPeriodeFin}`:'valeur saisie';
+  const stepA3Rows=methodeA3==='ratio'
+    ?formule('Besoin résidentiel = ratio moyen d\'habitations par ménage × croissance anticipée du nombre de ménages privés')
+      +ligne(`Besoin résidentiel = ${fmtDec(effectiveRatio,3)} × ${fmt(croissanceM)}`,fmt(besoinCroissance))
     :methodeA3==='mises_chantier'
-    ?`<div class="step-row"><span class="step-label">Croissance × ratio mises en chantier (${ratioMisesEnChantier.toFixed(3)} – ${mcSourceLabel})</span><span class="step-val">${fmt(besoinCroissance)}</span></div>`
+    ?formule('Besoin résidentiel = ratio moyen de mises en chantier par nouveau ménage × croissance anticipée du nombre de ménages privés')
+      +ligne(`Besoin résidentiel = ${fmtDec(ratioMisesEnChantier,3)} (${mcSourceLabel}) × ${fmt(croissanceM)}`,fmt(besoinCroissance))
     :methodeA3==='inoccupation'
-    ?`<div class="step-row"><span class="step-label">Ménages propriétaires (${(100-tauxLocataires*100).toFixed(0)} %)</span><span class="step-val">${fmt(croissanceM*(1-tauxLocataires))}</span></div>
-      <div class="step-row"><span class="step-label">+ ménages locataires (${(tauxLocataires*100).toFixed(0)} %) ÷ (1 − ${fmtPct(tauxInoccupation)})</span><span class="step-val">${fmt(croissanceM*tauxLocataires/(1-tauxInoccupation))}</span></div>`
-    :`<div class="step-row"><span class="step-label">Aucun logement au-delà de la croissance des ménages</span><span class="step-val"></span></div>`;
+    ?formule('Besoin résidentiel = M<sub>p</sub> + M<sub>l</sub> / (1 – T<sub>éq</sub>)')
+      +ligne(`M<sub>p</sub> : nombre de ménages propriétaires anticipés (${fmtPctD(1-tauxLocataires)})`,fmt(croissanceM*(1-tauxLocataires)))
+      +ligne(`M<sub>l</sub> : nombre de ménages locataires anticipés (${fmtPctD(tauxLocataires)})`,fmt(croissanceM*tauxLocataires))
+      +ligne('T<sub>éq</sub> : taux d\'inoccupation équilibré',fmtPctD(tauxInoccupation))
+      +ligne('Besoin résidentiel',fmt(besoinCroissance))
+    :ligne('Étape non réalisée');
 
-  // ── Source du ratio label ─────────────────────────────────────────────
+  // ── Source du ratio ───────────────────────────────────────────────────
   const ratioSourceLabel={
-    mamh:'MAMH Québec 2014–2019',
-    local:`${mrcLabel} – ${latestLogYear}`,
-    periode:`Période de référence ${periodeDebut}–${periodeFin}`,
-    custom:'Personnalisé'
-  }[ratioPreset]||'Personnalisé';
+    mamh:'Stratégie québécoise en habitation, 2014–2019',
+    periode:`ratio moyen, période de référence ${periodeDebut}–${periodeFin}`,
+    custom:'valeur saisie'
+  }[ratioPreset]||'valeur saisie';
 
-  // ── Notes ─────────────────────────────────────────────────────────────
-  const noteRatio=showRatio?`Ratio équilibré : ${effectiveRatio} log./ménage (${ratioSourceLabel}).`:'';
-  const noteTaux=showTaux?` Taux d'inoccupation équilibré retenu : ${fmtPct(tauxInoccupation)}.`:'';
-  const noteMC=showRatioMC?` Ratio de mises en chantier : ${ratioMisesEnChantier.toFixed(3)} (${mcSourceLabel}).`:'';
-
-  // ── Avertissements méthodologiques ────────────────────────────────────
+  // ── Avis : citations du document d'accompagnement du MAMH ──────────────
+  const MAMH='MAMH, document d\'accompagnement';
   const avis=[];
   if(ajustement) avis.push(ajustement);
   if(methodeA1==='inoccupation'){
-    avis.push(`<strong>Portée du taux SCHL (A.1.2).</strong> L'Enquête sur les logements locatifs ne couvre que les immeubles de trois logements et plus, dans les centres de 10 000 habitants et plus. Le MAMH réserve cette approche aux territoires dont le parc locatif constitue la majorité des logements.${tauxLocataires<0.5?` Ici, les ménages locataires ne forment que ${(tauxLocataires*100).toFixed(0)} % des ménages : le parc locatif n'est pas majoritaire et l'approche A.1.1 est préférable.`:''}`);
+    avis.push(`<strong>Données de la SCHL (étape A.1.2).</strong> « Il est à noter que ces données ne mesurent que l'inoccupation des logements locatifs dans les immeubles de trois logements et plus et seulement pour certaines municipalités. Cette approche basée sur les données de la SCHL pourrait donc être appliquée lorsque le parc de logements locatifs d'une MRC ou de ses principaux pôles constitue la majorité des logements sur le territoire. » (${MAMH}, p. 23)<br>Ménages locataires du territoire (recensement 2021) : ${fmtPctD(tauxLocataires)} des ménages.`);
   }
   if(showTaux){
-    avis.push(`<strong>Taux d'inoccupation équilibré.</strong> Il n'existe pas de consensus sur un seuil d'équilibre : le seuil de 3 % peut ne pas convenir au territoire. Le MAMH recommande de le définir à partir des taux passés observés dans les municipalités de la MRC.`);
+    avis.push(`<strong>Taux d'inoccupation équilibré.</strong> « Malgré l'utilisation répandue du seuil de 3 %, ce dernier pourrait ne pas convenir à tous les milieux. [...] Il est recommandé à la MRC d'évaluer les taux passés observés dans ses municipalités locales pour déterminer le ou les taux d'inoccupation équilibrés. » (${MAMH}, p. 23)`);
   }
   if(ratioMCIndispo){
     avis.push(periodeStartsYrs.length
-      ?`<strong>Ratio de mises en chantier non calculable</strong> sur la période ${mcPeriodeDebut}–${mcPeriodeFin} : le nombre de ménages n'y augmente pas. La valeur personnalisée (${ratioMisesEnChantier.toFixed(3)}) est utilisée ; choisissez une autre période.`
-      :`<strong>Aucune donnée de mises en chantier</strong> pour ce territoire : la valeur personnalisée (${ratioMisesEnChantier.toFixed(3)}) est utilisée.`);
+      ?`<strong>Ratio de mises en chantier non calculé.</strong> Le nombre de nouveaux ménages est nul ou négatif sur la période ${mcPeriodeDebut}–${mcPeriodeFin}. La valeur saisie (${fmtDec(ratioMisesEnChantier,3)}) est utilisée.`
+      :`<strong>Ratio de mises en chantier non calculé.</strong> Aucune donnée de mises en chantier n'est disponible pour ce territoire. La valeur saisie (${fmtDec(ratioMisesEnChantier,3)}) est utilisée.`);
   }
   if(deficit_A1<0){
-    avis.push(`<strong>Surplus actuel de ${fmt(-deficit_A1)} logements.</strong> L'étape A.1 s'adresse aux MRC en déficit : ce surplus n'est pas soustrait des besoins.`);
+    avis.push(`<strong>Étape A.1 : aucun déficit.</strong> Le calcul donne un surplus de ${fmt(-deficit_A1)} logements. « La présente démarche permet aux MRC qui présentent un déficit de logements d'évaluer l'écart entre les besoins actuels des ménages et l'offre du parc de logements. » (${MAMH}, p. 21) Aucun logement n'est ajouté au total pour l'étape A.1.`);
   }
   if(deltaM<0){
-    avis.push(`<strong>Décroissance des ménages (${fmtSigne(deltaM)} d'ici ${horizonAn}).</strong> Les approches du MAMH visent les MRC en croissance : aucun besoin lié à la croissance n'est compté à l'échelle de la MRC. Le MAMH suggère d'évaluer les besoins à l'échelle des municipalités où une croissance est prévue, ainsi que les besoins liés aux enjeux particuliers du territoire.`);
+    avis.push(`<strong>Territoires en décroissance.</strong> Le nombre de ménages privés projeté diminue de ${fmt(-deltaM)} entre ${latestMenYear} et ${horizonAn}. « Les approches méthodologiques proposées dans ce document s'adressent plus particulièrement aux MRC en croissance démographique. Une MRC rencontrant des défis liés à la décroissance de plusieurs de ses municipalités peut néanmoins faire une évaluation de certains besoins en habitation afin de répondre aux enjeux particuliers présents sur son territoire. Elle peut aussi déterminer les besoins en logements à l'échelle de chacune des municipalités pour lesquelles une croissance démographique est prévue. » (${MAMH}, p. 19) Aucun logement n'est ajouté au total pour les étapes A.2 et A.3.`);
   }
   const avisHtml=avis.length
-    ?`<div style="background:#fdf3e3;border:1px solid #e8a048;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.78rem;color:#7a5410;line-height:1.55;">${avis.map(a=>`<div style="margin:3px 0;">⚠ ${a}</div>`).join('')}</div>`
+    ?`<div style="background:#fdf3e3;border:1px solid #e8a048;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.78rem;color:#7a5410;line-height:1.55;">${avis.map(a=>`<div style="margin:4px 0;">${a}</div>`).join('')}</div>`
     :'';
-
 
   // ── RENDER HTML ───────────────────────────────────────────────────────
   const cubfNames={mamh_strict:'Strict',mamh_optional:'Élargi',mamh_plus_others:'Complet'};
-  const cubfWarn=currentCubf!=='mamh_strict'
-    ?`<div style="background:#fdf3e3;border:1px solid #e8a048;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.8rem;color:#7a5410;line-height:1.5;">
-        ⚠ <strong>Filtre CUBF « ${cubfNames[currentCubf]} » actif.</strong> Le stock de logements utilisé ici inclut des catégories ${currentCubf==='mamh_plus_others'?'comme les chalets et roulottes ':''}absentes de l'univers de référence du MAMH. Le ratio équilibré de référence (1.123) est défini sur le filtre <strong>Strict</strong> : les résultats ne sont pas directement comparables à cette cible.
-      </div>`
-    :'';
+  const horizon20=latestMenYear+20;
+  const tenureMRC=currentMRC?(DATA.tenure_menages_mrc||{})[currentMRC]:null;
+  const sousTitre='font-size:.7rem;color:var(--text-light);line-height:1.5;';
   content.innerHTML=`
   <div class="section-header">
-    <h2>Cibles en habitation – Méthodologie MAMH</h2>
-    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Besoins projetés · ${latestMenYear}–${horizonAn} · Filtre CUBF : ${cubfNames[currentCubf]||''}</div>
+    <h2>Cibles en habitation – Évaluation des besoins en logements privés</h2>
+    <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Horizon de planification : ${latestMenYear}–${horizonAn} · Filtre CUBF : ${cubfNames[currentCubf]||''}${currentEmbedId?'':` · <button class="chart-btn btn-iframe" onclick="showIframe('section')">Obtenir l'iframe de la section</button>`}</div>
   </div>
-  ${cubfWarn}
+
+  <div style="font-size:.78rem;color:var(--text);line-height:1.6;margin-bottom:16px;">
+    « La méthodologie définit les besoins des ménages en logements pour les 20 prochaines années comme étant la somme entre les projections des éléments suivants : A. Besoins en logements privés [...] B. Besoins en logements collectifs non institutionnels (étape facultative). » La présente section porte sur la partie A. « L'évaluation des besoins en logements privés s'effectue par les trois étapes suivantes : 1. Évaluer l'écart entre les besoins actuels des ménages (la demande) et l'offre du parc de logements; 2. Déterminer les besoins en logements des ménages privés pour les 20 prochaines années; 3. Déterminer des besoins en logements excédentaires par rapport à la croissance anticipée du nombre de ménages privés (étape facultative). » (${MAMH}, annexe 1, p. 19)
+  </div>
   ${avisHtml}
 
   <div class="cibles-params">
-    <div class="cibles-param">
-      <label>Méthode – Étape A.1</label>
+    <div class="cibles-param" style="flex:1 1 340px;">
+      <label>Étape A.1 : Évaluer l'écart entre les besoins actuels des ménages et l'offre du parc de logements</label>
       <select id="cp-methode-a1">
-        <option value="ratio"${methodeA1==='ratio'?' selected':''}>A.1.1 – Ratio log./ménage</option>
-        <option value="inoccupation"${methodeA1==='inoccupation'?' selected':''}${!hasSCHLData?' disabled':''}>A.1.2 – Taux d'inoccupation${!hasSCHLData?' (données SCHL non disponibles)':''}</option>
-        <option value="aucun"${methodeA1==='aucun'?' selected':''}>Aucune (pas de déficit à évaluer)</option>
+        <option value="ratio"${methodeA1==='ratio'?' selected':''}>${tA1.ratio}</option>
+        <option value="inoccupation"${methodeA1==='inoccupation'?' selected':''}${!hasSCHLData?' disabled':''}>${tA1.inoccupation}${!hasSCHLData?' (aucune donnée de la SCHL pour ce territoire)':''}</option>
+        <option value="aucun"${methodeA1==='aucun'?' selected':''}>${tA1.aucun}</option>
       </select>
     </div>
-    <div class="cibles-param">
-      <label>Méthode – Étape A.3 (facultative)</label>
+    <div class="cibles-param" style="flex:1 1 340px;">
+      <label>Étape A.3 : Déterminer des besoins en logements excédentaires (étape facultative)</label>
       <select id="cp-methode-a3">
-        <option value="ratio"${methodeA3==='ratio'?' selected':''}>A.3.1 – Ratio log./ménage${a3Suffixe('ratio')}</option>
-        <option value="mises_chantier"${methodeA3==='mises_chantier'?' selected':''}>A.3.2 – Ratio mises en chantier${a3Suffixe('mises_chantier')}</option>
-        <option value="inoccupation"${methodeA3==='inoccupation'?' selected':''}>A.3.3 – Taux d'inoccupation${a3Suffixe('inoccupation')}</option>
-        <option value="aucun"${methodeA3==='aucun'?' selected':''}>Aucun excédent (croissance des ménages seulement)</option>
+        <option value="ratio"${methodeA3==='ratio'?' selected':''}>${tA3.ratio}${a3Suffixe('ratio')}</option>
+        <option value="mises_chantier"${methodeA3==='mises_chantier'?' selected':''}>${tA3.mises_chantier}${a3Suffixe('mises_chantier')}</option>
+        <option value="inoccupation"${methodeA3==='inoccupation'?' selected':''}>${tA3.inoccupation}${a3Suffixe('inoccupation')}</option>
+        <option value="aucun"${methodeA3==='aucun'?' selected':''}>${tA3.aucun}</option>
       </select>
     </div>
-    <div class="cibles-param" style="min-width:100%;font-size:.7rem;color:var(--text-light);">
-      Combinaisons permises (note 24 du MAMH) : A.1.1 avec A.3.1 ou A.3.2 · A.1.2 avec A.3.3. Additionner un besoin fondé sur le taux d'inoccupation et un besoin fondé sur un ratio compterait deux fois les logements inoccupés.
+    <div class="cibles-param" style="min-width:100%;${sousTitre}">
+      <span><strong>Attention.</strong> « La combinaison de certaines de ces approches pourrait avoir pour effet de comptabiliser en double les besoins de certains types de logements et, conséquemment, de surestimer la demande anticipée. » (p. 20) « Les besoins estimés se référant aux taux d'inoccupation (ou au nombre de logements inoccupés) ne peuvent pas être combinés aux calculs des ratios moyens d'habitations par ménage ou des ratios moyens de mises en chantier par nouveau ménage. » (note 24, p. 23) Combinaisons offertes : A.1.1 avec A.3.1 ou A.3.2; A.1.2 avec A.3.3.</span>
     </div>
     ${showRatio?`<div class="cibles-param">
-      <label>Source du ratio équilibré</label>
+      <label>Ratio équilibré d'habitations par ménage</label>
       <select id="cp-ratio-preset">
-        <option value="mamh"${ratioPreset==='mamh'?' selected':''}>MAMH – Québec 2014–2019 (1.123)</option>
-        ${currentMRC?`<option value="local"${ratioPreset==='local'?' selected':''}>${mrcLabel} – ${latestLogYear} (${ratioActuel.toFixed(3)})</option>`:''}
-        <option value="periode"${ratioPreset==='periode'?' selected':''}>Période de référence (${periodeDebut}–${periodeFin} → ${ratioPeriode.toFixed(3)})</option>
-        <option value="custom"${ratioPreset==='custom'?' selected':''}>Personnalisé</option>
-      </select>
-    </div>
-    ${ratioPreset==='periode'?`<div class="cibles-param">
-      <label>Début de la période</label>
-      <select id="cp-periode-debut">
-        ${refYearsAvail.map(y=>`<option value="${y}"${periodeDebut===y?' selected':''}>${y} (ratio: ${refRatioByYear[y]?.toFixed(3)||'–'})</option>`).join('')}
+        <option value="mamh"${ratioPreset==='mamh'?' selected':''}>Stratégie québécoise en habitation : 1,123</option>
+        <option value="periode"${ratioPreset==='periode'?' selected':''}>Ratio moyen d'une période de référence (${periodeDebut}–${periodeFin} : ${fmtDec(ratioPeriode,3)})</option>
+        <option value="custom"${ratioPreset==='custom'?' selected':''}>Valeur saisie</option>
       </select>
     </div>
     <div class="cibles-param">
-      <label>Fin de la période</label>
+      <label>Ratio retenu (R<sub>éq</sub>)</label>
+      <input type="number" id="cp-ratio" value="${effectiveRatio}" step="0.001" min="1.0" max="2.0"${!isCustomRatio?' readonly style="opacity:.65;cursor:not-allowed"':''}>
+    </div>
+    <div class="cibles-param" style="min-width:100%;${sousTitre}">
+      ${ratioPreset==='mamh'?`« La Stratégie québécoise en habitation détermine qu'un ratio équilibré correspond à 1,123 habitation par ménage pour l'ensemble du Québec. Ce ratio pourrait toutefois ne pas être adapté pour représenter les particularités d'un territoire. » « Ce ratio de 1,123 a été établi à partir d'une période de référence couvrant de 2014 à 2019. » (p. 21)<br>`:''}
+      « Tous les types de logements privés sont comptabilisés par ce ratio, notamment les logements inoccupés, les résidences principales, les résidences de tourisme (lorsque non catégorisées comme un usage commercial) et les résidences secondaires, telles que les chalets et les pied-à-terre, tous modes de tenure confondus. » (p. 21) Parc de logements utilisé ici : rôle d'évaluation foncière, filtre CUBF « ${cubfNames[currentCubf]||''} ».
+    </div>
+    ${ratioPreset==='periode'?`<div class="cibles-param">
+      <label>Début de la période de référence</label>
+      <select id="cp-periode-debut">
+        ${refYearsAvail.map(y=>`<option value="${y}"${periodeDebut===y?' selected':''}>${y} (${refRatioByYear[y]!=null?fmtDec(refRatioByYear[y],3):'–'})</option>`).join('')}
+      </select>
+    </div>
+    <div class="cibles-param">
+      <label>Fin de la période de référence</label>
       <select id="cp-periode-fin">
-        ${refYearsAvail.map(y=>`<option value="${y}"${periodeFin===y?' selected':''}>${y} (ratio: ${refRatioByYear[y]?.toFixed(3)||'–'})</option>`).join('')}
+        ${refYearsAvail.map(y=>`<option value="${y}"${periodeFin===y?' selected':''}>${y} (${refRatioByYear[y]!=null?fmtDec(refRatioByYear[y],3):'–'})</option>`).join('')}
       </select>
     </div>
     <div class="cibles-param" style="min-width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
-      <div style="font-size:.7rem;color:var(--text-light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Ratio par année (${mrcLabel})</div>
+      <div style="font-size:.7rem;color:var(--text-light);margin-bottom:6px;">Ratio d'habitations par ménage pour une année = Nbre de logements / Nbre de ménages · Ratio moyen d'habitations par ménage = Somme des ratios / Nbre d'années (p. 22)</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;">
-        ${refYearsAvail.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.85rem;font-weight:600;color:${y>=periodeDebut&&y<=periodeFin?'var(--teal-dark)':'var(--text-light)'};">${refRatioByYear[y]?.toFixed(3)||'–'}</div></div>`).join('')}
-        ${periodeYrs.length>1?`<div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">Moy. ${periodeDebut}–${periodeFin}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioPeriode.toFixed(3)}</div></div>`:''}
+        ${refYearsAvail.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.85rem;font-weight:600;color:${y>=periodeDebut&&y<=periodeFin?'var(--teal-dark)':'var(--text-light)'};">${refRatioByYear[y]!=null?fmtDec(refRatioByYear[y],3):'–'}</div></div>`).join('')}
+        ${periodeYrs.length>1?`<div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">Moyenne ${periodeDebut}–${periodeFin}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${fmtDec(ratioPeriode,3)}</div></div>`:''}
       </div>
-      <div style="font-size:.68rem;color:var(--text-light);margin-top:6px;">2021+ : ménages ISQ (estimations réelles) · avant 2021 : estimation via population ÷ taille des ménages (calibrée à ${calibYear}).</div>
-    </div>`:''}
-    <div class="cibles-param">
-      <label>Ratio équilibré (log./ménage)</label>
-      <input type="number" id="cp-ratio" value="${effectiveRatio}" step="0.001" min="1.0" max="2.0"${!isCustomRatio?' readonly style="opacity:.65;cursor:not-allowed"':''}>
-    </div>`:''}
+      <div style="${sousTitre}margin-top:6px;">« Pour identifier un ratio équilibré, la MRC a intérêt à se baser sur une période de référence antérieure durant laquelle, idéalement, l'état du marché de l'habitation semblait équilibré, soit une période où l'évolution des prix était stable et où le territoire ne semblait pas connaître de pénurie d'habitations. » (p. 21)<br>Ménages à partir de ${calibYear} : ISQ. Ménages avant ${calibYear} : population (ISQ) / taille moyenne des ménages de ${calibYear}. « Les données sur le nombre de logements et de ménages peuvent être obtenues respectivement à partir des sommaires des rôles d'évaluation foncière et du recensement de la population de Statistique Canada. » (note 26, p. 25)</div>
+    </div>`:''}`:''}
     ${showTaux?`<div class="cibles-param">
-      <label>Taux d'inoccupation équilibré (%)</label>
+      <label>Taux d'inoccupation équilibré (T<sub>éq</sub>, %)</label>
       <input type="number" id="cp-taux" value="${(tauxInoccupation*100).toFixed(1)}" step="0.1" min="0" max="50">
-      ${hasSCHLData?`<small style="font-size:.7rem;color:var(--text-light);">SCHL ${tauxSCHLYear} – ${mrcLabel} : ${fmtPct(tauxSCHL)} (locatif)</small>`:''}
     </div>
     <div class="cibles-param">
-      <label>Ménages locataires (% des ménages totaux)</label>
-      <input type="number" id="cp-taux-loc" value="${(tauxLocataires*100).toFixed(0)}" step="1" min="1" max="99">
-      <small style="font-size:.7rem;color:var(--text-light);">Recensement 2021 – saisir la valeur pour ${mrcLabel} (source : profil StatCan)</small>
+      <label>Ménages locataires (% des ménages)</label>
+      <input type="number" id="cp-taux-loc" value="${(tauxLocataires*100).toFixed(1)}" step="0.1" min="1" max="99">
+      <small style="${sousTitre}">${tenureMRC&&tenureMRC.pct_locataire!=null?`Recensement 2021 : ${fmtDec(tenureMRC.pct_locataire,1)} %`:'Aucune donnée du recensement pour ce territoire : valeur à saisir'}</small>
     </div>`:''}
     ${showRatioMC?`<div class="cibles-param">
-      <label>Source ratio mises en chantier</label>
+      <label>Ratio moyen de mises en chantier par nouveau ménage</label>
       <select id="cp-ratio-mc-preset">
-        <option value="calcule"${ratioMCPreset==='calcule'?' selected':''}>Calculé – période ${mcPeriodeDebut??'–'}–${mcPeriodeFin??'–'} (${ratioMCCalc!=null?ratioMCCalc.toFixed(3):'non calculable'})</option>
-        <option value="custom"${ratioMCPreset==='custom'?' selected':''}>Personnalisé</option>
+        <option value="calcule"${ratioMCPreset==='calcule'?' selected':''}>Calculé sur une période de référence (${ratioMCCalc!=null?fmtDec(ratioMCCalc,3):'non calculé'})</option>
+        <option value="custom"${ratioMCPreset==='custom'?' selected':''}>Valeur saisie</option>
       </select>
     </div>
     ${ratioMCPreset==='calcule'?`<div class="cibles-param">
-      <label>Début de la période</label>
+      <label>Début de la période de référence</label>
       <select id="cp-mc-periode-debut">
-        ${startsYrsAvail.map(y=>`<option value="${y}"${mcPeriodeDebut===y?' selected':''}>${y}${startsByYear[y]?` (${startsByYear[y]} log.)`:''}</option>`).join('')}
+        ${startsYrsAvail.map(y=>`<option value="${y}"${mcPeriodeDebut===y?' selected':''}>${y}</option>`).join('')}
       </select>
     </div>
     <div class="cibles-param">
-      <label>Fin de la période</label>
+      <label>Fin de la période de référence</label>
       <select id="cp-mc-periode-fin">
-        ${startsYrsAvail.map(y=>`<option value="${y}"${mcPeriodeFin===y?' selected':''}>${y}${startsByYear[y]?` (${startsByYear[y]} log.)`:''}</option>`).join('')}
+        ${startsYrsAvail.map(y=>`<option value="${y}"${mcPeriodeFin===y?' selected':''}>${y}</option>`).join('')}
       </select>
     </div>`:''}
     <div class="cibles-param">
-      <label>Ratio mises en chantier/ménage</label>
+      <label>Ratio retenu</label>
       <input type="number" id="cp-ratio-mc" value="${ratioMisesEnChantier.toFixed(3)}" step="0.01" min="0.1" max="5.0"${ratioMCPreset==='calcule'?' readonly style="opacity:.65;cursor:not-allowed"':''}>
     </div>
-    ${ratioMCPreset==='calcule'&&periodeStartsYrs.length>0?`<div class="cibles-param" style="min-width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
-      <div style="font-size:.7rem;color:var(--text-light);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Mises en chantier / nouveaux ménages par année</div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <div class="cibles-param" style="min-width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;">
+      <div style="font-size:.7rem;color:var(--text-light);margin-bottom:6px;">Ratio moyen de mises en chantier par nouveau ménage = Nbre de logements mis en chantier / Nbre de nouveaux ménages (p. 27)</div>
+      ${ratioMCPreset==='calcule'&&periodeStartsYrs.length>0?`<div style="display:flex;gap:16px;flex-wrap:wrap;">
         ${periodeStartsYrs.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.8rem;font-weight:600;color:var(--teal-dark);">${fmt(startsByYear[y])} / ${fmtSigne(deltaMenByYear[y])}</div></div>`).join('')}
-        <div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">Σ ${fmt(sommeMC)} ÷ Σ ${fmtSigne(sommeNouvMen)}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioMCCalc!=null?ratioMCCalc.toFixed(3):'–'}</div></div>
-      </div>
-      <div style="font-size:.68rem;color:var(--text-light);margin-top:6px;">Ratio MAMH : somme des mises en chantier de la période ÷ somme des nouveaux ménages (ΔMénages de l'année y à y+1).</div>
+        <div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">${fmt(sommeMC)} / ${fmt(sommeNouvMen)}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioMCCalc!=null?fmtDec(ratioMCCalc,3):'–'}</div></div>
+      </div>`:''}
+      <div style="${sousTitre}margin-top:6px;">« Il est recommandé ici de ne considérer dans les mises en chantier que les logements achevés. » (p. 26) « Il est important de s'assurer que le nombre de logements perdus, par exemple par démolition ou par fusion de logements, est soustrait du nombre de logements construits durant cette même période. » (p. 27)<br>Données utilisées ici : logements inscrits au rôle d'évaluation foncière le plus récent, selon leur année de construction (année y), et nouveaux ménages de l'année y à l'année y+1 (ISQ). Les logements perdus ne sont pas soustraits.</div>
     </div>`:''}
-    `:''}
     <div class="cibles-param">
-      <label>Scénario ISQ</label>
+      <label>Projections des ménages privés (ISQ)</label>
       <select id="cp-scenario">
-        <option value="reference"${scenario==='reference'?' selected':''}>Référence (A2025)</option>
-        <option value="fort"${scenario==='fort'?' selected':''}>Fort (E2025)</option>
-        <option value="faible"${scenario==='faible'?' selected':''}>Faible (D2025)</option>
+        <option value="reference"${scenario==='reference'?' selected':''}>Scénario de référence (A2025)</option>
+        <option value="fort"${scenario==='fort'?' selected':''}>Scénario fort (E2025)</option>
+        <option value="faible"${scenario==='faible'?' selected':''}>Scénario faible (D2025)</option>
       </select>
     </div>
     <div class="cibles-param">
       <label>Horizon de planification</label>
       <select id="cp-horizon">
-        <option value="2031"${horizonAn===2031?' selected':''}>2031</option>
-        <option value="2036"${horizonAn===2036?' selected':''}>2036</option>
-        <option value="2041"${horizonAn===2041?' selected':''}>2041</option>
-        <option value="2046"${horizonAn===2046?' selected':''}>2046 (recommandé – 20 ans)</option>
-        <option value="2051"${horizonAn===2051?' selected':''}>2051</option>
+        ${[2031,2036,2041,2046,2051].map(y=>`<option value="${y}"${horizonAn===y?' selected':''}>${y}${y===horizon20?' (20 ans)':''}</option>`).join('')}
       </select>
+      <small style="${sousTitre}">« Les besoins projetés doivent être estimés en se basant sur la croissance anticipée des ménages pour l'horizon de planification du SAD, soit pour les 20 prochaines années. » (p. 25)</small>
     </div>
   </div>
 
   <div class="cibles-metrics">
     <div class="metric-card">
-      <div class="metric-label">Logements actuels (${latestLogYear})</div>
+      <div class="metric-label">Logements (L<sub>actuel</sub>, ${latestLogYear})</div>
       <div class="metric-value">${fmt(Lactuel)}</div>
-      <div class="metric-sub">Rôle d'évaluation foncière · Filtre ${cubfNames[currentCubf]||''}</div>
+      <div class="metric-sub">Rôle d'évaluation foncière · filtre ${cubfNames[currentCubf]||''}</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Ménages privés (${latestMenYear})</div>
+      <div class="metric-label">Ménages privés (M<sub>actuel</sub>, ${latestMenYear})</div>
       <div class="metric-value">${fmt(Mactuel)}</div>
-      <div class="metric-sub">ISQ – ${latestMenYear>lastISQEstYear?`Projection (scénario ${scenLabels[scenario]})`:'Estimation'}</div>
+      <div class="metric-sub">ISQ – ${latestMenYear>lastISQEstYear?scenLabels[scenario]:'estimation'}</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Ratio log./ménage actuel</div>
-      <div class="metric-value${cibleRatio!=null?(ratioActuel>=cibleRatio?' positive':' negative'):''}">${ratioActuel.toFixed(3)}</div>
-      <div class="metric-sub">${cibleRatio!=null?`Ratio équilibré (${ratioSourceLabel}) : ${cibleRatio.toFixed(3)}`:'Aucun ratio équilibré appliqué'}</div>
+      <div class="metric-label">Ratio d'habitations par ménage (${latestLogYear})</div>
+      <div class="metric-value">${fmtDec(ratioActuel,3)}</div>
+      <div class="metric-sub">${showRatio?`R<sub>éq</sub> retenu : ${fmtDec(effectiveRatio,3)} (${ratioSourceLabel})`:'L<sub>actuel</sub> / M<sub>actuel</sub>'}</div>
     </div>
     ${hasSCHLData?`<div class="metric-card">
-      <div class="metric-label">Taux d'inoccupation locatif (${tauxSCHLYear})</div>
-      <div class="metric-value">${fmtPct(tauxSCHL)}</div>
-      <div class="metric-sub">SCHL – Enquête sur les logements locatifs${showTaux?` · Équilibre retenu : ${fmtPct(tauxInoccupation)}`:''}</div>
+      <div class="metric-label">Taux d'inoccupation (T<sub>actuel</sub>, ${tauxSCHLYear})</div>
+      <div class="metric-value">${fmtPctD(tauxSCHL)}</div>
+      <div class="metric-sub">SCHL – Enquête sur les logements locatifs${showTaux?` · T<sub>éq</sub> retenu : ${fmtPctD(tauxInoccupation)}`:''}</div>
     </div>`:''}
     <div class="metric-card">
-      <div class="metric-label">Ménages projetés (${horizonAn})</div>
+      <div class="metric-label">Ménages privés projetés (${horizonAn})</div>
       <div class="metric-value">${fmt(Mhorizon)}</div>
-      <div class="metric-sub">Scénario ${scenLabels[scenario]}</div>
+      <div class="metric-sub">ISQ – ${scenLabels[scenario]}</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Croissance des ménages</div>
-      <div class="metric-value ${deltaM>=0?'positive':'negative'}">${fmtSigne(deltaM)}</div>
-      <div class="metric-sub">${latestMenYear}→${horizonAn} (${anneesDiff} ans)</div>
+      <div class="metric-label">Croissance anticipée du nombre de ménages privés</div>
+      <div class="metric-value">${fmtSigne(deltaM)}</div>
+      <div class="metric-sub">${latestMenYear}–${horizonAn} (${anneesDiff} ans)</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Besoins totaux en logements</div>
-      <div class="metric-value ${total>0?'negative':'positive'}">${total>=0?'+':'-'}${fmt(Math.abs(total))}</div>
-      <div class="metric-sub">À construire d'ici ${horizonAn}</div>
+      <div class="metric-label">Besoins en logements privés</div>
+      <div class="metric-value">${fmtSigne(total)}</div>
+      <div class="metric-sub">A.1 + A.2 + A.3 · ${latestMenYear}–${horizonAn}</div>
     </div>
   </div>
 
   <div class="charts-grid">
     <div class="chart-card" id="card-cibles-chart">
-      <h3>Logements disponibles vs requis · ${mrcLabel}</h3>
-      <div class="chart-subtitle">Évolution ${chartYears[0]}–${horizonAn} · Scénario ${scenLabels[scenario]}</div>
+      <h3>Parc de logements actuel et requis · ${mrcLabel}</h3>
+      <div class="chart-subtitle">${chartYears[0]}–${horizonAn} · ${scenLabels[scenario]}</div>
       <div class="chart-legend" style="display:flex;gap:16px;margin:8px 0 4px;flex-wrap:wrap;">
-        <div class="legend-item"><div class="legend-dot" style="background:#2d6e6a"></div>Logements (rôle d'évaluation)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2d6e6a"></div>Logements (rôle d'évaluation foncière)</div>
         <div class="legend-item"><div class="legend-dot" style="background:#e8a048;opacity:.7"></div>Logements requis (${methA1Label} + A.2 + ${methA3Label})</div>
       </div>
       <div class="chart-area" id="chart-cibles-line"></div>
     </div>
     <div class="chart-card">
-      <h3>Décomposition des besoins · ${mrcLabel}</h3>
-      <div class="chart-subtitle">Méthodologie MAMH OGAT 4 · Étapes A.1 + A.2 + A.3</div>
+      <h3>A. Besoins en logements privés · ${mrcLabel}</h3>
+      <div class="chart-subtitle">${MAMH}, annexe 1, figure 1</div>
       <div class="cibles-steps" style="margin-top:12px;">
         <div class="step-card">
-          <h4>Étape A.1 — Déficit actuel <span style="font-weight:400;color:var(--text-light);font-size:.74rem;">(${methA1Label})</span></h4>
+          <h4>Étape A.1 : Évaluer l'écart entre les besoins actuels des ménages (la demande) et l'offre du parc de logements</h4>
+          <div style="${sousTitre}margin-bottom:6px;">${tA1[methodeA1]}</div>
           ${stepA1Rows}
-          <div class="step-row total-step"><span class="step-label">${deficit_A1<0?`Surplus (${fmt(-deficit_A1)}) non soustrait`:'Déficit à résorber'}</span><span class="step-val ${besoin_A1>0?'negative':''}">${fmtSigne(besoin_A1)}</span></div>
+          <div class="step-row total-step"><span class="step-label">Logements ajoutés au total</span><span class="step-val">${fmtSigne(besoin_A1)}</span></div>
         </div>
         <div class="step-card">
-          <h4>Étape A.2 — Croissance des ménages</h4>
-          <div class="step-row"><span class="step-label">Ménages ${latestMenYear} → ${horizonAn} (${scenLabels[scenario]})</span><span class="step-val">${fmt(Mactuel)} → ${fmt(Mhorizon)}</span></div>
-          <div class="step-row total-step"><span class="step-label">${deltaM<0?`Décroissance (${fmtSigne(deltaM)}) : aucun besoin`:'Nouveaux ménages'}</span><span class="step-val">${fmtSigne(besoin_A2)}</span></div>
+          <h4>Étape A.2 : Déterminer les besoins en logements des ménages pour les 20 prochaines années</h4>
+          ${formule(`Croissance anticipée du nombre de ménages privés = M<sub>${horizonAn}</sub> – M<sub>${latestMenYear}</sub>`)}
+          ${ligne(`${fmt(Mhorizon)} – ${fmt(Mactuel)} (ISQ, ${scenLabels[scenario]})`,fmtSigne(deltaM))}
+          <div class="step-row total-step"><span class="step-label">Logements ajoutés au total</span><span class="step-val">${fmtSigne(besoin_A2)}</span></div>
         </div>
         <div class="step-card">
-          <h4>Étape A.3 — Excédent <span style="font-weight:400;color:var(--text-light);font-size:.74rem;">(${methA3Label})</span></h4>
-          ${stepA3Middle}
-          <div class="step-row"><span class="step-label">− croissance des ménages (A.2)</span><span class="step-val">${fmt(besoin_A2)}</span></div>
-          <div class="step-row total-step"><span class="step-label">Logements excédentaires</span><span class="step-val">${fmtSigne(besoin_A3)}</span></div>
+          <h4>Étape A.3 : Déterminer des besoins en logements excédentaires par rapport à la croissance anticipée du nombre de ménages</h4>
+          <div style="${sousTitre}margin-bottom:6px;">${tA3[methodeA3]}</div>
+          ${stepA3Rows}
+          ${ligne('Logements excédentaires = besoin résidentiel – croissance anticipée',methodeA3==='aucun'?'':`${fmt(besoinCroissance)} – ${fmt(besoin_A2)}`)}
+          <div class="step-row total-step"><span class="step-label">Logements ajoutés au total</span><span class="step-val">${fmtSigne(besoin_A3)}</span></div>
         </div>
       </div>
       <div style="background:var(--teal-pale);border:1px solid var(--teal-light);border-radius:8px;padding:14px 18px;margin-top:12px;">
-        <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--teal-dark);margin-bottom:6px;">Total des besoins (A.1 + A.2 + A.3)</div>
+        <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--teal-dark);margin-bottom:6px;">Besoins en logements privés (A.1 + A.2 + A.3)</div>
         <div style="font-size:1.8rem;font-weight:700;color:var(--teal-dark);font-variant-numeric:tabular-nums;">${fmtSigne(total)} logements</div>
-        <div style="font-size:.75rem;color:var(--teal);margin-top:4px;">${fmt(besoin_A1)} déficit actuel · ${fmt(besoin_A2)} nouveaux ménages · ${fmtSigne(besoin_A3)} excédent</div>
+        <div style="font-size:.75rem;color:var(--teal);margin-top:4px;">A.1 : ${fmtSigne(besoin_A1)} · A.2 : ${fmtSigne(besoin_A2)} · A.3 : ${fmtSigne(besoin_A3)} · ${latestMenYear}–${horizonAn}</div>
       </div>
       <div class="cibles-note">
-        <strong>Méthodologie MAMH (2025) :</strong> Estimation selon l'Orientation gouvernementale en aménagement du territoire no 4 (OGAT 4). ${noteRatio}${noteTaux}${noteMC}
-        <br>${hasSCHLData?`Taux d'inoccupation locatif SCHL ${tauxSCHLYear} : ${fmtPct(tauxSCHL)}.`:''}
-        <br><em>Sources : ISQ, Projections de ménages privés – MRC du Québec, édition 2025 · MAMH, Rôle d'évaluation foncière des municipalités${hasSCHLData?' · SCHL, Enquête sur les logements locatifs 2010–2023':''}.</em>
+        <strong>Méthodologie :</strong> Ministère des Affaires municipales et de l'Habitation (2025), <em>Orientations gouvernementales en aménagement du territoire – Document d'accompagnement : Diagnostic, besoins et moyens en matière d'habitation</em>, annexe 1 « Proposition méthodologique ». « La MRC peut s'inspirer des exemples présentés, les modifier ou proposer d'autres approches méthodologiques tenant compte de ses particularités territoriales et des données disponibles à l'échelle de son territoire. » (p. 19)
+        <br><em>Données : ISQ, Projections des ménages privés, MRC, édition 2025 · ISQ, Estimations de la population des MRC · MAMH, Rôles d'évaluation foncière${showTaux||hasSCHLData?' · SCHL, Enquête sur les logements locatifs':''}${showTaux?' · Statistique Canada, Recensement de 2021':''}.</em>
       </div>
     </div>
   </div>`;
@@ -2150,14 +2160,14 @@ function renderCibles(content,mrcLabel){
         ciblesParams.methodeA1=this.value;
         if(!ciblesCompatibles(this.value,ciblesParams.methodeA3)){
           ciblesParams.methodeA3=this.value==='inoccupation'?'inoccupation':'ratio';
-          ciblesParams.ajustement=`<strong>Méthode A.3 ajustée</strong> à ${lA3[ciblesParams.methodeA3]} pour éviter une double comptabilisation (note 24 du MAMH).`;
+          ciblesParams.ajustement=`<strong>Étape A.3 changée</strong> pour « ${tA3[ciblesParams.methodeA3]} » (note 24, p. 23).`;
         }
       }
       else if(id==='cp-methode-a3'){
         ciblesParams.methodeA3=this.value;
         if(!ciblesCompatibles(ciblesParams.methodeA1,this.value)){
           ciblesParams.methodeA1=this.value==='inoccupation'?(hasSCHLData?'inoccupation':'aucun'):'ratio';
-          ciblesParams.ajustement=`<strong>Méthode A.1 ajustée</strong> à « ${lA1[ciblesParams.methodeA1]} » pour éviter une double comptabilisation (note 24 du MAMH).`;
+          ciblesParams.ajustement=`<strong>Étape A.1 changée</strong> pour « ${tA1[ciblesParams.methodeA1]} » (note 24, p. 23).`;
         }
       }
       else if(id==='cp-ratio-preset'){
