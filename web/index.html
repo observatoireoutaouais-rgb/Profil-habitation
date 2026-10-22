@@ -1597,9 +1597,6 @@ document.getElementById('method-modal').addEventListener('click',function(e){ if
 document.getElementById('iframe-modal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
 
 // ── TAB: CIBLES EN HABITATION ─────────────────────────────────────────────────
-// Groupes d'âge de la partie B (logements collectifs non institutionnels)
-const CIBLES_GROUPES_B=['0-14','15-24','25-64','65-74','75-84','85 et +'];
-const nouveauxGroupesB=()=>CIBLES_GROUPES_B.map(age=>({age,part:0,popDebut:0,popFin:0}));
 // Combinaisons A.1 / A.3 permises : la note 24 du MAMH interdit d'additionner un
 // besoin fondé sur le taux d'inoccupation à un besoin fondé sur un ratio.
 const CIBLES_A3_PERMIS={
@@ -1612,7 +1609,6 @@ let ciblesParams={
   methodeA1:'ratio',          // 'ratio' | 'inoccupation' | 'aucun'
   methodeA3:'ratio',          // 'ratio' | 'mises_chantier' | 'inoccupation' | 'aucun'
   ajustement:null,            // message affiché après un changement automatique de méthode
-  partieB:{actif:false,groupes:nouveauxGroupesB()},
   ratioPreset:'mamh',         // 'mamh' | 'regional' | 'local' | 'periode' | 'custom'
   ratioEquilibre:1.123,       // used only when ratioPreset === 'custom'
   periodeDebut:null,          // auto-initialized to earliest available year
@@ -1657,12 +1653,11 @@ function renderCibles(content,mrcLabel){
     }
     ciblesParams.mcPeriodeDebut=null;
     ciblesParams.mcPeriodeFin=null;
-    ciblesParams.partieB.groupes=nouveauxGroupesB();
     _lastTauxLocMRC=currentMRC;
   }
   // Fallback if 'regional' preset was previously selected (option removed)
   if(ciblesParams.ratioPreset==='regional') ciblesParams.ratioPreset='mamh';
-  const {methodeA1,methodeA3,ratioPreset,ratioEquilibre,tauxInoccupation,ratioMCPreset,tauxLocataires,scenario,horizonAn,ajustement,partieB}=ciblesParams;
+  const {methodeA1,methodeA3,ratioPreset,ratioEquilibre,tauxInoccupation,ratioMCPreset,tauxLocataires,scenario,horizonAn,ajustement}=ciblesParams;
   ciblesParams.ajustement=null;
   let {ratioMisesEnChantier}=ciblesParams;
 
@@ -1807,13 +1802,7 @@ function renderCibles(content,mrcLabel){
   const besoinCroissance=Math.round(croissanceM*a3Factor);
   const besoin_A3=besoinCroissance-besoin_A2;
 
-  // B : population projetée en logement collectif (fin − début), par groupe d'âge
-  const popCollDebut=partieB.groupes.reduce((s,g)=>s+g.part*g.popDebut,0);
-  const popCollFin=partieB.groupes.reduce((s,g)=>s+g.part*g.popFin,0);
-  const deltaB=Math.round(popCollFin-popCollDebut);
-  const besoin_B=partieB.actif?Math.max(0,deltaB):0;
-
-  const total=besoin_A1+besoinCroissance+besoin_B;
+  const total=besoin_A1+besoinCroissance;
   const fmt=n=>Math.round(n).toLocaleString('fr-CA');
   const fmtSigne=n=>(n>=0?'+':'')+Math.round(n).toLocaleString('fr-CA');
   const fmtPct=v=>(v*100).toFixed(1)+' %';
@@ -1907,29 +1896,6 @@ function renderCibles(content,mrcLabel){
     ?`<div style="background:#fdf3e3;border:1px solid #e8a048;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.78rem;color:#7a5410;line-height:1.55;">${avis.map(a=>`<div style="margin:3px 0;">⚠ ${a}</div>`).join('')}</div>`
     :'';
 
-  // ── Partie B : tableau de saisie ──────────────────────────────────────
-  const inpB='width:80px;border:1.5px solid var(--border);border-radius:6px;padding:4px 6px;font-family:inherit;font-size:.78rem;';
-  const partieBHtml=`
-    <details style="margin-top:12px;border:1px solid var(--border);border-radius:8px;padding:10px 14px;"${partieB.actif?' open':''}>
-      <summary style="cursor:pointer;font-size:.78rem;font-weight:600;color:var(--teal-dark);">Partie B — Logements collectifs non institutionnels (facultatif)</summary>
-      <div style="font-size:.74rem;color:var(--text-light);line-height:1.55;margin:8px 0;">
-        Résidences pour personnes âgées, résidences étudiantes, pensions et maisons de chambres. Pour chaque groupe d'âge, la part de la population vivant en logement collectif (recensement 2021, ISQ – <em>Personnes vivant en ménage collectif</em>) est appliquée à la population projetée (ISQ – <em>Projections de population par MRC, groupe d'âge</em>). Le besoin correspond à la population en logement collectif à la fin de l'horizon moins celle du début. Ces données par groupe d'âge ne sont pas intégrées au tableau de bord : saisissez-les ci-dessous.
-      </div>
-      <label style="font-size:.78rem;display:flex;gap:6px;align-items:center;margin-bottom:8px;"><input type="checkbox" id="cp-b-actif"${partieB.actif?' checked':''}> Inclure la partie B dans le total</label>
-      <table style="width:100%;border-collapse:collapse;font-size:.76rem;">
-        <thead><tr style="text-align:left;color:var(--text-light);"><th>Groupe d'âge</th><th>Part en logement collectif (%)</th><th>Population ${latestMenYear}</th><th>Population ${horizonAn}</th><th style="text-align:right;">Δ en logement collectif</th></tr></thead>
-        <tbody>
-          ${partieB.groupes.map((g,i)=>`<tr>
-            <td style="padding:3px 0;">${g.age}</td>
-            <td><input type="number" id="cp-b-part-${i}" value="${+(g.part*100).toFixed(2)}" step="0.1" min="0" max="100" style="${inpB}"></td>
-            <td><input type="number" id="cp-b-deb-${i}" value="${g.popDebut}" step="1" min="0" style="${inpB}"></td>
-            <td><input type="number" id="cp-b-fin-${i}" value="${g.popFin}" step="1" min="0" style="${inpB}"></td>
-            <td style="text-align:right;font-variant-numeric:tabular-nums;">${fmtSigne(g.part*(g.popFin-g.popDebut))}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-      <div class="step-row total-step" style="margin-top:8px;"><span class="step-label">Besoins en places (${fmt(popCollDebut)} → ${fmt(popCollFin)} personnes)</span><span class="step-val">${fmtSigne(deltaB)}</span></div>
-    </details>`;
 
   // ── RENDER HTML ───────────────────────────────────────────────────────
   const cubfNames={mamh_strict:'Strict',mamh_optional:'Élargi',mamh_plus_others:'Complet'};
@@ -2094,7 +2060,7 @@ function renderCibles(content,mrcLabel){
       <div class="metric-sub">${latestMenYear}→${horizonAn} (${anneesDiff} ans)</div>
     </div>
     <div class="metric-card">
-      <div class="metric-label">Besoins totaux en logements${partieB.actif?' (+ partie B)':''}</div>
+      <div class="metric-label">Besoins totaux en logements</div>
       <div class="metric-value ${total>0?'negative':'positive'}">${total>=0?'+':'-'}${fmt(Math.abs(total))}</div>
       <div class="metric-sub">À construire d'ici ${horizonAn}</div>
     </div>
@@ -2106,13 +2072,13 @@ function renderCibles(content,mrcLabel){
       <div class="chart-subtitle">Évolution ${chartYears[0]}–${horizonAn} · Scénario ${scenLabels[scenario]}</div>
       <div class="chart-legend" style="display:flex;gap:16px;margin:8px 0 4px;flex-wrap:wrap;">
         <div class="legend-item"><div class="legend-dot" style="background:#2d6e6a"></div>Logements (rôle d'évaluation)</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#e8a048;opacity:.7"></div>Logements requis (${methA1Label} + A.2 + ${methA3Label})${partieB.actif?' · partie B exclue':''}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e8a048;opacity:.7"></div>Logements requis (${methA1Label} + A.2 + ${methA3Label})</div>
       </div>
       <div class="chart-area" id="chart-cibles-line"></div>
     </div>
     <div class="chart-card">
       <h3>Décomposition des besoins · ${mrcLabel}</h3>
-      <div class="chart-subtitle">Méthodologie MAMH OGAT 4 · Étapes A.1 + A.2 + A.3${partieB.actif?' + partie B':''}</div>
+      <div class="chart-subtitle">Méthodologie MAMH OGAT 4 · Étapes A.1 + A.2 + A.3</div>
       <div class="cibles-steps" style="margin-top:12px;">
         <div class="step-card">
           <h4>Étape A.1 — Déficit actuel <span style="font-weight:400;color:var(--text-light);font-size:.74rem;">(${methA1Label})</span></h4>
@@ -2131,11 +2097,10 @@ function renderCibles(content,mrcLabel){
           <div class="step-row total-step"><span class="step-label">Logements excédentaires</span><span class="step-val">${fmtSigne(besoin_A3)}</span></div>
         </div>
       </div>
-      ${partieBHtml}
       <div style="background:var(--teal-pale);border:1px solid var(--teal-light);border-radius:8px;padding:14px 18px;margin-top:12px;">
-        <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--teal-dark);margin-bottom:6px;">Total des besoins (A.1 + A.2 + A.3${partieB.actif?' + B':''})</div>
+        <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--teal-dark);margin-bottom:6px;">Total des besoins (A.1 + A.2 + A.3)</div>
         <div style="font-size:1.8rem;font-weight:700;color:var(--teal-dark);font-variant-numeric:tabular-nums;">${fmtSigne(total)} logements</div>
-        <div style="font-size:.75rem;color:var(--teal);margin-top:4px;">${fmt(besoin_A1)} déficit actuel · ${fmt(besoin_A2)} nouveaux ménages · ${fmtSigne(besoin_A3)} excédent${partieB.actif?` · ${fmt(besoin_B)} places en logement collectif`:''}</div>
+        <div style="font-size:.75rem;color:var(--teal);margin-top:4px;">${fmt(besoin_A1)} déficit actuel · ${fmt(besoin_A2)} nouveaux ménages · ${fmtSigne(besoin_A3)} excédent</div>
       </div>
       <div class="cibles-note">
         <strong>Méthodologie MAMH (2025) :</strong> Estimation selon l'Orientation gouvernementale en aménagement du territoire no 4 (OGAT 4). ${noteRatio}${noteTaux}${noteMC}
@@ -2211,20 +2176,6 @@ function renderCibles(content,mrcLabel){
       else if(id==='cp-scenario')      ciblesParams.scenario=this.value;
       else if(id==='cp-horizon')       ciblesParams.horizonAn=parseInt(this.value)||2046;
       renderCibles(content,mrcLabel);
-    });
-  });
-  document.getElementById('cp-b-actif')?.addEventListener('change',function(){
-    partieB.actif=this.checked;
-    renderCibles(content,mrcLabel);
-  });
-  partieB.groupes.forEach((g,i)=>{
-    [['part',v=>v/100],['deb',v=>v],['fin',v=>v]].forEach(([champ,conv])=>{
-      document.getElementById(`cp-b-${champ}-${i}`)?.addEventListener('change',function(){
-        const v=parseFloat(this.value);
-        const val=Number.isFinite(v)&&v>=0?conv(v):0;
-        if(champ==='part') g.part=val; else if(champ==='deb') g.popDebut=val; else g.popFin=val;
-        renderCibles(content,mrcLabel);
-      });
     });
   });
 }
