@@ -103,6 +103,7 @@ body.embed-mode .embed-controls{display:flex!important;}
 /* embed=section : toute la section de l'onglet, avec ses cartes et son en-tête */
 body.embed-section .section-header{display:block;}
 body.embed-section .chart-card{box-shadow:var(--shadow,0 1px 3px rgba(0,0,0,.06));border:1px solid var(--border);padding:20px;background:var(--white);}
+body.embed-section #embed-scope-controls{display:flex!important;}
 body.embed-section #embed-period-controls,body.embed-section #embed-single-controls,body.embed-section .embed-sep{display:none!important;}
 .embed-controls{display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px;background:var(--white);border-bottom:1px solid var(--border);}
 body.embed-mode .embed-controls{position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);}
@@ -235,6 +236,12 @@ body.embed-mode{overflow-y:auto;height:auto;}
 
 <div class="main">
   <div class="embed-controls" id="embed-controls">
+    <div id="embed-scope-controls" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+      <label>Région</label>
+      <select class="embed-year-select" id="embed-region"></select>
+      <label>MRC</label>
+      <select class="embed-year-select" id="embed-mrc"></select>
+    </div>
     <label>Filtre</label>
     <button class="embed-cubf-btn active" data-cubf="mamh_strict" onclick="setEmbedCubf(this)">Strict</button>
     <button class="embed-cubf-btn" data-cubf="mamh_optional" onclick="setEmbedCubf(this)">Élargi</button>
@@ -868,6 +875,10 @@ function applyEmbedMode(){
   document.body.classList.toggle('embed-section', currentEmbedId==='section');
   if(!currentEmbedId) return;
   if(currentEmbedId==='section'){
+    // Les sélecteurs de l'iframe reprennent ceux de la page (mêmes options, même valeur)
+    const er=document.getElementById('embed-region'), em=document.getElementById('embed-mrc');
+    if(er){ er.innerHTML=document.getElementById('sel-region').innerHTML; er.value=currentRegion||''; }
+    if(em){ em.innerHTML=document.getElementById('sel-mrc').innerHTML; em.value=currentMRC||''; }
     document.querySelectorAll('.embed-cubf-btn').forEach(b=>b.classList.toggle('active', b.dataset.cubf===currentCubf));
     postEmbedHeight();
     return;
@@ -1600,6 +1611,12 @@ function drawMultiLineChart(id, years, series, suffix=''){
 const maybeRedrawMap=()=>{};
 document.getElementById('sel-region').addEventListener('change',function(){ currentRegion=this.value||''; populateMRCSelect(currentRegion); currentMRC=null; maybeRedrawMap(); refresh(); });
 document.getElementById('sel-mrc').addEventListener('change',function(){ currentMRC=this.value||null; maybeRedrawMap(); refresh(); });
+// Sélecteurs de l'iframe (embed=section) : relaient le choix aux sélecteurs de la page
+[['embed-region','sel-region'],['embed-mrc','sel-mrc']].forEach(([src,dst])=>{
+  document.getElementById(src)?.addEventListener('change',function(){
+    const sel=document.getElementById(dst); sel.value=this.value; sel.dispatchEvent(new Event('change'));
+  });
+});
 document.getElementById('sel-annee').addEventListener('change',function(){ currentYear=parseInt(this.value,10); maybeRedrawMap(); render(); });
 document.getElementById('sel-annee-min').addEventListener('change',function(){ currentYearMin=parseInt(this.value,10); syncYearRange('min'); maybeRedrawMap(); render(); });
 document.getElementById('sel-annee-max').addEventListener('change',function(){ currentYearMax=parseInt(this.value,10); syncYearRange('max'); maybeRedrawMap(); render(); });
@@ -1823,11 +1840,11 @@ function renderCibles(content,mrcLabel){
     ratio:'A.3.1 : Prise en compte d\'un ratio d\'habitations par ménage privé',
     mises_chantier:'A.3.2 : Prise en compte d\'un ratio de mises en chantier par nouveau ménage privé',
     inoccupation:'A.3.3 : Prise en compte d\'un taux d\'inoccupation équilibré des logements locatifs',
-    aucun:'Étape A.3 non réalisée (étape facultative)'
+    aucun:'Étape A.3 non réalisée'
   };
   const methA1Label=lA1[methodeA1], methA3Label=lA3[methodeA3];
   // Option A.3 incompatible avec l'A.1 courante : la choisir change l'A.1 (note 24)
-  const a3Suffixe=v=>ciblesCompatibles(methodeA1,v)?'':' — change l\'étape A.1 (note 24)';
+  const a3Suffixe=v=>ciblesCompatibles(methodeA1,v)?'':' (remplace l\'étape A.1)';
 
   // ── Visibilité des champs paramètres ──────────────────────────────────
   const showRatio=methodeA1==='ratio'||methodeA3==='ratio';
@@ -1886,21 +1903,21 @@ function renderCibles(content,mrcLabel){
   const avis=[];
   if(ajustement) avis.push(ajustement);
   if(methodeA1==='inoccupation'){
-    avis.push(`<strong>Données de la SCHL (étape A.1.2).</strong> « Il est à noter que ces données ne mesurent que l'inoccupation des logements locatifs dans les immeubles de trois logements et plus et seulement pour certaines municipalités. Cette approche basée sur les données de la SCHL pourrait donc être appliquée lorsque le parc de logements locatifs d'une MRC ou de ses principaux pôles constitue la majorité des logements sur le territoire. » (${MAMH}, p. 23)<br>Ménages locataires du territoire (recensement 2021) : ${fmtPctD(tauxLocataires)} des ménages.`);
+    avis.push(`<strong>Données de la SCHL.</strong> « Il est à noter que ces données ne mesurent que l'inoccupation des logements locatifs dans les immeubles de trois logements et plus et seulement pour certaines municipalités. Cette approche basée sur les données de la SCHL pourrait donc être appliquée lorsque le parc de logements locatifs d'une MRC ou de ses principaux pôles constitue la majorité des logements sur le territoire. » (${MAMH}, p. 23)<br>Locataires : ${fmtPctD(tauxLocataires)} des ménages (recensement 2021).`);
   }
   if(showTaux){
     avis.push(`<strong>Taux d'inoccupation équilibré.</strong> « Malgré l'utilisation répandue du seuil de 3 %, ce dernier pourrait ne pas convenir à tous les milieux. [...] Il est recommandé à la MRC d'évaluer les taux passés observés dans ses municipalités locales pour déterminer le ou les taux d'inoccupation équilibrés. » (${MAMH}, p. 23)`);
   }
   if(ratioMCIndispo){
     avis.push(periodeStartsYrs.length
-      ?`<strong>Ratio de mises en chantier non calculé.</strong> Le nombre de nouveaux ménages est nul ou négatif sur la période ${mcPeriodeDebut}–${mcPeriodeFin}. La valeur saisie (${fmtDec(ratioMisesEnChantier,3)}) est utilisée.`
-      :`<strong>Ratio de mises en chantier non calculé.</strong> Aucune donnée de mises en chantier n'est disponible pour ce territoire. La valeur saisie (${fmtDec(ratioMisesEnChantier,3)}) est utilisée.`);
+      ?`<strong>Ratio non calculé.</strong> Aucun nouveau ménage sur la période ${mcPeriodeDebut}–${mcPeriodeFin}. Valeur saisie utilisée : ${fmtDec(ratioMisesEnChantier,3)}.`
+      :`<strong>Ratio non calculé.</strong> Aucune donnée de mises en chantier. Valeur saisie utilisée : ${fmtDec(ratioMisesEnChantier,3)}.`);
   }
   if(deficit_A1<0){
-    avis.push(`<strong>Étape A.1 : aucun déficit.</strong> Le calcul donne un surplus de ${fmt(-deficit_A1)} logements. « La présente démarche permet aux MRC qui présentent un déficit de logements d'évaluer l'écart entre les besoins actuels des ménages et l'offre du parc de logements. » (${MAMH}, p. 21) Aucun logement n'est ajouté au total pour l'étape A.1.`);
+    avis.push(`<strong>Aucun déficit.</strong> Surplus de ${fmt(-deficit_A1)} logements. « La présente démarche permet aux MRC qui présentent un déficit de logements d'évaluer l'écart entre les besoins actuels des ménages et l'offre du parc de logements. » (${MAMH}, p. 21) Rien n'est ajouté au total pour l'étape A.1.`);
   }
   if(deltaM<0){
-    avis.push(`<strong>Territoires en décroissance.</strong> Le nombre de ménages privés projeté diminue de ${fmt(-deltaM)} entre ${latestMenYear} et ${horizonAn}. « Les approches méthodologiques proposées dans ce document s'adressent plus particulièrement aux MRC en croissance démographique. Une MRC rencontrant des défis liés à la décroissance de plusieurs de ses municipalités peut néanmoins faire une évaluation de certains besoins en habitation afin de répondre aux enjeux particuliers présents sur son territoire. Elle peut aussi déterminer les besoins en logements à l'échelle de chacune des municipalités pour lesquelles une croissance démographique est prévue. » (${MAMH}, p. 19) Aucun logement n'est ajouté au total pour les étapes A.2 et A.3.`);
+    avis.push(`<strong>Territoires en décroissance.</strong> Ménages privés : ${fmtSigne(deltaM)} de ${latestMenYear} à ${horizonAn}. « Les approches méthodologiques proposées dans ce document s'adressent plus particulièrement aux MRC en croissance démographique. Une MRC rencontrant des défis liés à la décroissance de plusieurs de ses municipalités peut néanmoins faire une évaluation de certains besoins en habitation afin de répondre aux enjeux particuliers présents sur son territoire. Elle peut aussi déterminer les besoins en logements à l'échelle de chacune des municipalités pour lesquelles une croissance démographique est prévue. » (${MAMH}, p. 19) Rien n'est ajouté au total pour les étapes A.2 et A.3.`);
   }
   const avisHtml=avis.length
     ?`<div style="background:#fdf3e3;border:1px solid #e8a048;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:.78rem;color:#7a5410;line-height:1.55;">${avis.map(a=>`<div style="margin:4px 0;">${a}</div>`).join('')}</div>`
@@ -1913,12 +1930,12 @@ function renderCibles(content,mrcLabel){
   const sousTitre='font-size:.7rem;color:var(--text-light);line-height:1.5;';
   content.innerHTML=`
   <div class="section-header">
-    <h2>Cibles en habitation – Évaluation des besoins en logements privés</h2>
+    <h2>Cibles en habitation – Besoins en logements privés</h2>
     <div class="meta"><span class="mrc-tag">${mrcLabel}</span> Horizon de planification : ${latestMenYear}–${horizonAn} · Filtre CUBF : ${cubfNames[currentCubf]||''}${currentEmbedId?'':` · <button class="chart-btn btn-iframe" onclick="showIframe('section')">Obtenir l'iframe de la section</button>`}</div>
   </div>
 
   <div style="font-size:.78rem;color:var(--text);line-height:1.6;margin-bottom:16px;">
-    « La méthodologie définit les besoins des ménages en logements pour les 20 prochaines années comme étant la somme entre les projections des éléments suivants : A. Besoins en logements privés [...] B. Besoins en logements collectifs non institutionnels (étape facultative). » La présente section porte sur la partie A. « L'évaluation des besoins en logements privés s'effectue par les trois étapes suivantes : 1. Évaluer l'écart entre les besoins actuels des ménages (la demande) et l'offre du parc de logements; 2. Déterminer les besoins en logements des ménages privés pour les 20 prochaines années; 3. Déterminer des besoins en logements excédentaires par rapport à la croissance anticipée du nombre de ménages privés (étape facultative). » (${MAMH}, annexe 1, p. 19)
+    « La méthodologie définit les besoins des ménages en logements pour les 20 prochaines années comme étant la somme entre les projections des éléments suivants : A. Besoins en logements privés [...] B. Besoins en logements collectifs non institutionnels (étape facultative). » Cette section porte sur la partie A. « L'évaluation des besoins en logements privés s'effectue par les trois étapes suivantes : 1. Évaluer l'écart entre les besoins actuels des ménages (la demande) et l'offre du parc de logements; 2. Déterminer les besoins en logements des ménages privés pour les 20 prochaines années; 3. Déterminer des besoins en logements excédentaires par rapport à la croissance anticipée du nombre de ménages privés (étape facultative). » (${MAMH}, annexe 1, p. 19)
   </div>
   ${avisHtml}
 
@@ -1927,7 +1944,7 @@ function renderCibles(content,mrcLabel){
       <label>Étape A.1 : Évaluer l'écart entre les besoins actuels des ménages et l'offre du parc de logements</label>
       <select id="cp-methode-a1">
         <option value="ratio"${methodeA1==='ratio'?' selected':''}>${tA1.ratio}</option>
-        <option value="inoccupation"${methodeA1==='inoccupation'?' selected':''}${!hasSCHLData?' disabled':''}>${tA1.inoccupation}${!hasSCHLData?' (aucune donnée de la SCHL pour ce territoire)':''}</option>
+        <option value="inoccupation"${methodeA1==='inoccupation'?' selected':''}${!hasSCHLData?' disabled':''}>${tA1.inoccupation}${!hasSCHLData?' (pas de données SCHL)':''}</option>
         <option value="aucun"${methodeA1==='aucun'?' selected':''}>${tA1.aucun}</option>
       </select>
     </div>
@@ -1941,13 +1958,13 @@ function renderCibles(content,mrcLabel){
       </select>
     </div>
     <div class="cibles-param" style="min-width:100%;${sousTitre}">
-      <span><strong>Attention.</strong> « La combinaison de certaines de ces approches pourrait avoir pour effet de comptabiliser en double les besoins de certains types de logements et, conséquemment, de surestimer la demande anticipée. » (p. 20) « Les besoins estimés se référant aux taux d'inoccupation (ou au nombre de logements inoccupés) ne peuvent pas être combinés aux calculs des ratios moyens d'habitations par ménage ou des ratios moyens de mises en chantier par nouveau ménage. » (note 24, p. 23) Combinaisons offertes : A.1.1 avec A.3.1 ou A.3.2; A.1.2 avec A.3.3.</span>
+      <span><strong>Attention.</strong> « La combinaison de certaines de ces approches pourrait avoir pour effet de comptabiliser en double les besoins de certains types de logements et, conséquemment, de surestimer la demande anticipée. » (p. 20) « Les besoins estimés se référant aux taux d'inoccupation (ou au nombre de logements inoccupés) ne peuvent pas être combinés aux calculs des ratios moyens d'habitations par ménage ou des ratios moyens de mises en chantier par nouveau ménage. » (note 24, p. 23) Combinaisons possibles : A.1.1 + A.3.1 ou A.3.2 · A.1.2 + A.3.3.</span>
     </div>
     ${showRatio?`<div class="cibles-param">
       <label>Ratio équilibré d'habitations par ménage</label>
       <select id="cp-ratio-preset">
         <option value="mamh"${ratioPreset==='mamh'?' selected':''}>Stratégie québécoise en habitation : 1,123</option>
-        <option value="periode"${ratioPreset==='periode'?' selected':''}>Ratio moyen d'une période de référence (${periodeDebut}–${periodeFin} : ${fmtDec(ratioPeriode,3)})</option>
+        <option value="periode"${ratioPreset==='periode'?' selected':''}>Période de référence ${periodeDebut}–${periodeFin} : ${fmtDec(ratioPeriode,3)}</option>
         <option value="custom"${ratioPreset==='custom'?' selected':''}>Valeur saisie</option>
       </select>
     </div>
@@ -1957,7 +1974,7 @@ function renderCibles(content,mrcLabel){
     </div>
     <div class="cibles-param" style="min-width:100%;${sousTitre}">
       ${ratioPreset==='mamh'?`« La Stratégie québécoise en habitation détermine qu'un ratio équilibré correspond à 1,123 habitation par ménage pour l'ensemble du Québec. Ce ratio pourrait toutefois ne pas être adapté pour représenter les particularités d'un territoire. » « Ce ratio de 1,123 a été établi à partir d'une période de référence couvrant de 2014 à 2019. » (p. 21)<br>`:''}
-      « Tous les types de logements privés sont comptabilisés par ce ratio, notamment les logements inoccupés, les résidences principales, les résidences de tourisme (lorsque non catégorisées comme un usage commercial) et les résidences secondaires, telles que les chalets et les pied-à-terre, tous modes de tenure confondus. » (p. 21) Parc de logements utilisé ici : rôle d'évaluation foncière, filtre CUBF « ${cubfNames[currentCubf]||''} ».
+      « Tous les types de logements privés sont comptabilisés par ce ratio, notamment les logements inoccupés, les résidences principales, les résidences de tourisme (lorsque non catégorisées comme un usage commercial) et les résidences secondaires, telles que les chalets et les pied-à-terre, tous modes de tenure confondus. » (p. 21)<br>Logements : rôle d'évaluation foncière, filtre « ${cubfNames[currentCubf]||''} ».
     </div>
     ${ratioPreset==='periode'?`<div class="cibles-param">
       <label>Début de la période de référence</label>
@@ -1977,7 +1994,7 @@ function renderCibles(content,mrcLabel){
         ${refYearsAvail.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.85rem;font-weight:600;color:${y>=periodeDebut&&y<=periodeFin?'var(--teal-dark)':'var(--text-light)'};">${refRatioByYear[y]!=null?fmtDec(refRatioByYear[y],3):'–'}</div></div>`).join('')}
         ${periodeYrs.length>1?`<div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">Moyenne ${periodeDebut}–${periodeFin}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${fmtDec(ratioPeriode,3)}</div></div>`:''}
       </div>
-      <div style="${sousTitre}margin-top:6px;">« Pour identifier un ratio équilibré, la MRC a intérêt à se baser sur une période de référence antérieure durant laquelle, idéalement, l'état du marché de l'habitation semblait équilibré, soit une période où l'évolution des prix était stable et où le territoire ne semblait pas connaître de pénurie d'habitations. » (p. 21)<br>Ménages à partir de ${calibYear} : ISQ. Ménages avant ${calibYear} : population (ISQ) / taille moyenne des ménages de ${calibYear}. « Les données sur le nombre de logements et de ménages peuvent être obtenues respectivement à partir des sommaires des rôles d'évaluation foncière et du recensement de la population de Statistique Canada. » (note 26, p. 25)</div>
+      <div style="${sousTitre}margin-top:6px;">« Pour identifier un ratio équilibré, la MRC a intérêt à se baser sur une période de référence antérieure durant laquelle, idéalement, l'état du marché de l'habitation semblait équilibré, soit une période où l'évolution des prix était stable et où le territoire ne semblait pas connaître de pénurie d'habitations. » (p. 21)<br>Ménages : ISQ dès ${calibYear}; avant ${calibYear}, population / taille des ménages de ${calibYear}. « Les données sur le nombre de logements et de ménages peuvent être obtenues respectivement à partir des sommaires des rôles d'évaluation foncière et du recensement de la population de Statistique Canada. » (note 26, p. 25)</div>
     </div>`:''}`:''}
     ${showTaux?`<div class="cibles-param">
       <label>Taux d'inoccupation équilibré (T<sub>éq</sub>, %)</label>
@@ -1986,12 +2003,12 @@ function renderCibles(content,mrcLabel){
     <div class="cibles-param">
       <label>Ménages locataires (% des ménages)</label>
       <input type="number" id="cp-taux-loc" value="${(tauxLocataires*100).toFixed(1)}" step="0.1" min="1" max="99">
-      <small style="${sousTitre}">${tenureMRC&&tenureMRC.pct_locataire!=null?`Recensement 2021 : ${fmtDec(tenureMRC.pct_locataire,1)} %`:'Aucune donnée du recensement pour ce territoire : valeur à saisir'}</small>
+      <small style="${sousTitre}">${tenureMRC&&tenureMRC.pct_locataire!=null?`Recensement 2021 : ${fmtDec(tenureMRC.pct_locataire,1)} %`:'Aucune donnée : valeur à saisir'}</small>
     </div>`:''}
     ${showRatioMC?`<div class="cibles-param">
       <label>Ratio moyen de mises en chantier par nouveau ménage</label>
       <select id="cp-ratio-mc-preset">
-        <option value="calcule"${ratioMCPreset==='calcule'?' selected':''}>Calculé sur une période de référence (${ratioMCCalc!=null?fmtDec(ratioMCCalc,3):'non calculé'})</option>
+        <option value="calcule"${ratioMCPreset==='calcule'?' selected':''}>Période de référence : ${ratioMCCalc!=null?fmtDec(ratioMCCalc,3):'non calculé'}</option>
         <option value="custom"${ratioMCPreset==='custom'?' selected':''}>Valeur saisie</option>
       </select>
     </div>
@@ -2017,7 +2034,7 @@ function renderCibles(content,mrcLabel){
         ${periodeStartsYrs.map(y=>`<div style="text-align:center;"><div style="font-size:.7rem;color:var(--text-light);">${y}</div><div style="font-size:.8rem;font-weight:600;color:var(--teal-dark);">${fmt(startsByYear[y])} / ${fmtSigne(deltaMenByYear[y])}</div></div>`).join('')}
         <div style="text-align:center;border-left:1px solid var(--border);padding-left:16px;"><div style="font-size:.7rem;color:var(--text-light);">${fmt(sommeMC)} / ${fmt(sommeNouvMen)}</div><div style="font-size:.85rem;font-weight:700;color:var(--teal-dark);">${ratioMCCalc!=null?fmtDec(ratioMCCalc,3):'–'}</div></div>
       </div>`:''}
-      <div style="${sousTitre}margin-top:6px;">« Il est recommandé ici de ne considérer dans les mises en chantier que les logements achevés. » (p. 26) « Il est important de s'assurer que le nombre de logements perdus, par exemple par démolition ou par fusion de logements, est soustrait du nombre de logements construits durant cette même période. » (p. 27)<br>Données utilisées ici : logements inscrits au rôle d'évaluation foncière le plus récent, selon leur année de construction (année y), et nouveaux ménages de l'année y à l'année y+1 (ISQ). Les logements perdus ne sont pas soustraits.</div>
+      <div style="${sousTitre}margin-top:6px;">« Il est recommandé ici de ne considérer dans les mises en chantier que les logements achevés. » (p. 26) « Il est important de s'assurer que le nombre de logements perdus, par exemple par démolition ou par fusion de logements, est soustrait du nombre de logements construits durant cette même période. » (p. 27)<br>Mises en chantier : logements du rôle le plus récent, selon l'année de construction. Les logements perdus ne sont pas soustraits. Nouveaux ménages : variation annuelle (ISQ).</div>
     </div>`:''}
     <div class="cibles-param">
       <label>Projections des ménages privés (ISQ)</label>
@@ -2070,13 +2087,13 @@ function renderCibles(content,mrcLabel){
     <div class="metric-card">
       <div class="metric-label">Besoins en logements privés</div>
       <div class="metric-value">${fmtSigne(total)}</div>
-      <div class="metric-sub">A.1 + A.2 + A.3 · ${latestMenYear}–${horizonAn}</div>
+      <div class="metric-sub">A.1 + A.2 + A.3</div>
     </div>
   </div>
 
   <div class="charts-grid">
     <div class="chart-card" id="card-cibles-chart">
-      <h3>Parc de logements actuel et requis · ${mrcLabel}</h3>
+      <h3>Logements actuels et requis · ${mrcLabel}</h3>
       <div class="chart-subtitle">${chartYears[0]}–${horizonAn} · ${scenLabels[scenario]}</div>
       <div class="chart-legend" style="display:flex;gap:16px;margin:8px 0 4px;flex-wrap:wrap;">
         <div class="legend-item"><div class="legend-dot" style="background:#2d6e6a"></div>Logements (rôle d'évaluation foncière)</div>
@@ -2092,20 +2109,20 @@ function renderCibles(content,mrcLabel){
           <h4>Étape A.1 : Évaluer l'écart entre les besoins actuels des ménages (la demande) et l'offre du parc de logements</h4>
           <div style="${sousTitre}margin-bottom:6px;">${tA1[methodeA1]}</div>
           ${stepA1Rows}
-          <div class="step-row total-step"><span class="step-label">Logements ajoutés au total</span><span class="step-val">${fmtSigne(besoin_A1)}</span></div>
+          <div class="step-row total-step"><span class="step-label">Ajouté au total</span><span class="step-val">${fmtSigne(besoin_A1)}</span></div>
         </div>
         <div class="step-card">
           <h4>Étape A.2 : Déterminer les besoins en logements des ménages pour les 20 prochaines années</h4>
           ${formule(`Croissance anticipée du nombre de ménages privés = M<sub>${horizonAn}</sub> – M<sub>${latestMenYear}</sub>`)}
           ${ligne(`${fmt(Mhorizon)} – ${fmt(Mactuel)} (ISQ, ${scenLabels[scenario]})`,fmtSigne(deltaM))}
-          <div class="step-row total-step"><span class="step-label">Logements ajoutés au total</span><span class="step-val">${fmtSigne(besoin_A2)}</span></div>
+          <div class="step-row total-step"><span class="step-label">Ajouté au total</span><span class="step-val">${fmtSigne(besoin_A2)}</span></div>
         </div>
         <div class="step-card">
           <h4>Étape A.3 : Déterminer des besoins en logements excédentaires par rapport à la croissance anticipée du nombre de ménages</h4>
           <div style="${sousTitre}margin-bottom:6px;">${tA3[methodeA3]}</div>
           ${stepA3Rows}
           ${ligne('Logements excédentaires = besoin résidentiel – croissance anticipée',methodeA3==='aucun'?'':`${fmt(besoinCroissance)} – ${fmt(besoin_A2)}`)}
-          <div class="step-row total-step"><span class="step-label">Logements ajoutés au total</span><span class="step-val">${fmtSigne(besoin_A3)}</span></div>
+          <div class="step-row total-step"><span class="step-label">Ajouté au total</span><span class="step-val">${fmtSigne(besoin_A3)}</span></div>
         </div>
       </div>
       <div style="background:var(--teal-pale);border:1px solid var(--teal-light);border-radius:8px;padding:14px 18px;margin-top:12px;">
@@ -2160,14 +2177,14 @@ function renderCibles(content,mrcLabel){
         ciblesParams.methodeA1=this.value;
         if(!ciblesCompatibles(this.value,ciblesParams.methodeA3)){
           ciblesParams.methodeA3=this.value==='inoccupation'?'inoccupation':'ratio';
-          ciblesParams.ajustement=`<strong>Étape A.3 changée</strong> pour « ${tA3[ciblesParams.methodeA3]} » (note 24, p. 23).`;
+          ciblesParams.ajustement=`<strong>Étape A.3 remplacée</strong> par « ${tA3[ciblesParams.methodeA3]} » (note 24).`;
         }
       }
       else if(id==='cp-methode-a3'){
         ciblesParams.methodeA3=this.value;
         if(!ciblesCompatibles(ciblesParams.methodeA1,this.value)){
           ciblesParams.methodeA1=this.value==='inoccupation'?(hasSCHLData?'inoccupation':'aucun'):'ratio';
-          ciblesParams.ajustement=`<strong>Étape A.1 changée</strong> pour « ${tA1[ciblesParams.methodeA1]} » (note 24, p. 23).`;
+          ciblesParams.ajustement=`<strong>Étape A.1 remplacée</strong> par « ${tA1[ciblesParams.methodeA1]} » (note 24).`;
         }
       }
       else if(id==='cp-ratio-preset'){
