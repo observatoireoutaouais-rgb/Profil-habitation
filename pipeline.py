@@ -5,8 +5,8 @@ Sources selon l'année :
   • 2023 et plus  : API MAMH (index CSV + XML par municipalité)
   • 2012 à 2022   : SHP provincial (ROLE{YYYY}_SHP.zip)
   • Indicateurs PU: Role_{YYYY}_PU.zip
-    Correction plan complémentaire : dissolution par bâtiment (mat18[:15]),
-    sum(rl0302a) = empreinte réelle, sum(rl0311a) = total logements.
+    Filtre CUBF élargi, densité nette sans exploitations agricoles, terrain des
+    parcs de maisons mobiles réparti (voir build_indicateurs_pu).
 """
 import requests, xml.etree.ElementTree as ET, pandas as pd
 import io, time, csv, json, os, zipfile, re, struct
@@ -63,6 +63,13 @@ TYPE_COLS = [
 # Type écarté de l'onglet Superficie (voir indicator_frames) et libellé du total qui en découle.
 SUP_TYPE_EXCLU = "Autres immeubles résidentiels"
 SUP_TOTAL_LABEL = "Total des types de construction présentés"
+# Indicateurs stratégiques 2 et 3 : nouveaux logements = logements dont l'année de
+# construction (RL0307A) va de R-10 à R-3, R étant l'année du rôle. Une année de
+# construction n'est à peu près complète qu'au troisième rôle qui la suit (délai
+# d'inscription) : rôle 2026 → logements construits de 2016 à 2023. Les fichiers
+# gardent toutes les années depuis R-10 ; le tableau de bord applique la période.
+NOUV_RECUL_DEBUT = 10
+NOUV_RECUL_FIN   = 3
 def load_match():
     df = pd.read_csv(MATCH_PATH)
     if len(df.columns)==2: df.columns=["Municipalité","CDNAME"]; df["Region"]=None
@@ -298,21 +305,64 @@ def year_batches(match_df,pf_lookup):
     for annee,zip_path in sorted(SHP_ZIPS.items()):
         frames,_=read_role_year_shp(annee,zip_path,pf_lookup)
         if frames: yield annee,frames
+def superficie_densite(d):
+    """Superficie (m²) servant au calcul de la densité nette (indicateur stratégique 3).
+
+    Cas général : RL0302A. Une maison mobile (CUBF 1211) n'a souvent aucune superficie
+    de terrain : le terrain est porté par une autre unité du même emplacement (code
+    municipal + mat18, positions 1 à 10), le parc lui-même (1701, 1702) ou une unité
+    9xxx. Ce terrain est réparti à parts égales entre les maisons mobiles sans
+    superficie de l'emplacement ; sans cette correction, ces logements et leur terrain
+    sortent du calcul. À appeler avant le filtre CUBF, qui écarte les unités porteuses.
+    """
+    emp=d["code_mun"]+d["mat18"].str[:10]
+    cubf=d["rl0105_num"]; sup=d["rl0302a"]
+    sans_sup=(cubf==1211)&~(sup>0)
+    porteur=(emp.isin(emp[sans_sup])&(sup>0)
+             &(cubf.isin([1701,1702])|((cubf>=9000)&(cubf<=9999))))
+    terrain=sup[porteur].groupby(emp[porteur]).sum()
+    n_sans=sans_sup.groupby(emp).sum()
+    part=terrain/n_sans.reindex(terrain.index)
+    return pd.Series(np.where(sans_sup,emp.map(part),sup),index=d.index)
+def densite_frame(d,keys):
+    """Densité résidentielle nette : Σ logements ÷ Σ superficie (ha), et médiane des
+    densités par bâtiment. Clé de bâtiment = code municipal + mat18, positions 1 à 14 :
+    les quotes-parts de terrain des condos d'un même bâtiment sont additionnées."""
+    g=d.groupby(keys).agg(logements=("rl0311a","sum"),superficie_ha=("sup_densite","sum"))
+    g["superficie_ha"]=g["superficie_ha"]/10000
+    g["densite_nette"]=np.where(g["superficie_ha"]>0,g["logements"]/g["superficie_ha"],np.nan)
+    bat=d.assign(_bat=d["code_mun"]+d["mat18"].str[:14]).groupby(keys+["_bat"]).agg(
+        L=("rl0311a","sum"),m2=("sup_densite","sum"))
+    bat=bat[bat["m2"]>0]
+    g["mediane_batiment"]=(bat["L"]/(bat["m2"]/10000)).groupby(level=keys).median()
+    return g.reset_index()
 def build_indicateurs_pu(pf_lookup,region_by_mrc):
     """
-    Indicateurs stratégiques – Périmètres d'urbanisation.
-    Correction plan complémentaire (PDF Annexe 1) :
-      - Chaque unité de condo (rl0310a=5) a sa quote-part de terrain dans rl0302a.
-      - Ces fractions s'additionnent à l'empreinte réelle du bâtiment.
-      - Regroupement par bâtiment : mat18[:15] = identifiant unique du plan complémentaire.
-      - sum(rl0302a) par groupe = empreinte réelle → densité correcte.
+    Indicateurs stratégiques 2 et 3 – Périmètres d'urbanisation (Role_{R}_PU.zip :
+    unités du rôle R situées dans un PU).
+
+    Univers : filtre CUBF élargi du MAMH (1000, 1010, 1211, 1702, 1543, 1549,
+    5000-5999, 8120-8199), unités comptant au moins un logement, points bien
+    géolocalisés (rejet = 0) lorsque la colonne est fournie. Typologie : lien
+    physique (RL0309A) × nombre de logements (RL0311A), comme l'indicateur 1.
+
+    Indicateur 2 (numérateur) : logements du dernier rôle R dans les PU, selon
+    l'année de construction ; le dénominateur (tout le territoire, même rôle) vient
+    de nouveaux_logements_total_*. Période retenue par le tableau de bord : R-10 à R-3.
+
+    Indicateur 3 : densité nette = Σ logements ÷ Σ superficie (ha), sans les
+    exploitations agricoles (8120-8199), unités dont la superficie est > 0
+    (correction des parcs de maisons mobiles, voir superficie_densite). Densité du
+    parc : chaque rôle pour son année (un Role_*_PU.zip par rôle). Densité des
+    nouveaux logements : dernier rôle, période R-10 à R-3.
     """
     if not PU_ZIPS:
         print("  Aucun Role_*_PU.zip – indicateurs PU ignorés."); return
-    TYPE_MAP_IND={1:"Maisons individuelles détachées",2:"Maisons jumelées ou en rangée",
-                  3:"Maisons jumelées ou en rangée",4:"Maisons jumelées ou en rangée",
-                  5:"Immeuble comportant deux logements ou plus"}
-    for annee_pu,zip_path in sorted(PU_ZIPS.items(),reverse=True):
+    all_mrcs={v[1] for v in pf_lookup.values()}
+    code_to_mun={code:nom for code,(nom,_) in pf_lookup.items()}
+    annee_max=max(PU_ZIPS)
+    parc_mrc,parc_mun=[],[]
+    for annee_pu,zip_path in sorted(PU_ZIPS.items()):
         print(f"\n══ Indicateurs PU {annee_pu} ({zip_path.name}) ══")
         if not zip_path.exists(): continue
         try:
@@ -322,62 +372,69 @@ def build_indicateurs_pu(pf_lookup,region_by_mrc):
                 print(f"  Lecture de {csv_e}…",flush=True)
                 with zf.open(csv_e) as raw:
                     df=pd.read_csv(raw,low_memory=False,usecols=lambda c: c in [
-                        "code_mun_2","rl0105a","rl0302a","rl0307a","rl0309a","rl0310a",
-                        "rl0311a","rl0402a","rl0403a","rl0404a","CDNAME","mat18_2"])
+                        "code_mun_2","rl0105a","rl0302a","rl0307a","rl0309a","rl0311a",
+                        "rejet","CDNAME","mat18_2"])
             print(f"  {len(df):,} lignes totales")
-            all_mrcs={v[1] for v in pf_lookup.values()}
             df=df[df["CDNAME"].isin(all_mrcs)].copy()
             print(f"  {len(df):,} lignes pour nos MRC")
-            num_cols=["rl0302a","rl0307a","rl0309a","rl0310a","rl0311a","rl0402a","rl0403a","rl0404a"]
-            df[num_cols]=df[num_cols].apply(pd.to_numeric,errors="coerce")
-            df["rl0105a"]=df["rl0105a"].astype(str)
-            df_res=df[df["rl0105a"].str.startswith("1")].copy()
-            code_to_mun={code:nom for code,(nom,_) in pf_lookup.items()}
-            df_res["CSDNAME"]=df_res["code_mun_2"].astype(str).str.zfill(5).map(code_to_mun)
-            # Plan complementaire fix: sum fractional terrain shares per building
-            df_res["plan_comp_id"]=df_res["mat18_2"].astype(str).str.zfill(18).str[:15]
-            df_res["is_condo"]=df_res["rl0310a"]==5
-            condo=df_res[df_res["is_condo"]].copy()
-            non_condo=df_res[~df_res["is_condo"]].copy()
-            if len(condo)>0:
-                condo=condo.groupby(
-                    ["plan_comp_id","CDNAME","CSDNAME","rl0307a","rl0309a","rl0105a"],dropna=False
-                ).agg(rl0302a=("rl0302a","sum"),rl0311a=("rl0311a","sum"),
-                      rl0402a=("rl0402a","mean"),rl0403a=("rl0403a","mean"),
-                      rl0404a=("rl0404a","mean")).reset_index()
-                df_res=pd.concat([non_condo,condo],ignore_index=True)
-                print(f"  Après dissolution plans complémentaires : {len(df_res):,} lignes")
-            df_new=df_res[(df_res["rl0307a"]>=2012)&(df_res["rl0307a"]<=annee_pu)].copy()
-            def classify_ind(row):
-                lp,ll=row["rl0309a"],row["rl0311a"]
-                if pd.isna(lp) or pd.isna(ll): return "Autres logements"
-                if ll>=2: return "Immeuble comportant deux logements ou plus"
-                return TYPE_MAP_IND.get(int(lp),"Autres logements")
-            df_new["Types"]=df_new.apply(classify_ind,axis=1)
-            save_json(df_new.groupby(["CDNAME","rl0307a"]).agg(logements_PU=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"nouveaux_logements_mrc.json")
-            save_json_mun(df_new.groupby(["CDNAME","CSDNAME","rl0307a"]).agg(logements_PU=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"nouveaux_logements_mun",region_by_mrc)
-            save_json(df_new.groupby(["CDNAME","rl0307a","Types"]).agg(logements=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"types_nouveaux_mrc.json")
-            save_json_mun(df_new.groupby(["CDNAME","CSDNAME","rl0307a","Types"]).agg(logements=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"}).round(1),"types_nouveaux_mun",region_by_mrc)
-            df_den=df_res[df_res["rl0309a"].notna()&(df_res["rl0309a"]!=0)].copy()
-            df_den["terrain_ha"]=df_den["rl0302a"]/10000
-            den_mrc=df_den.groupby(["CDNAME","rl0307a"]).agg(area_ha=("terrain_ha","sum"),units=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"})
-            den_mrc=den_mrc.sort_values(["CDNAME","Annee_construction"])
-            den_mrc["cum_area"]=den_mrc.groupby("CDNAME")["area_ha"].cumsum()
-            den_mrc["cum_units"]=den_mrc.groupby("CDNAME")["units"].cumsum()
-            den_mrc["densite_nette_PU"]=np.where(den_mrc["cum_area"]>0,(den_mrc["cum_units"]/den_mrc["cum_area"]).round(3),np.nan)
-            den_mrc=den_mrc[(den_mrc["Annee_construction"]>=2012)&(den_mrc["Annee_construction"]<=annee_pu)]
-            save_json(den_mrc.round(3),"densite_pu_mrc.json")
-            den_mun=df_den.groupby(["CDNAME","CSDNAME","rl0307a"]).agg(area_ha=("terrain_ha","sum"),units=("rl0311a","sum")).reset_index().rename(columns={"rl0307a":"Annee_construction"})
-            den_mun=den_mun.sort_values(["CDNAME","CSDNAME","Annee_construction"])
-            den_mun["cum_area"]=den_mun.groupby(["CDNAME","CSDNAME"])["area_ha"].cumsum()
-            den_mun["cum_units"]=den_mun.groupby(["CDNAME","CSDNAME"])["units"].cumsum()
-            den_mun["densite_nette_PU"]=np.where(den_mun["cum_area"]>0,(den_mun["cum_units"]/den_mun["cum_area"]).round(3),np.nan)
-            den_mun=den_mun[(den_mun["Annee_construction"]>=2012)&(den_mun["Annee_construction"]<=annee_pu)]
-            save_json_mun(den_mun.round(3),"densite_pu_mun",region_by_mrc)
-            break
+            for c in ["rl0302a","rl0307a","rl0309a","rl0311a"]+(["rejet"] if "rejet" in df else []):
+                df[c]=pd.to_numeric(df[c],errors="coerce")
+            df["rl0105_num"]=pd.to_numeric(df["rl0105a"],errors="coerce")
+            df["code_mun"]=df["code_mun_2"].astype(str).str.split(".").str[0].str.zfill(5)
+            df["CSDNAME"]=df["code_mun"].map(code_to_mun)
+            df["mat18"]=df["mat18_2"].astype(str).str.split(".").str[0].str.zfill(18)
+            # Avant le filtre CUBF : le terrain des parcs de maisons mobiles est porté
+            # par une unité hors filtre (1701 ou 9xxx).
+            df["sup_densite"]=superficie_densite(df)
+            df=assign_mamh_types(df,include_optional=True,colname="Types")
+            df=df[mamh_eligible_mask(df,include_optional=True)&(df["rl0311a"]>0)].copy()
+            df["Types"]=df["Types"].fillna("Autres immeubles résidentiels")
+            if "rejet" in df:
+                df=df[df["rejet"].fillna(0)==0]
+            print(f"  {len(df):,} unités résidentielles, {int(df['rl0311a'].sum()):,} logements")
+            den=df[~df["rl0105_num"].between(8120,8199)&(df["sup_densite"]>0)]
+            debut,fin=annee_pu-NOUV_RECUL_DEBUT,annee_pu-NOUV_RECUL_FIN
+            den_nv=den[den["rl0307a"].between(debut,fin)]
+            for keys,acc in [(["CDNAME"],parc_mrc),(["CDNAME","CSDNAME"],parc_mun)]:
+                p=densite_frame(den,keys)
+                n=densite_frame(den_nv,keys).set_index(keys).add_suffix("_nouv")
+                p=p.join(n,on=keys)
+                p.insert(0,"Annee_role",annee_pu)
+                p["periode_nouv"]=f"{debut}-{fin}"
+                acc.append(p)
+            if annee_pu!=annee_max: continue
+            # Dernier rôle : nouveaux logements et densité selon l'année de construction
+            nv=df[(df["rl0307a"]>=ANNEE_MIN)&(df["rl0307a"]<=annee_pu)]
+            ren={"rl0307a":"Annee_construction"}
+            for keys,stem in [(["CDNAME"],"mrc"),(["CDNAME","CSDNAME"],"mun")]:
+                t=nv.groupby(keys+["rl0307a"]).agg(logements_PU=("rl0311a","sum")).reset_index().rename(columns=ren)
+                t.insert(0,"Annee_role",annee_pu)
+                ty=nv.groupby(keys+["rl0307a","Types"]).agg(logements=("rl0311a","sum")).reset_index().rename(columns=ren)
+                ty.insert(0,"Annee_role",annee_pu)
+                # Densité par année de construction (cohorte) ; cum_* = parc construit
+                # jusqu'à cette année, toutes années antérieures comprises.
+                d=den.groupby(keys+["rl0307a"]).agg(area_ha=("sup_densite","sum"),units=("rl0311a","sum")).reset_index().rename(columns=ren)
+                d["area_ha"]=d["area_ha"]/10000
+                d=d.sort_values(keys+["Annee_construction"])
+                d["cum_area"]=d.groupby(keys)["area_ha"].cumsum()
+                d["cum_units"]=d.groupby(keys)["units"].cumsum()
+                d["densite_nette_PU"]=np.where(d["cum_area"]>0,d["cum_units"]/d["cum_area"],np.nan)
+                d=d[(d["Annee_construction"]>=ANNEE_MIN)&(d["Annee_construction"]<=annee_pu)]
+                d.insert(0,"Annee_role",annee_pu)
+                if stem=="mrc":
+                    save_json(t.round(1),"nouveaux_logements_mrc.json")
+                    save_json(ty.round(1),"types_nouveaux_mrc.json")
+                    save_json(d.round(3),"densite_pu_mrc.json")
+                else:
+                    save_json_mun(t.round(1),"nouveaux_logements_mun",region_by_mrc)
+                    save_json_mun(ty.round(1),"types_nouveaux_mun",region_by_mrc)
+                    save_json_mun(d.round(3),"densite_pu_mun",region_by_mrc)
         except Exception as e:
             print(f"  ERR PU {annee_pu}: {e}")
             import traceback; traceback.print_exc()
+    if parc_mrc:
+        save_json(pd.concat(parc_mrc,ignore_index=True).round(3),"densite_pu_parc_mrc.json")
+        save_json_mun(pd.concat(parc_mun,ignore_index=True).round(3),"densite_pu_parc_mun",region_by_mrc)
 def prepare_cubf(df):
     d=df.copy()
     # compact_frame livre la colonne déjà nettoyée : la repasser en texte suffit.
@@ -649,6 +706,17 @@ def indicator_frames(Role_brut, mode, suffix):
     if mode=="mamh_plus_others":
         out["qa_cubf_exclus"]=("mrc",cubf_exclus_frame(Role_brut,Role_UE))
     out[f"logements_types_mrc_{suffix}"]=("mrc",mrc_types)
+    if mode=="mamh_optional":
+        # Dénominateur de l'indicateur stratégique 2 : logements de tout le territoire
+        # selon leur année de construction, tirés du même rôle que le numérateur (PU) et
+        # du même filtre CUBF élargi. Seules les années R-10 à R sont gardées.
+        nv=Role_UE[(Role_UE["rl0307a"]>=Role_UE["Annee"]-NOUV_RECUL_DEBUT)
+                   &(Role_UE["rl0307a"]<=Role_UE["Annee"])]
+        for scope,keys in [("mrc",["Annee","CDNAME","rl0307a"]),
+                           ("mun",["Annee","CDNAME","CSDNAME","rl0307a"])]:
+            t=compter_logements(nv,keys).rename(columns={"Annee":"Annee_role",
+                "rl0307a":"Annee_construction","N":"logements"})
+            out[f"nouveaux_logements_total_{scope}"]=(scope,t)
     out[f"logements_types_mun_{suffix}"]=("mun",mun_log.rename(columns={"Types":"Types de construction résidentielle","N":"Nombre de logements"}))
     mrc_val=Role_UE.groupby(["Annee","CDNAME","Types"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index()
     tot=Role_UE.groupby(["Annee","CDNAME"]).agg(terrain=("rl0402a","mean"),batiment=("rl0403a","mean"),immeuble=("rl0404a","mean"),n_ue=("Annee","size")).reset_index(); tot["Types"]="Total des unités d'évaluation résidentielles"
