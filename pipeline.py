@@ -4,7 +4,7 @@ Rôle d'évaluation foncière – Pipeline de données
 Sources selon l'année :
   • 2023 et plus  : API MAMH (index CSV + XML par municipalité)
   • 2012 à 2022   : SHP provincial (ROLE{YYYY}_SHP.zip)
-  • Indicateurs PU: Role_{YYYY}_PU.zip
+  • Indicateurs PU: ROLE{YYYY}_GEOPACKAGE.zip + PU_*.zip (sinon Role_{YYYY}_PU.zip)
     Filtre CUBF élargi, densité nette sans exploitations agricoles, terrain des
     parcs de maisons mobiles réparti (voir build_indicateurs_pu).
 """
@@ -30,6 +30,19 @@ PU_ZIPS = {}
 for _p in Path(".").glob("Role_*_PU.zip"):
     _m = re.search(r"(\d{4})", _p.name)
     if _m: PU_ZIPS[int(_m.group(1))] = _p
+# Couche des périmètres d'urbanisation du Québec (MAMH, PPAT régional,
+# PerimetresUrbanisation_reg_s), versée dans le dépôt sous PU_<jjmmaaaa>.zip : la plus
+# récente est retenue. Avec le rôle géoréférencé (ROLE{YYYY}_GEOPACKAGE.zip, points des
+# unités d'évaluation), elle situe chaque unité dans un PU (voir pu_frame_geo). Les
+# Role_*_PU.zip préparés à part ne servent plus qu'aux années sans rôle géoréférencé.
+def _date_couche_pu(p):
+    m = re.search(r"(\d{2})(\d{2})(\d{4})", p.name)
+    return (m.group(3), m.group(2), m.group(1)) if m else ("", "", "")
+PU_COUCHE = max(Path(".").glob("PU_*.zip"), key=_date_couche_pu, default=None)
+GEO_ZIPS = {}
+for _p in Path(".").glob("ROLE*_GEOPACKAGE.zip"):
+    _m = re.search(r"(\d{4})", _p.name)
+    if _m: GEO_ZIPS[int(_m.group(1))] = _p
 QA_DROPPED_YEARS = []
 MATCH_PATH  = "MATCH.csv"
 PF_MUN_PATH = "pf-mun-2023-2023.csv"
@@ -336,10 +349,62 @@ def densite_frame(d,keys):
     bat=bat[bat["m2"]>0]
     g["mediane_batiment"]=(bat["L"]/(bat["m2"]/10000)).groupby(level=keys).median()
     return g.reset_index()
+_PU_GEOM=None
+def couche_pu():
+    """Polygones des PU (PU_COUCHE), lus une seule fois."""
+    global _PU_GEOM
+    if _PU_GEOM is None:
+        import geopandas as gpd
+        dest=Path("_pu_couche")
+        with zipfile.ZipFile(PU_COUCHE) as zf:
+            zf.extractall(dest,[n for n in zf.namelist() if ".gdb/" in n])
+        gdb=next(dest.rglob("*.gdb"))
+        _PU_GEOM=gpd.read_file(gdb)[["geometry"]]
+        print(f"  Couche PU : {PU_COUCHE.name}, {len(_PU_GEOM):,} polygones")
+    return _PU_GEOM
+def pu_frame_geo(annee,zip_path,code_to_mrc):
+    """Unités du rôle géoréférencé situées dans un PU, au format des Role_*_PU.zip.
+
+    Point de l'unité (rol_unite_p ; centroïde des multipoints) dans un polygone de la
+    couche des PU ; attributs du rôle (b05v_unite_evaln) joints par id_provinc. Les
+    unités hors des municipalités de pf_lookup sont écartées ; une unité n'est comptée
+    qu'une fois si des polygones se chevauchent.
+    """
+    import geopandas as gpd, pyogrio, shutil, warnings
+    warnings.filterwarnings("ignore",message=".*geographic CRS.*")
+    warnings.filterwarnings("ignore",message=".*Measured \\(M\\) geometry.*")
+    dest=Path(f"_role_geo_{annee}")
+    with zipfile.ZipFile(zip_path) as zf:
+        membres=[n for n in zf.namelist() if n.endswith(".gpkg")]
+        print(f"  Décompression de {membres}…",flush=True)
+        zf.extractall(dest,membres)
+    try:
+        gpkg=dest/membres[0]
+        couches=list(pyogrio.list_layers(gpkg)[:,0])
+        c_pts=next(c for c in couches if c.startswith("rol_unite_p"))
+        c_att=next(c for c in couches if c.startswith("b05v_unite_evaln"))
+        pts=pyogrio.read_dataframe(gpkg,layer=c_pts,columns=["id_provinc","code_mun","rejet","mat18"])
+        pts=pts[pts["code_mun"].astype(str).str.zfill(5).isin(code_to_mrc)]
+        pts["geometry"]=pts.geometry.centroid
+        pu=couche_pu().to_crs(pts.crs)
+        j=gpd.sjoin(pts,pu,how="inner",predicate="intersects")
+        j=pd.DataFrame(j[~j.index.duplicated()].drop(columns=["geometry","index_right"]))
+        print(f"  {len(pts):,} unités géoréférencées, {len(j):,} dans un PU")
+        att=pyogrio.read_dataframe(gpkg,layer=c_att,read_geometry=False,
+            columns=["id_provinc","rl0105a","rl0302a","rl0307a","rl0309a","rl0311a"])
+        att=att.drop_duplicates("id_provinc")
+        df=j.merge(att,on="id_provinc",how="left")
+    finally:
+        shutil.rmtree(dest,ignore_errors=True)
+    df["code_mun_2"]=df["code_mun"].astype(str).str.zfill(5)
+    df["CDNAME"]=df["code_mun_2"].map(code_to_mrc)
+    return df.rename(columns={"mat18":"mat18_2"})[
+        ["code_mun_2","rl0105a","rl0302a","rl0307a","rl0309a","rl0311a","rejet","CDNAME","mat18_2"]]
 def build_indicateurs_pu(pf_lookup,region_by_mrc):
     """
-    Indicateurs stratégiques 2 et 3 – Périmètres d'urbanisation (Role_{R}_PU.zip :
-    unités du rôle R situées dans un PU).
+    Indicateurs stratégiques 2 et 3 – Périmètres d'urbanisation. Unités du rôle R
+    situées dans un PU : rôle géoréférencé et couche des PU (pu_frame_geo) lorsque
+    ROLE{R}_GEOPACKAGE.zip et PU_*.zip sont présents, sinon Role_{R}_PU.zip.
 
     Univers : filtre CUBF élargi du MAMH (1000, 1010, 1211, 1702, 1543, 1549,
     5000-5999, 8120-8199), unités comptant au moins un logement, points bien
@@ -353,27 +418,34 @@ def build_indicateurs_pu(pf_lookup,region_by_mrc):
     Indicateur 3 : densité nette = Σ logements ÷ Σ superficie (ha), sans les
     exploitations agricoles (8120-8199), unités dont la superficie est > 0
     (correction des parcs de maisons mobiles, voir superficie_densite). Densité du
-    parc : chaque rôle pour son année (un Role_*_PU.zip par rôle). Densité des
+    parc : chaque rôle pour son année. Densité des
     nouveaux logements : dernier rôle, période R-10 à R-3.
     """
-    if not PU_ZIPS:
-        print("  Aucun Role_*_PU.zip – indicateurs PU ignorés."); return
+    sources={a:("csv",p) for a,p in PU_ZIPS.items()}
+    if PU_COUCHE is not None:
+        sources.update({a:("geo",p) for a,p in GEO_ZIPS.items()})
+    if not sources:
+        print("  Ni rôle géoréférencé avec couche PU, ni Role_*_PU.zip – indicateurs PU ignorés."); return
     all_mrcs={v[1] for v in pf_lookup.values()}
     code_to_mun={code:nom for code,(nom,_) in pf_lookup.items()}
-    annee_max=max(PU_ZIPS)
+    code_to_mrc={code:mrc for code,(_,mrc) in pf_lookup.items()}
+    annee_max=max(sources)
     parc_mrc,parc_mun=[],[]
-    for annee_pu,zip_path in sorted(PU_ZIPS.items()):
+    for annee_pu,(source,zip_path) in sorted(sources.items()):
         print(f"\n══ Indicateurs PU {annee_pu} ({zip_path.name}) ══")
         if not zip_path.exists(): continue
         try:
-            with zipfile.ZipFile(zip_path) as zf:
-                csv_e=next((n for n in zf.namelist() if n.endswith(".csv")),None)
-                if not csv_e: continue
-                print(f"  Lecture de {csv_e}…",flush=True)
-                with zf.open(csv_e) as raw:
-                    df=pd.read_csv(raw,low_memory=False,usecols=lambda c: c in [
-                        "code_mun_2","rl0105a","rl0302a","rl0307a","rl0309a","rl0311a",
-                        "rejet","CDNAME","mat18_2"])
+            if source=="geo":
+                df=pu_frame_geo(annee_pu,zip_path,code_to_mrc)
+            else:
+                with zipfile.ZipFile(zip_path) as zf:
+                    csv_e=next((n for n in zf.namelist() if n.endswith(".csv")),None)
+                    if not csv_e: continue
+                    print(f"  Lecture de {csv_e}…",flush=True)
+                    with zf.open(csv_e) as raw:
+                        df=pd.read_csv(raw,low_memory=False,usecols=lambda c: c in [
+                            "code_mun_2","rl0105a","rl0302a","rl0307a","rl0309a","rl0311a",
+                            "rejet","CDNAME","mat18_2"])
             print(f"  {len(df):,} lignes totales")
             df=df[df["CDNAME"].isin(all_mrcs)].copy()
             print(f"  {len(df):,} lignes pour nos MRC")
@@ -597,9 +669,8 @@ def save_json_mun(df,stem,region_by_mrc):
     Les fragments de cet indicateur issus d'une exécution précédente sont retirés
     d'abord, pour qu'une région qui n'a plus de données ne laisse pas un fichier
     périmé derrière elle. Le nettoyage est volontairement limité à cet indicateur :
-    effacer tout le dossier détruirait les indicateurs PU, qui ne sont produits
-    qu'en exécution locale, avec les Role_*_PU.zip, et qu'une exécution en CI ne
-    régénère jamais.
+    effacer tout le dossier détruirait les indicateurs PU, qu'une exécution sans
+    rôle géoréférencé ni Role_*_PU.zip ne régénère pas.
     """
     MUN_DIR.mkdir(parents=True,exist_ok=True)
     for vieux in MUN_DIR.glob(f"{stem}_r*.json"): vieux.unlink()
@@ -828,6 +899,7 @@ def main():
     pf_lookup,region_names=load_pf_mun(our_mrcs)
     print(f"\nSHP zips : {dict(sorted(SHP_ZIPS.items())) or 'aucun'}")
     print(f"PU  zips : {dict(sorted(PU_ZIPS.items())) or 'aucun'}")
+    print(f"Couche PU : {PU_COUCHE or 'aucune'} ; rôles géoréférencés : {dict(sorted(GEO_ZIPS.items())) or 'aucun'}")
     # Une année à la fois : agrégée puis libérée. Tous les indicateurs exportés sont
     # ventilés par année, l'empilement des agrégats donne donc les mêmes fichiers
     # qu'un traitement en bloc, pour une fraction de la mémoire.

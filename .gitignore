@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 ROLE*_SHP.zip
 Role_*_PU.zip
+ROLE*_GEOPACKAGE.zip
+_role_geo_*/
+_pu_couche/

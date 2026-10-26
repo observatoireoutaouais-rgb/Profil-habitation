@@ -2293,7 +2293,7 @@ function renderIndicateurs(content, mrcLabel, annee) {
   const nvDebut = roleRef!=null?roleRef-NOUV_RECUL_DEBUT:null, nvFin = roleRef!=null?roleRef-NOUV_RECUL_FIN:null;
   const dansPeriode = y=>roleRef!=null&&y>=nvDebut&&y<=nvFin;
   const nvYrs = roleRef!=null?d3.range(nvDebut,nvFin+1):[];
-  const avisAncien = puAncien?avis(`<strong>Données PU à régénérer.</strong> Les fichiers des périmètres d'urbanisation ont été produits avec l'ancienne méthode (codes CUBF 1xxx, sans correction des parcs de maisons mobiles ni exclusion des exploitations agricoles) et ne précisent pas leur rôle, estimé ici à ${roleRef}. Relancer le pipeline avec les fichiers <code>Role_*_PU.zip</code> pour appliquer la méthode décrite ci-dessous.`):'';
+  const avisAncien = puAncien?avis(`<strong>Données PU à régénérer.</strong> Les fichiers des périmètres d'urbanisation ont été produits avec l'ancienne méthode (codes CUBF 1xxx, sans correction des parcs de maisons mobiles ni exclusion des exploitations agricoles) et ne précisent pas leur rôle, estimé ici à ${roleRef}. Relancer le pipeline (rôle géoréférencé et couche des PU) pour appliquer la méthode décrite ci-dessous.`):'';
 
   // ── IND 2: Part des nouveaux logements dans les PU ─────────────────────────
   // Numérateur et dénominateur tirés du même rôle et du même filtre CUBF élargi.

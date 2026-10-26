@@ -53,23 +53,33 @@ Cela télécharge les données MAMH et génère les fichiers dans `web/data/`.
 ### 4. Automation GitHub Actions
 
 Le pipeline se lance automatiquement chaque lundi à 6h UTC (et à chaque push
-sur `main` touchant `pipeline.py`, `MATCH.csv`, `pf-mun-2023-2023.csv` ou le
-workflow). Pour lancer manuellement : GitHub → Actions → "Mise à jour des
+sur `main` touchant `pipeline.py`, `MATCH.csv`, `pf-mun-2023-2023.csv`, la
+couche `PU_*.zip` ou le workflow). Pour lancer manuellement : GitHub → Actions → "Mise à jour des
 données" → "Run workflow".
 
-Le workflow télécharge les SHP historiques (2012–2022) avant d'exécuter le
-pipeline. Les fichiers `Role_{YYYY}_PU.zip` (périmètres d'urbanisation) ne
-sont **pas** disponibles en CI : les indicateurs PU (`nouveaux_logements_*`,
-`densite_pu_*`, `types_nouveaux_*`) ne sont régénérés que lors d'une
-exécution locale avec ces zips dans le répertoire du projet.
+Le workflow télécharge les SHP historiques (2012–2022) et les rôles
+géoréférencés (`ROLE{YYYY}_GEOPACKAGE.zip`, 2025 et suivants) avant d'exécuter
+le pipeline.
+
+### Périmètres d'urbanisation
+
+`PU_<jjmmaaaa>.zip` contient la couche des périmètres d'urbanisation du Québec
+(MAMH, PPAT régional, `PerimetresUrbanisation_reg_s`, 1 530 polygones) ; la plus
+récente est retenue. Pour chaque rôle géoréférencé disponible, le pipeline situe
+le point de chaque unité d'évaluation (`rol_unite_p`) dans un PU et y joint les
+attributs du rôle (`b05v_unite_evaln`, par `id_provinc`) : les indicateurs PU
+(`nouveaux_logements_*`, `types_nouveaux_*`, `densite_pu_*`) couvrent ainsi
+toutes les MRC. Compter environ 3 minutes et 3,5 Go de mémoire par rôle. Les
+anciens `Role_{YYYY}_PU.zip` ne servent plus qu'aux années sans rôle géoréférencé.
+Pour mettre la couche à jour, verser un nouveau `PU_<jjmmaaaa>.zip`.
 
 ### Méthodologie des indicateurs stratégiques
 
 - **Indicateur 1** : logements par type de construction, chaque rôle pour son année ; typologie lien physique (RL0309A) × nombre de logements (RL0311A).
-- **Indicateur 2** : rôle de référence R = dernier `Role_*_PU.zip` ; nouveaux logements = année de construction de R-10 à R-3 (une année n'est à peu près complète qu'au troisième rôle qui la suit). Numérateur (PU) et dénominateur (territoire) tirés du même rôle et du même filtre CUBF élargi.
+- **Indicateur 2** : rôle de référence R = dernier rôle géoréférencé ; nouveaux logements = année de construction de R-10 à R-3 (une année n'est à peu près complète qu'au troisième rôle qui la suit). Numérateur (PU) et dénominateur (territoire) tirés du même rôle et du même filtre CUBF élargi.
 - **Indicateur 3** : densité nette = logements ÷ ha, filtre élargi sans exploitations agricoles (8120-8199), superficie > 0, terrain des parcs de maisons mobiles réparti entre les maisons mobiles sans superficie, quotes-parts des condos additionnées par bâtiment (mat18, positions 1 à 14) pour la médiane.
 
-Les points dont `rejet` ≠ 0 sont écartés lorsque le CSV des PU fournit cette colonne.
+Les points dont `rejet` ≠ 0 (position non fiable) sont écartés.
 
 ## Couverture territoriale
 
@@ -101,7 +111,6 @@ faute de quoi les MRC du rôle ne rejoindraient plus celles des données ISQ.
 |---|---|
 | `taux_inoccupation_schl.json` | 10 MRC (fichier maintenu à la main) |
 | `tenure_menages_mrc.json` | 18 MRC (fichier maintenu à la main) |
-| Indicateurs PU (`nouveaux_logements_*`, `densite_pu_*`, `types_nouveaux_*`) | Dépend des `Role_*_PU.zip`, absents en CI (sauf `nouveaux_logements_total_*`) |
 | Territoires non organisés | Seuls ceux des régions 07, 15 et 16 sont listés |
 
 Population, projections de population et projections de ménages (ISQ) couvrent
@@ -146,7 +155,7 @@ Deux conséquences à garder en tête :
 | `periode_{mrc,mun}_{filtre}.json` | Unités par période de construction |
 | `superficie_{mrc,mun}_{filtre}.json` | Superficie terrain et aire d'étages moyennes (+ `n_ue` au niveau MRC) |
 | `logements_besoins_mrc.json` | Logements par MRC et par type, parc de l'onglet Cibles : codes du filtre strict, chalets et maisons de villégiature (1100–1199), roulottes (1212) et exploitations agricoles (8120–8199) |
-| `nouveaux_logements_{mrc,mun}.json` | Indicateur stratégique 2, numérateur : logements du dernier rôle dans les PU, par année de construction (nécessite `Role_*_PU.zip`) |
+| `nouveaux_logements_{mrc,mun}.json` | Indicateur stratégique 2, numérateur : logements du dernier rôle dans les PU, par année de construction |
 | `nouveaux_logements_total_{mrc,mun}.json` | Indicateur stratégique 2, dénominateur : logements de tout le territoire par année de construction (années R-10 à R), pour chaque rôle R, filtre CUBF élargi — produit en CI |
 | `types_nouveaux_{mrc,mun}.json` | Types des nouveaux logements dans les PU |
 | `densite_pu_{mrc,mun}.json` | Indicateur stratégique 3 : logements et superficie dans les PU par année de construction (dernier rôle) |
