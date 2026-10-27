@@ -82,6 +82,8 @@ select:focus{outline:none;border-color:var(--teal);}
 .data-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
 .data-table td.pct{text-align:right;color:var(--text-light);font-size:.75rem;}
 .data-table tr:not(.total-row):hover td{background:#f0f8f7;}
+.table-compact .data-table th{white-space:normal;vertical-align:bottom;max-width:120px;padding:6px 8px;line-height:1.3;}
+.table-compact .data-table td{padding:6px 8px;white-space:nowrap;}
 
 /* TABLE TOOLBAR */
 .table-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
@@ -2262,6 +2264,10 @@ function renderCibles(content,mrcLabel){
 // à peu près complète qu'au troisième rôle qui la suit (délai d'inscription au rôle).
 // Mêmes constantes que NOUV_RECUL_DEBUT et NOUV_RECUL_FIN du pipeline.
 const NOUV_RECUL_DEBUT=10, NOUV_RECUL_FIN=3;
+// Libellés courts des types pour les en-têtes de tableau
+const TYPE_COURT={'Maisons individuelles détachées':'Maisons individuelles','Maisons jumelées ou en rangée':'Jumelées ou en rangée',
+  'Logements dans un immeuble comportant deux logements ou plus':'Immeubles de 2 log. ou plus','Autres immeubles résidentiels':'Autres',
+  'Chalet et maison de villégiature':'Chalets','Habitation en commun':'Habitation en commun','Roulotte':'Roulottes'};
 function renderIndicateurs(content, mrcLabel, annee) {
   function fi(data){ return scopeRows(data); }
   const fmt=v=>Math.round(v||0).toLocaleString('fr-CA');
@@ -2417,7 +2423,7 @@ function renderIndicateurs(content, mrcLabel, annee) {
     <div class="chart-card" id="card-ind1-table" style="overflow-x:auto">
       <h3>Nombre et part des logements par type de construction résidentielle par municipalité, ${munYr} · ${mrcLabel}</h3>
       <div class="chart-subtitle">Rôle ${munYr} · Parts en % du total des logements de la municipalité · ${getCubfLabel()}</div>
-      <div id="table-ind1"></div>
+      <div id="table-ind1" class="table-compact"></div>
       ${chartMeta({note:FOOTNOTE_TYPES(),source:SOURCE,csvData:true,chartId:'card-ind1-table',singleYear:true,title:`Ind1_municipalites_${munYr}_${mrcLabel}`})}
     </div>
   </div>
@@ -2467,17 +2473,17 @@ function renderIndicateurs(content, mrcLabel, annee) {
         Densité du parc : ensemble des logements situés dans les PU, chaque rôle géoréférencé pour son année (${Object.keys(parcByRole).sort().join(', ')||'aucun'}). Pour les années sans rôle géoréférencé, le parc est reconstitué à partir du rôle ${roleRef??'R'} : logements construits avant le 1<sup>er</sup> janvier de l'année, dans les PU actuels. Cette reconstitution ignore les démolitions et les unités sans année de construction : elle approche le parc de l'époque sans le reproduire exactement.<br>
         Limites : hors des PU, quelques très grands terrains font varier fortement les superficies ; projets intégrés (plusieurs bâtiments sur un lot commun) : le lot commun est généralement réparti dans les RL0302A, sans garantie pour chaque projet.`)}
     </div>
-    <div class="charts-grid">
+    <div class="charts-grid wide">
       <div class="chart-card" id="card-ind3-chart">
         <h3>Densité résidentielle nette du parc de logements dans les périmètres d'urbanisation, ${denSerie.length?`${denSerie[0].yr}–${denSerie[denSerie.length-1].yr}`:'N/D'} · ${mrcLabel}</h3>
-        <div class="chart-subtitle">Logements par hectare (log/ha) · Point plein = rôle observé · Point vide = parc reconstitué à partir du rôle ${roleRef??'N/D'}</div>
+        <div class="chart-subtitle">Logements par hectare (log/ha) · Barres foncées = rôle observé · Barres pâles = parc reconstitué à partir du rôle ${roleRef??'N/D'}</div>
         <div class="chart-area" id="chart-ind3-den"></div>
         ${chartMeta({note:FOOTNOTE_TYPES_MAP.mamh_optional,source:SOURCE,csvData:true,chartId:'card-ind3-chart',title:`Ind3_densite_PU_${mrcLabel}`})}
       </div>
       <div class="chart-card" id="card-ind3-mun" style="overflow-x:auto">
         <h3>Densité résidentielle nette dans les périmètres d'urbanisation par municipalité · ${mrcLabel}</h3>
         <div class="chart-subtitle">Rôle ${roleRef??'N/D'} · Ensemble du parc de logements dans les PU</div>
-        <div id="table-ind3-mun"></div>
+        <div id="table-ind3-mun" class="table-compact"></div>
         ${chartMeta({note:FOOTNOTE_TYPES_MAP.mamh_optional,source:SOURCE,csvData:true,chartId:'card-ind3-mun',singleYear:true,title:`Ind3_densite_mun_${mrcLabel}`})}
       </div>
     </div>
@@ -2492,8 +2498,8 @@ function renderIndicateurs(content, mrcLabel, annee) {
   // Ind1
   makeSortableTable('table-ind1',[
     {key:'Municipalité',label:'Municipalité'},{key:'MRC',label:'MRC'},
-    ...TYPES_IND1.flatMap(t=>[{key:t,label:`${t} (nombre)`,numeric:true},{key:t+' (%)',label:`${t} (%)`,numeric:true}]),
-    {key:'Total',label:'Total des logements',numeric:true},
+    ...TYPES_IND1.flatMap(t=>[{key:t,label:`${TYPE_COURT[t]||t} (n)`,numeric:true},{key:t+' (%)',label:`${TYPE_COURT[t]||t} (%)`,numeric:true}]),
+    {key:'Total',label:'Total',numeric:true},
   ],ind1MunRows,{defaultSort:'Municipalité'});
   storeCSV('card-ind1-table',ind1MunRows);
   storeCSV('card-ind1-shares',stockYrs.flatMap(y=>TYPES_IND1.map(t=>{
@@ -2527,23 +2533,28 @@ function drawInd1Shares(id,legId,years,byYr,types){
   const el=document.getElementById(id); if(!el||!years.length) return;
   const leg=document.getElementById(legId);
   if(leg){ leg.innerHTML=types.map(t=>`<div class="legend-item"><div class="legend-dot" style="background:${TYPE_COLORS[t]}"></div>${t}</div>`).join(''); }
-  const W=chartWidth(el), H=260, m={top:12,right:20,bottom:30,left:45};
+  const W=chartWidth(el), H=280, m={top:12,right:20,bottom:30,left:45};
   const w=W-m.left-m.right, h=H-m.top-m.bottom;
   const svg=d3.select('#'+id).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
   const g=svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
-  const x=d3.scalePoint().domain(years.map(String)).range([0,w]);
+  const x=d3.scaleBand().domain(years.map(String)).range([0,w]).padding(0.25);
   const y=d3.scaleLinear().domain([0,100]).range([h,0]);
-  g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('').ticks(5)).select('.domain').remove();
   g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d+'%')).select('.domain').remove();
   g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
-  const line=d3.line().defined(d=>d.pct!=null).x(d=>x(String(d.yr))).y(d=>y(d.pct));
-  types.forEach(t=>{
-    const pts=years.map(yr=>({yr,pct:byYr[yr]?.Total>0?((byYr[yr][t]||0)/byYr[yr].Total*100):null}));
-    g.append('path').datum(pts).attr('fill','none').attr('stroke',TYPE_COLORS[t]).attr('stroke-width',2.5).attr('d',line);
-    g.selectAll(`.pt-${t.replace(/\s/g,'')}`.slice(0,20)).data(pts.filter(d=>d.pct!=null)).join('circle')
-      .attr('cx',d=>x(String(d.yr))).attr('cy',d=>y(d.pct)).attr('r',3).attr('fill',TYPE_COLORS[t])
-      .on('mouseover',(ev,d)=>showTooltip(ev,`<strong>${t}</strong><br>${d.yr} : ${d.pct.toFixed(1)}%`))
-      .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+  years.forEach(yr=>{
+    const tot=byYr[yr]?.Total||0; if(tot<=0) return;
+    let cum=0;
+    types.forEach(t=>{
+      const pct=(byYr[yr][t]||0)/tot*100; if(pct<=0) return;
+      const y0=y(cum+pct), bh=y(cum)-y(cum+pct);
+      g.append('rect').attr('x',x(String(yr))).attr('y',y0).attr('width',x.bandwidth()).attr('height',bh).attr('fill',TYPE_COLORS[t])
+        .on('mouseover',ev=>showTooltip(ev,`<strong>${t}</strong><br>${yr} : ${pct.toFixed(1)} %<br>${Math.round(byYr[yr][t]||0).toLocaleString('fr-CA')} logements`))
+        .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
+      if(bh>14&&x.bandwidth()>26) g.append('text').attr('x',x(String(yr))+x.bandwidth()/2).attr('y',y0+bh/2+3.5)
+        .attr('text-anchor','middle').attr('font-size','9.5px').attr('pointer-events','none')
+        .attr('fill',d3.hsl(TYPE_COLORS[t]).l<0.55?'#fff':'#1a1a1a').text(pct.toFixed(0)+' %');
+      cum+=pct;
+    });
   });
 }
 
@@ -2594,20 +2605,18 @@ function drawInd3Den(id,serie){
   const w=W-m.left-m.right, h=H-m.top-m.bottom;
   const svg=d3.select('#'+id).append('svg').attr('width','100%').attr('viewBox',`0 0 ${W} ${H}`);
   const g=svg.append('g').attr('transform',`translate(${m.left},${m.top})`);
-  const x=d3.scalePoint().domain(serie.map(d=>String(d.yr))).range([0,w]).padding(0.3);
+  const x=d3.scaleBand().domain(serie.map(d=>String(d.yr))).range([0,w]).padding(0.25);
   const maxV=d3.max(serie,d=>d.den)*1.15||20;
   const y=d3.scaleLinear().domain([0,maxV]).range([h,0]);
   g.append('g').attr('class','grid').call(d3.axisLeft(y).tickSize(-w).tickFormat('').ticks(5)).select('.domain').remove();
   g.append('g').call(d3.axisLeft(y).ticks(5).tickFormat(d=>d.toLocaleString('fr-CA'))).select('.domain').remove();
   g.append('g').attr('transform',`translate(0,${h})`).call(d3.axisBottom(x).tickSize(0)).select('.domain').remove();
-  g.append('path').datum(serie).attr('fill','none').attr('stroke','#178785').attr('stroke-width',2.5)
-    .attr('d',d3.line().x(d=>x(String(d.yr))).y(d=>y(d.den)));
   serie.forEach(d=>{
-    g.append('circle').attr('cx',x(String(d.yr))).attr('cy',y(d.den)).attr('r',4.5)
-      .attr('fill',d.observe?'#1a4e4b':'#fff').attr('stroke','#1a4e4b').attr('stroke-width',2)
+    g.append('rect').attr('x',x(String(d.yr))).attr('y',y(d.den)).attr('width',x.bandwidth())
+      .attr('height',Math.max(1,h-y(d.den))).attr('rx',2).attr('fill',d.observe?'#1a4e4b':'#8fcfca')
       .on('mouseover',ev=>showTooltip(ev,`<strong>${d.yr}</strong><br>${d.den.toFixed(1)} log/ha<br>${Math.round(d.L).toLocaleString('fr-CA')} logements · ${d.A.toFixed(1)} ha<br><em>${d.observe?`Rôle ${d.yr}`:'Parc reconstitué'}</em>`))
       .on('mousemove',moveTooltip).on('mouseout',hideTooltip);
-    g.append('text').attr('x',x(String(d.yr))).attr('y',y(d.den)-9).attr('text-anchor','middle')
+    g.append('text').attr('x',x(String(d.yr))+x.bandwidth()/2).attr('y',y(d.den)-4).attr('text-anchor','middle')
       .attr('font-size','10px').attr('fill','#1a1a1a').text(d.den.toFixed(1));
   });
 }
