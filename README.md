@@ -76,7 +76,7 @@ Pour mettre la couche à jour, verser un nouveau `PU_<jjmmaaaa>.zip`.
 ### Méthodologie des indicateurs stratégiques
 
 - **Indicateur 1** : logements par type de construction, chaque rôle pour son année ; typologie lien physique (RL0309A) × nombre de logements (RL0311A).
-- **Indicateur 2** : rôle de référence R = dernier rôle géoréférencé ; nouveaux logements = année de construction de R-10 à R-3 (une année n'est à peu près complète qu'au troisième rôle qui la suit). Numérateur (PU) et dénominateur (territoire) tirés du même rôle et du même filtre CUBF élargi.
+- **Indicateur 2** : rôle de référence R = dernier rôle géoréférencé ; nouveaux logements = année de construction de R-12 à R-3 (une année n'est à peu près complète qu'au troisième rôle qui la suit). Numérateur (PU) et dénominateur (territoire) tirés du même rôle et du même filtre CUBF élargi.
 - **Indicateur 3** : densité nette = logements ÷ ha, filtre élargi sans exploitations agricoles (8120-8199), superficie > 0, terrain des parcs de maisons mobiles réparti entre les maisons mobiles sans superficie, quotes-parts des condos additionnées par bâtiment (mat18, positions 1 à 14) pour la médiane.
 
 Les points dont `rejet` ≠ 0 (position non fiable) sont écartés.
@@ -156,10 +156,10 @@ Deux conséquences à garder en tête :
 | `superficie_{mrc,mun}_{filtre}.json` | Superficie terrain et aire d'étages moyennes (+ `n_ue` au niveau MRC) |
 | `logements_besoins_mrc.json` | Logements par MRC et par type, parc de l'onglet Cibles : codes du filtre strict, chalets et maisons de villégiature (1100–1199), roulottes (1212) et exploitations agricoles (8120–8199) |
 | `nouveaux_logements_{mrc,mun}.json` | Indicateur stratégique 2, numérateur : logements du dernier rôle dans les PU, par année de construction |
-| `nouveaux_logements_total_{mrc,mun}.json` | Indicateur stratégique 2, dénominateur : logements de tout le territoire par année de construction (années R-10 à R), pour chaque rôle R, filtre CUBF élargi — produit en CI |
+| `nouveaux_logements_total_{mrc,mun}.json` | Indicateur stratégique 2, dénominateur : logements de tout le territoire par année de construction (années R-12 à R), pour chaque rôle R, filtre CUBF élargi — produit en CI |
 | `types_nouveaux_{mrc,mun}.json` | Types des nouveaux logements dans les PU |
 | `densite_pu_{mrc,mun}.json` | Indicateur stratégique 3 : logements et superficie dans les PU par année de construction (dernier rôle) |
-| `densite_pu_parc_{mrc,mun}.json` | Indicateur stratégique 3 : densité nette du parc dans les PU, chaque rôle pour son année, et des nouveaux logements (R-10 à R-3), avec la médiane par bâtiment |
+| `densite_pu_parc_{mrc,mun}.json` | Indicateur stratégique 3 : densité nette du parc dans les PU, chaque rôle pour son année, et des nouveaux logements (R-12 à R-3), avec la médiane par bâtiment |
 | `population_mrc.json` | Population historique ISQ par MRC |
 | `projections_pop_mrc.json` | Projections de population ISQ (3 scénarios) |
 | `menages_proj_mrc.json` | Projections de ménages privés ISQ (3 scénarios) |

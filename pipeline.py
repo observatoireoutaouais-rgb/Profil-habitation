@@ -77,11 +77,11 @@ TYPE_COLS = [
 SUP_TYPE_EXCLU = "Autres immeubles résidentiels"
 SUP_TOTAL_LABEL = "Total des types de construction présentés"
 # Indicateurs stratégiques 2 et 3 : nouveaux logements = logements dont l'année de
-# construction (RL0307A) va de R-10 à R-3, R étant l'année du rôle. Une année de
+# construction (RL0307A) va de R-12 à R-3, R étant l'année du rôle. Une année de
 # construction n'est à peu près complète qu'au troisième rôle qui la suit (délai
-# d'inscription) : rôle 2026 → logements construits de 2016 à 2023. Les fichiers
-# gardent toutes les années depuis R-10 ; le tableau de bord applique la période.
-NOUV_RECUL_DEBUT = 10
+# d'inscription) : rôle 2026 → logements construits de 2014 à 2023. Les fichiers
+# gardent toutes les années depuis R-12 ; le tableau de bord applique la période.
+NOUV_RECUL_DEBUT = 12
 NOUV_RECUL_FIN   = 3
 def load_match():
     df = pd.read_csv(MATCH_PATH)
@@ -413,13 +413,13 @@ def build_indicateurs_pu(pf_lookup,region_by_mrc):
 
     Indicateur 2 (numérateur) : logements du dernier rôle R dans les PU, selon
     l'année de construction ; le dénominateur (tout le territoire, même rôle) vient
-    de nouveaux_logements_total_*. Période retenue par le tableau de bord : R-10 à R-3.
+    de nouveaux_logements_total_*. Période retenue par le tableau de bord : R-12 à R-3.
 
     Indicateur 3 : densité nette = Σ logements ÷ Σ superficie (ha), sans les
     exploitations agricoles (8120-8199), unités dont la superficie est > 0
     (correction des parcs de maisons mobiles, voir superficie_densite). Densité du
     parc : chaque rôle pour son année. Densité des
-    nouveaux logements : dernier rôle, période R-10 à R-3.
+    nouveaux logements : dernier rôle, période R-12 à R-3.
     """
     sources={a:("csv",p) for a,p in PU_ZIPS.items()}
     if PU_COUCHE is not None:
@@ -780,7 +780,7 @@ def indicator_frames(Role_brut, mode, suffix):
     if mode=="mamh_optional":
         # Dénominateur de l'indicateur stratégique 2 : logements de tout le territoire
         # selon leur année de construction, tirés du même rôle que le numérateur (PU) et
-        # du même filtre CUBF élargi. Seules les années R-10 à R sont gardées.
+        # du même filtre CUBF élargi. Seules les années R-12 à R sont gardées.
         nv=Role_UE[(Role_UE["rl0307a"]>=Role_UE["Annee"]-NOUV_RECUL_DEBUT)
                    &(Role_UE["rl0307a"]<=Role_UE["Annee"])]
         for scope,keys in [("mrc",["Annee","CDNAME","rl0307a"]),

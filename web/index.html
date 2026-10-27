@@ -2260,10 +2260,10 @@ function renderCibles(content,mrcLabel){
 
 // ── TAB: INDICATEURS STRATÉGIQUES ─────────────────────────────────────────────
 // Nouveaux logements (indicateurs 2 et 3) : logements dont l'année de construction va
-// de R-10 à R-3, R étant l'année du rôle de référence. Une année de construction n'est
+// de R-12 à R-3, R étant l'année du rôle de référence. Une année de construction n'est
 // à peu près complète qu'au troisième rôle qui la suit (délai d'inscription au rôle).
 // Mêmes constantes que NOUV_RECUL_DEBUT et NOUV_RECUL_FIN du pipeline.
-const NOUV_RECUL_DEBUT=10, NOUV_RECUL_FIN=3;
+const NOUV_RECUL_DEBUT=12, NOUV_RECUL_FIN=3;
 // Libellés courts des types pour les en-têtes de tableau
 const TYPE_COURT={'Maisons individuelles détachées':'Maisons individuelles','Maisons jumelées ou en rangée':'Jumelées ou en rangée',
   'Logements dans un immeuble comportant deux logements ou plus':'Immeubles de 2 log. ou plus','Autres immeubles résidentiels':'Autres',
@@ -2314,9 +2314,15 @@ function renderIndicateurs(content, mrcLabel, annee) {
   const puAll = DATA.nouveaux_logements_mrc||[];
   const puAncien = puAll.length>0 && !puAll.some(d=>d.Annee_role!=null);
   const roleRef = puAll.length ? Math.max(...puAll.map(d=>d.Annee_role!=null?d.Annee_role:Math.round(d.Annee_construction)+1)) : null;
-  const nvDebut = roleRef!=null?roleRef-NOUV_RECUL_DEBUT:null, nvFin = roleRef!=null?roleRef-NOUV_RECUL_FIN:null;
+  // Le dénominateur produit avant l'allongement de la période ne remonte pas aussi
+  // loin : la période commence alors à sa première année, pour comparer des années identiques.
+  const totDuRole = (DATA.nouveaux_logements_total_mrc||[]).filter(d=>d.Annee_role===roleRef);
+  const totPremAn = totDuRole.length?Math.min(...totDuRole.map(d=>Math.round(d.Annee_construction))):null;
+  const nvDebutVise = roleRef!=null?roleRef-NOUV_RECUL_DEBUT:null;
+  const nvDebut = nvDebutVise!=null&&totPremAn!=null?Math.max(nvDebutVise,totPremAn):nvDebutVise, nvFin = roleRef!=null?roleRef-NOUV_RECUL_FIN:null;
   const dansPeriode = y=>roleRef!=null&&y>=nvDebut&&y<=nvFin;
   const nvYrs = roleRef!=null?d3.range(nvDebut,nvFin+1):[];
+  const avisPeriode = nvDebut!==nvDebutVise?avis(`<strong>Données à régénérer.</strong> Le fichier <code>nouveaux_logements_total</code> commence à l'année de construction ${totPremAn} : la période débute donc en ${nvDebut} au lieu de ${nvDebutVise}. Elle s'ajustera à la prochaine exécution du pipeline.`):'';
   const avisAncien = puAncien?avis(`<strong>Données PU à régénérer.</strong> Les fichiers des périmètres d'urbanisation ont été produits avec l'ancienne méthode (codes CUBF 1xxx, sans correction des parcs de maisons mobiles ni exclusion des exploitations agricoles) et ne précisent pas leur rôle, estimé ici à ${roleRef}. Relancer le pipeline (rôle géoréférencé et couche des PU) pour appliquer la méthode décrite ci-dessous.`):'';
 
   // ── IND 2: Part des nouveaux logements dans les PU ─────────────────────────
@@ -2435,6 +2441,7 @@ function renderIndicateurs(content, mrcLabel, annee) {
   </div>
   <div style="border:1px solid var(--teal-pale);border-top:none;border-radius:0 0 8px 8px;padding:20px;background:var(--white);margin-bottom:28px;">
     ${avisAncien}
+    ${avisPeriode}
     ${roleRef!=null&&!hasTot?avis(`<strong>Dénominateur non disponible.</strong> Le fichier <code>nouveaux_logements_total_mrc</code> ne contient pas encore le rôle ${roleRef} : la part ne peut être calculée. Il est produit par le pipeline à chaque exécution.`):''}
     <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
       ${kpi(`Part dans les PU · ${perLab}`,cumPart!==null?cumPart.toFixed(1)+' %':'N/D',`${fmt(cumPU)} nouv. log. dans les PU<br>${hasTot?fmt(cumTot):'—'} nouv. log. sur le territoire<br>Rôle ${roleRef??'N/D'}`)}
