@@ -111,7 +111,8 @@ body.embed-section #embed-period-controls,body.embed-section #embed-single-contr
 .embed-controls{display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px;background:var(--white);border-bottom:1px solid var(--border);}
 body.embed-mode .embed-controls{position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);}
 body.embed-mode .content{padding-top:12px!important;overflow-y:auto;}
-body.embed-mode{overflow-y:auto;height:auto;}
+body.embed-mode{overflow-y:auto;height:auto;min-height:0;}
+body.embed-mode .main{min-height:0;}
 .embed-controls label{font-size:.72rem;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--text-light);}
 .embed-cubf-btn{padding:4px 9px;border:1.5px solid var(--border);border-radius:5px;background:var(--bg);font-family:inherit;font-size:.72rem;font-weight:500;color:var(--text-light);cursor:pointer;transition:all .15s;}
 .embed-cubf-btn:hover{border-color:var(--teal);color:var(--teal-dark);}
@@ -927,11 +928,13 @@ function applyEmbedMode(){
 // (no internal scrollbar, nothing cut off). Paired with the listener in the embed snippet.
 function postEmbedHeight(){
   if(!currentEmbedId||window.parent===window) return;
-  const h=Math.ceil(Math.max(
-    document.body?document.body.scrollHeight:0,
-    document.documentElement?document.documentElement.scrollHeight:0
-  ))+2;
-  if(h>0) window.parent.postMessage({type:'ph-embed-size',height:h},'*');
+  // Mesure le contenu lui-même (pas documentElement.scrollHeight, qui vaut au moins la hauteur
+  // de l'iframe) : sinon chaque redimensionnement relance une mesure plus grande, sans fin.
+  if(!document.body) return;
+  const h=Math.ceil(document.body.getBoundingClientRect().height);
+  if(h<=0 || Math.abs(h-(window._lastEmbedH||0))<2) return;
+  window._lastEmbedH=h;
+  window.parent.postMessage({type:'ph-embed-size',height:h},'*');
 }
 function setupEmbedAutoResize(){
   if(!currentEmbedId||window.parent===window) return;
