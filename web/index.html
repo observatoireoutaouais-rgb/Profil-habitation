@@ -894,7 +894,16 @@ function applyEmbedMode(){
   const content=document.getElementById('content');
   const target=document.getElementById(currentEmbedId);
   if(!content||!target) return;
-  Array.from(content.children).forEach(child=>{ if(!child.contains(target)) child.style.display='none'; });
+  // Ne garder que la carte visée : à chaque niveau entre la carte et #content, on masque les
+  // éléments voisins (en-têtes d'indicateur, encadrés KPI, notes méthodologiques, autres cartes).
+  // Les conteneurs intermédiaires (ex. encadré d'un indicateur stratégique) perdent leur habillage.
+  for(let node=target; node && node!==content; node=node.parentElement){
+    const par=node.parentElement; if(!par) break;
+    Array.from(par.children).forEach(child=>{ if(child!==node) child.style.display='none'; });
+    if(par!==content && !par.classList.contains('charts-grid')){
+      Object.assign(par.style,{border:'none',borderRadius:'0',padding:'0',margin:'0',background:'transparent',boxShadow:'none'});
+    }
+  }
   // Configure embed controls
   const ec=document.getElementById('embed-controls'); if(ec) ec.style.display='';
   const isSingle=window._embedSingleYear||false;
